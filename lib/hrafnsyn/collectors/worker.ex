@@ -22,16 +22,40 @@ defmodule Hrafnsyn.Collectors.Worker do
 
   @impl true
   def handle_info(:poll, source) do
-    _ = poll(source)
+    _ = instrument_poll(source)
     Process.send_after(self(), :poll, source.poll_interval_ms)
     {:noreply, source}
+  end
+
+  defp instrument_poll(source) do
+    started_at = System.monotonic_time()
+    result = poll(source)
+
+    duration_seconds =
+      System.convert_time_unit(System.monotonic_time() - started_at, :native, :microsecond) /
+        1_000_000
+
+    :telemetry.execute(
+      [:hrafnsyn, :collector, :poll, :stop],
+      %{
+        count: 1,
+        duration_seconds: duration_seconds
+      },
+      %{
+        source_id: source.id,
+        vehicle_type: Atom.to_string(source.vehicle_type),
+        result: telemetry_result(result)
+      }
+    )
+
+    result
   end
 
   defp poll(%Source{adapter: :dump1090} = source) do
     url = URI.merge(source.base_url, "/data/aircraft.json") |> to_string()
 
     with {:ok, response} <- Req.get(url: url),
-         {:ok, payload} <- Jason.decode(response.body) do
+         {:ok, payload} <- decode_json_body(response.body) do
       now = payload["now"] || System.os_time(:second)
 
       observations =
@@ -47,7 +71,7 @@ defmodule Hrafnsyn.Collectors.Worker do
     url = URI.merge(source.base_url, "/api/ships_array.json") |> to_string()
 
     with {:ok, response} <- Req.get(url: url),
-         {:ok, payload} <- Jason.decode(response.body) do
+         {:ok, payload} <- decode_json_body(response.body) do
       now = DateTime.utc_now(:second)
 
       observations =
@@ -192,6 +216,14 @@ defmodule Hrafnsyn.Collectors.Worker do
   defp normalize_altitude("ground"), do: 0
   defp normalize_altitude(_), do: nil
 
+  defp decode_json_body(body) when is_binary(body), do: Jason.decode(body)
+  defp decode_json_body(body) when is_map(body), do: {:ok, body}
+  defp decode_json_body(_body), do: {:error, :invalid_body}
+
   defp unix_to_datetime(value) when is_float(value), do: value |> trunc() |> unix_to_datetime()
   defp unix_to_datetime(value) when is_integer(value), do: DateTime.from_unix!(value)
+
+  defp telemetry_result({:ok, _value}), do: "ok"
+  defp telemetry_result(:ok), do: "ok"
+  defp telemetry_result(_other), do: "error"
 end

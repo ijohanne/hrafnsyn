@@ -19,10 +19,14 @@ defmodule HrafnsynWeb.DashboardLive do
       |> assign(:ranges, @ranges)
       |> assign(:search_form, to_form(%{"query" => ""}, as: :search))
       |> assign(:search_query, "")
+      |> assign(:search_open, false)
+      |> assign(:search_results, [])
+      |> assign(:search_feedback, nil)
       |> assign(:range_hours, 6)
       |> assign(:tracks, Tracking.list_active_tracks())
       |> assign(:selected_track, nil)
       |> assign(:route_points, [])
+      |> assign(:route_stats, %{distance_meters: 0.0, observed_seconds: 0})
       |> assign(:log_entries, [])
       |> sync_counts()
 
@@ -37,11 +41,40 @@ defmodule HrafnsynWeb.DashboardLive do
       socket
       |> assign(:search_query, query)
       |> assign(:search_form, to_form(%{"query" => query}, as: :search))
-      |> assign(:tracks, Tracking.list_active_tracks(query: query))
-      |> sync_counts()
+      |> assign(:search_results, Tracking.search_active_tracks(query, limit: 8))
+      |> assign(:search_feedback, nil)
+      |> maybe_open_search(query)
 
-    send(self(), :sync_map)
     {:noreply, socket}
+  end
+
+  def handle_event("submit_search", %{"search" => %{"query" => query}}, socket) do
+    case Tracking.resolve_active_track(query, limit: 8) do
+      {:ok, track} ->
+        {:noreply, socket |> select_track(track.id) |> clear_search()}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(:search_feedback, search_feedback_message(reason))
+         |> assign(:search_open, true)}
+    end
+  end
+
+  def handle_event("select_search_result", %{"id" => id}, socket) do
+    {:noreply, socket |> select_track(id) |> clear_search()}
+  end
+
+  def handle_event("toggle_search", _params, socket) do
+    {:noreply, assign(socket, :search_open, !socket.assigns.search_open)}
+  end
+
+  def handle_event("open_search", _params, socket) do
+    {:noreply, assign(socket, :search_open, true)}
+  end
+
+  def handle_event("close_search", _params, socket) do
+    {:noreply, clear_search(socket)}
   end
 
   def handle_event("select_track", %{"id" => id}, socket) do
@@ -64,7 +97,8 @@ defmodule HrafnsynWeb.DashboardLive do
   def handle_info({:tracks_updated, _track_ids}, socket) do
     socket =
       socket
-      |> assign(:tracks, Tracking.list_active_tracks(query: socket.assigns.search_query))
+      |> assign(:tracks, Tracking.list_active_tracks())
+      |> refresh_search_results()
       |> maybe_reload_selected()
       |> sync_counts()
 
@@ -91,20 +125,16 @@ defmodule HrafnsynWeb.DashboardLive do
                 replayable tracks, and a durable log in Postgres.
               </p>
             </div>
-            <div class="stats-strip">
-              <article>
-                <span>Total visible</span>
-                <strong>{@track_count}</strong>
-              </article>
-              <article>
+            <section class="summary-card">
+              <div class="summary-row">
                 <span>Aircraft</span>
                 <strong>{@plane_count}</strong>
-              </article>
-              <article>
-                <span>Vessels</span>
+              </div>
+              <div class="summary-row">
+                <span>Boats</span>
                 <strong>{@vessel_count}</strong>
-              </article>
-            </div>
+              </div>
+            </section>
           </div>
 
           <div class="tracking-map-frame">
@@ -112,17 +142,10 @@ defmodule HrafnsynWeb.DashboardLive do
               id="tracking-map"
               class="tracking-map"
               phx-hook="TrackingMap"
+              phx-update="ignore"
               data-style-url={@map_style_url}
               data-glyph-color={Application.get_env(:hrafnsyn, :map_glyph_color)}
             >
-            </div>
-
-            <div class="map-overlay top-left">
-              <span class="overlay-label">Merged LiveView map</span>
-              <strong>{length(@source_cards)} active upstream feeds</strong>
-              <small>
-                Each feed runs in its own collector process and merges by tracked identity.
-              </small>
             </div>
 
             <div class="map-overlay bottom-left legend-card">
@@ -140,43 +163,17 @@ defmodule HrafnsynWeb.DashboardLive do
               </div>
             </div>
           </div>
-        </div>
 
-        <aside class="side-column">
-          <section class="panel filter-panel">
-            <div class="panel-title">
-              <span>Search</span>
-              <span class="subtle">Boat / plane id, callsign, name</span>
-            </div>
-            <.form for={@search_form} phx-change="search" class="search-form">
-              <.input field={@search_form[:query]} type="text" placeholder="Search tracks..." />
-            </.form>
-            <p :if={@public_readonly? and is_nil(@current_scope)} class="readonly-note">
-              Public access is readonly. Add an admin user later to unlock account management.
-            </p>
-
-            <div class="feed-grid">
-              <article :for={source <- @source_cards} class="source-card">
-                <div class="source-card-top">
-                  <span class={["track-pill", source.vehicle_type]}>
-                    {String.upcase(source.vehicle_type)}
-                  </span>
-                  <span class="source-meta">{source.adapter}</span>
-                </div>
-                <strong>{source.name}</strong>
-                <small>{source.poll_label}</small>
-              </article>
-            </div>
-          </section>
-
-          <section class="panel track-list-panel">
-            <div class="panel-title">
+          <details id="live-contacts-panel" class="panel live-contacts-panel" data-preserve-open>
+            <summary class="panel-title summary-toggle">
               <span>Live Contacts</span>
               <span class="subtle">{@track_count} active</span>
-            </div>
-            <div class="track-list">
+            </summary>
+
+            <div id="track-grid" class="track-grid" data-preserve-scroll>
               <button
                 :for={track <- @tracks}
+                id={"track-#{track.id}"}
                 type="button"
                 class={["track-row", @selected_track && @selected_track.id == track.id && "is-active"]}
                 phx-click="select_track"
@@ -196,7 +193,86 @@ defmodule HrafnsynWeb.DashboardLive do
               </button>
 
               <div :if={Enum.empty?(@tracks)} class="list-empty">
-                No active tracks match the current filter.
+                No active tracks are available right now.
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <aside class="side-column">
+          <section class="panel status-panel">
+            <div class="panel-title">
+              <span>Map Status</span>
+              <span class="subtle">Collector health</span>
+            </div>
+            <div class="status-card">
+              <span class="overlay-label">Merged LiveView map</span>
+              <strong>{length(@source_cards)} active upstream feeds</strong>
+              <small>
+                Each feed runs in its own collector process and merges by tracked identity.
+              </small>
+            </div>
+          </section>
+
+          <section class="panel search-panel">
+            <button type="button" class="panel-title panel-toggle" phx-click="toggle_search">
+              <span>Search</span>
+              <span class="subtle">
+                {if search_panel_open?(@search_open, @search_query, @search_feedback),
+                  do: "Hide",
+                  else: "Boat / plane id, callsign, name"}
+              </span>
+            </button>
+
+            <div
+              :if={search_panel_open?(@search_open, @search_query, @search_feedback)}
+              class="search-panel-body"
+            >
+              <.form
+                for={@search_form}
+                phx-change="search"
+                phx-submit="submit_search"
+                class="search-form"
+              >
+                <.input
+                  field={@search_form[:query]}
+                  type="text"
+                  placeholder="Boat / plane id, callsign, name"
+                  phx-focus="open_search"
+                />
+              </.form>
+
+              <div class="search-actions">
+                <p class="subtle">Press Enter to jump to an exact or unique active match.</p>
+                <button type="button" class="search-clear" phx-click="close_search">Collapse</button>
+              </div>
+
+              <p :if={@search_feedback} class="search-feedback">{@search_feedback}</p>
+
+              <div :if={@search_query != ""} class="search-results">
+                <button
+                  :for={track <- @search_results}
+                  type="button"
+                  class="track-row search-result-row"
+                  phx-click="select_search_result"
+                  phx-value-id={track.id}
+                >
+                  <span class={["track-pill", track.vehicle_type]}>
+                    {String.upcase(track.vehicle_type)}
+                  </span>
+                  <div class="track-copy">
+                    <strong>{track.display_name || track.identity}</strong>
+                    <span>{track.identity}</span>
+                  </div>
+                  <div class="track-metrics">
+                    <span>{format_speed(track.speed)}</span>
+                    <span>{format_age(track.observed_at)}</span>
+                  </div>
+                </button>
+
+                <div :if={Enum.empty?(@search_results)} class="list-empty">
+                  No active tracks match that query.
+                </div>
               </div>
             </div>
           </section>
@@ -230,7 +306,8 @@ defmodule HrafnsynWeb.DashboardLive do
 
               <dl class="detail-grid">
                 <div :for={
-                  {label, value} <- detail_items(@selected_track, @route_points, @log_entries)
+                  {label, value} <-
+                    detail_items(@selected_track, @route_points, @route_stats, @log_entries)
                 }>
                   <dt>{label}</dt>
                   <dd>{value}</dd>
@@ -242,8 +319,8 @@ defmodule HrafnsynWeb.DashboardLive do
                 <span>{length(@log_entries)} rows</span>
               </div>
 
-              <div class="log-list">
-                <article :for={entry <- @log_entries} class="log-row">
+              <div id="detail-log-list" class="log-list" data-preserve-scroll>
+                <article :for={entry <- @log_entries} id={"log-#{entry.id}"} class="log-row">
                   <div>
                     <strong>{format_timestamp(entry.observed_at)}</strong>
                     <span>{entry.source_name}</span>
@@ -258,6 +335,29 @@ defmodule HrafnsynWeb.DashboardLive do
 
             <div :if={is_nil(@selected_track)} class="empty-state">
               Select a plane or vessel from the map or the live list to inspect its route and recent history.
+            </div>
+          </section>
+
+          <section class="panel source-panel">
+            <div class="panel-title">
+              <span>Sources</span>
+              <span class="subtle">Feed cadence and mode</span>
+            </div>
+            <p :if={@public_readonly? and is_nil(@current_scope)} class="readonly-note">
+              Public access is readonly. Add an admin user later to unlock account management.
+            </p>
+
+            <div class="feed-grid">
+              <article :for={source <- @source_cards} class="source-card">
+                <div class="source-card-top">
+                  <span class={["track-pill", source.vehicle_type]}>
+                    {String.upcase(source.vehicle_type)}
+                  </span>
+                  <span class="source-meta">{source.adapter}</span>
+                </div>
+                <strong>{source.name}</strong>
+                <small>{source.poll_label}</small>
+              </article>
             </div>
           </section>
         </aside>
@@ -276,12 +376,53 @@ defmodule HrafnsynWeb.DashboardLive do
           socket
           |> assign(:selected_track, track)
           |> assign(:route_points, Tracking.recent_points(track.id, socket.assigns.range_hours))
+          |> assign(
+            :route_stats,
+            Tracking.recent_route_stats(track.id, socket.assigns.range_hours)
+          )
           |> assign(:log_entries, Tracking.recent_log_entries(track.id))
 
         send(self(), :sync_map)
         socket
     end
   end
+
+  defp clear_search(socket) do
+    socket
+    |> assign(:search_query, "")
+    |> assign(:search_form, to_form(%{"query" => ""}, as: :search))
+    |> assign(:search_open, false)
+    |> assign(:search_results, [])
+    |> assign(:search_feedback, nil)
+  end
+
+  defp maybe_open_search(socket, query) do
+    if String.trim(query) == "" do
+      socket
+    else
+      assign(socket, :search_open, true)
+    end
+  end
+
+  defp refresh_search_results(socket) do
+    assign(
+      socket,
+      :search_results,
+      Tracking.search_active_tracks(socket.assigns.search_query, limit: 8)
+    )
+  end
+
+  defp search_panel_open?(search_open, query, feedback) do
+    search_open or String.trim(query) != "" or not is_nil(feedback)
+  end
+
+  defp search_feedback_message(:blank_query),
+    do: "Enter a callsign, identifier, or name to search."
+
+  defp search_feedback_message(:not_found), do: "No active track matches that query right now."
+
+  defp search_feedback_message(:ambiguous),
+    do: "More than one active track matches. Pick one from the results below."
 
   defp maybe_reload_selected(%{assigns: %{selected_track: nil}} = socket), do: socket
   defp maybe_reload_selected(socket), do: select_track(socket, socket.assigns.selected_track.id)
@@ -305,6 +446,12 @@ defmodule HrafnsynWeb.DashboardLive do
       speed: track.speed,
       heading: track.heading,
       altitude: track.altitude,
+      callsign: track.callsign,
+      registration: track.registration,
+      destination: track.destination,
+      country: track.country,
+      status: track.status,
+      source_name: track.latest_source_name,
       observed_at: DateTime.to_iso8601(track.observed_at)
     }
   end
@@ -347,13 +494,15 @@ defmodule HrafnsynWeb.DashboardLive do
     end)
   end
 
-  defp detail_items(track, route_points, log_entries) do
+  defp detail_items(track, route_points, route_stats, log_entries) do
     common = [
       {"Source", track.latest_source_name || "-"},
       {"Observed", format_timestamp(track.observed_at)},
       {"Speed", format_speed(track.speed)},
       {"Heading", format_heading(track.heading)},
       {"Destination", track.destination || "-"},
+      {"Tracked distance", format_distance(route_stats.distance_meters)},
+      {"Observed span", format_duration(route_stats.observed_seconds)},
       {"Route points", Integer.to_string(length(route_points))},
       {"Logged rows", Integer.to_string(length(log_entries))}
     ]
@@ -399,6 +548,31 @@ defmodule HrafnsynWeb.DashboardLive do
   defp format_timestamp(datetime), do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S UTC")
   defp format_latlon(nil, nil), do: "-"
   defp format_latlon(lat, lon), do: "#{round_number(lat, 4)}, #{round_number(lon, 4)}"
+  defp format_distance(nil), do: "-"
+
+  defp format_distance(distance_meters) when distance_meters < 1_000 do
+    "#{round_number(distance_meters, 0) |> trunc()} m"
+  end
+
+  defp format_distance(distance_meters) do
+    "#{round_number(distance_meters / 1_000, 1)} km"
+  end
+
+  defp format_duration(nil), do: "-"
+  defp format_duration(0), do: "0s"
+  defp format_duration(seconds) when seconds < 60, do: "#{seconds}s"
+
+  defp format_duration(seconds) when seconds < 3_600 do
+    minutes = div(seconds, 60)
+    remainder = rem(seconds, 60)
+    if remainder == 0, do: "#{minutes}m", else: "#{minutes}m #{remainder}s"
+  end
+
+  defp format_duration(seconds) do
+    hours = div(seconds, 3_600)
+    minutes = div(rem(seconds, 3_600), 60)
+    if minutes == 0, do: "#{hours}h", else: "#{hours}h #{minutes}m"
+  end
 
   defp round_number(number, precision) when is_integer(number),
     do: Float.round(number / 1, precision)
