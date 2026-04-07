@@ -21,6 +21,16 @@ defmodule HrafnsynWeb.PageControllerTest do
     assert response =~ "VehicleType"
   end
 
+  test "GET /grpc renders deployment-aware quick start commands", %{conn: conn} do
+    conn = %{conn | host: "devbox.local", scheme: :http, port: 4000}
+    conn = get(conn, ~p"/grpc")
+    response = html_response(conn, 200)
+
+    assert response =~ "http://devbox.local:4000/grpc/tracking.proto"
+    assert response =~ "grpcurl -plaintext -import-path . -proto tracking.proto"
+    assert response =~ "devbox.local:4000 hrafnsyn.v1.TrackingService/GetSystemInfo"
+  end
+
   test "GET /grpc/tracking.proto downloads the published proto", %{conn: conn} do
     conn = get(conn, ~p"/grpc/tracking.proto")
 

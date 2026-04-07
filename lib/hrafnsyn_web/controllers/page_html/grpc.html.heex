@@ -1,69 +1,116 @@
 <Layouts.app flash={@flash} current_scope={@current_scope}>
   <section class="grpc-docs-shell">
-    <div class="grpc-docs-hero">
-      <div class="grpc-docs-kicker">Discover the contract</div>
-      <h1>Hrafnsyn gRPC API</h1>
-      <p class="grpc-docs-lead">
-        Browse the published service surface, inspect request and response types, and grab the
-        exact `tracking.proto` file used to generate clients.
-      </p>
-
-      <div class="grpc-docs-actions">
-        <.link
-          href={~p"/grpc/tracking.proto"}
-          class="grpc-docs-button grpc-docs-button-primary"
-          download
-        >
-          Download `tracking.proto`
-        </.link>
-        <a href="#grpc-services" class="grpc-docs-button">Browse services</a>
-      </div>
-
-      <dl class="grpc-docs-stats">
-        <div>
-          <dt>Package</dt>
-          <dd>{@grpc_contract.package}</dd>
-        </div>
-        <div>
-          <dt>Services</dt>
-          <dd>{@grpc_summary.service_count}</dd>
-        </div>
-        <div>
-          <dt>RPC methods</dt>
-          <dd>{@grpc_summary.rpc_count}</dd>
-        </div>
-        <div>
-          <dt>Schemas</dt>
-          <dd>{@grpc_summary.message_count + @grpc_summary.enum_count}</dd>
-        </div>
-      </dl>
-    </div>
-
-    <aside class="grpc-docs-sidebar">
-      <section class="grpc-docs-panel">
-        <div class="grpc-docs-panel-label">Auth model</div>
-        <h2>{@grpc_auth.mode}</h2>
-        <p>{@grpc_auth.headline}</p>
-
-        <ul class="grpc-docs-note-list">
-          <li :for={note <- @grpc_auth.notes}>{note}</li>
-        </ul>
-      </section>
-
-      <section class="grpc-docs-panel">
-        <div class="grpc-docs-panel-label">Quick start</div>
-        <h2>Generate a client fast</h2>
-        <p>
-          Use the published proto as the source of truth for code generation and local inspection.
+    <header class="grpc-docs-hero">
+      <div class="grpc-docs-hero-copy">
+        <div class="grpc-docs-kicker">Contract atlas</div>
+        <h1>Hrafnsyn gRPC API</h1>
+        <p class="grpc-docs-lead">
+          A browsable field manual for the live tracking contract: inspect the service surface,
+          understand auth posture, and pull the exact `tracking.proto` clients should compile from.
         </p>
 
-        <pre class="grpc-docs-code"><code>curl -fsSL https://your-hrafnsyn-host/grpc/tracking.proto -o tracking.proto
-grpcurl -import-path . -proto tracking.proto \
-  your-hrafnsyn-host:443 hrafnsyn.v1.TrackingService/GetSystemInfo</code></pre>
+        <div class="grpc-docs-actions">
+          <.link
+            href={~p"/grpc/tracking.proto"}
+            class="grpc-docs-button grpc-docs-button-primary"
+            download
+          >
+            Download `tracking.proto`
+          </.link>
+          <a href="#grpc-services" class="grpc-docs-button">Browse services</a>
+        </div>
+
+        <dl class="grpc-docs-stats">
+          <div>
+            <dt>Package</dt>
+            <dd>{@grpc_contract.package}</dd>
+          </div>
+          <div>
+            <dt>Services</dt>
+            <dd>{@grpc_summary.service_count}</dd>
+          </div>
+          <div>
+            <dt>RPC methods</dt>
+            <dd>{@grpc_summary.rpc_count}</dd>
+          </div>
+          <div>
+            <dt>Schemas</dt>
+            <dd>{@grpc_summary.message_count + @grpc_summary.enum_count}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="grpc-docs-hero-board">
+        <div class="grpc-docs-hero-board-top">
+          <span class="grpc-docs-board-chip">Published surface</span>
+          <span class="grpc-docs-board-chip grpc-docs-board-chip-soft">Repo-backed</span>
+        </div>
+
+        <ol class="grpc-docs-board-list">
+          <li :for={service <- @grpc_contract.services}>
+            <span>{service.name}</span>
+            <small>{service.description}</small>
+          </li>
+        </ol>
+      </div>
+    </header>
+
+    <aside class="grpc-docs-rail">
+      <section class="grpc-signal-card grpc-signal-card-auth">
+        <div class="grpc-signal-head">
+          <div>
+            <div class="grpc-docs-panel-label">Auth model</div>
+            <h2>{@grpc_auth.mode}</h2>
+          </div>
+          <span class="grpc-signal-id">A1</span>
+        </div>
+
+        <p class="grpc-signal-lead">{@grpc_auth.headline}</p>
+
+        <ol class="grpc-signal-list">
+          <li :for={{note, index} <- Enum.with_index(@grpc_auth.notes, 1)}>
+            <span>{index}</span>
+            <p>{note}</p>
+          </li>
+        </ol>
       </section>
 
-      <section class="grpc-docs-panel">
-        <div class="grpc-docs-panel-label">Imports</div>
+      <section class="grpc-signal-card grpc-signal-card-quickstart">
+        <div class="grpc-signal-head">
+          <div>
+            <div class="grpc-docs-panel-label">Quick start</div>
+            <h2>Generate a client fast</h2>
+          </div>
+          <span class="grpc-signal-id">Q2</span>
+        </div>
+
+        <p class="grpc-signal-lead">
+          Start from the published proto, then use `grpcurl` to verify the deployment before
+          generating a long-lived client SDK.
+        </p>
+
+        <div class="grpc-terminal">
+          <div class="grpc-terminal-bar">
+            <span></span><span></span><span></span>
+            <strong>terminal</strong>
+          </div>
+          <pre class="grpc-docs-code"><code>{@grpc_quickstart_commands}</code></pre>
+        </div>
+      </section>
+
+      <section class="grpc-signal-card grpc-signal-card-imports">
+        <div class="grpc-signal-head">
+          <div>
+            <div class="grpc-docs-panel-label">Imports</div>
+            <h2>Dependency edges</h2>
+          </div>
+          <span class="grpc-signal-id">I3</span>
+        </div>
+
+        <p class="grpc-signal-lead">
+          These upstream protobuf definitions are required by the published contract.
+        </p>
+
         <div class="grpc-docs-pill-list">
           <span :for={import_path <- @grpc_contract.imports} class="grpc-docs-pill">
             {import_path}
