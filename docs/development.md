@@ -20,6 +20,16 @@ The shell provides:
 - Tailwind CSS v4
 - helper scripts for a local Postgres cluster
 
+## Fastest Local Start
+
+Inside the dev shell, the shortest path is:
+
+```sh
+app
+```
+
+That resets the local Postgres cluster, starts it, runs `mix ecto.setup`, and boots Phoenix.
+
 ## Local Postgres Helpers
 
 The dev shell ships with a persistent local cluster under `.pgdev/`.

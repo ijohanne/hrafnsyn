@@ -1,5 +1,8 @@
 # Deploy on NixOS
 
+This guide covers the bundled NixOS module in [nix/module.nix](../nix/module.nix).
+It matches the current runtime contract in `config/runtime.exs`.
+
 ## Flake Input
 
 Add the repository as a flake input and import the module:
@@ -23,7 +26,7 @@ Add the repository as a flake input and import the module:
 ## Minimal Service Configuration
 
 ```nix
-{ pkgs, config, hrafnsyn, ... }:
+{ pkgs, hrafnsyn, ... }:
 {
   services.hrafnsyn = {
     enable = true;
@@ -38,15 +41,15 @@ Add the repository as a flake input and import the module:
 
     databaseUrlFile = /run/secrets/hrafnsyn-database-url;
     secretKeyBaseFile = /run/secrets/hrafnsyn-secret-key-base;
+    sourcesJsonFile = /run/secrets/hrafnsyn-sources.json;
+
     publicReadonly = false;
 
     users.admin = {
-      password = config.sops.placeholder.hrafnsyn-admin-password;
+      password = "change-me-now";
       email = "admin@example.com";
       admin = true;
     };
-
-    sourcesJsonFile = /run/secrets/hrafnsyn-sources.json;
 
     nginxHelper = {
       enable = true;
@@ -57,6 +60,44 @@ Add the repository as a flake input and import the module:
 }
 ```
 
+This sets:
+
+- `PHX_SERVER=true`
+- `PORT`, `LISTEN_ADDRESS`, `PHX_HOST`
+- `HRAFNSYN_SCHEME`, `HRAFNSYN_EXTERNAL_PORT`, `HRAFNSYN_TRUSTED_PROXIES`
+- `HRAFNSYN_PUBLIC_READONLY`
+- `HRAFNSYN_SOURCES_JSON` from `sourcesJsonFile`
+- `DATABASE_URL` and `SECRET_KEY_BASE` from systemd credentials
+
+## Auth and Operator Modes
+
+`services.hrafnsyn.publicReadonly` controls both the web dashboard and gRPC auth posture:
+
+- `true`:
+  - anonymous users can open the dashboard in readonly mode
+  - `TrackingService` gRPC calls can be made without logging in
+  - `TrackingIngress` accepts optional auth, which lets operators identify publishers without making auth mandatory
+- `false`:
+  - anonymous web users are redirected to `/users/log-in`
+  - `TrackingService` requires JWT access tokens
+  - `TrackingIngress` requires an authenticated admin token
+
+The preferred way to bootstrap users is `services.hrafnsyn.users`:
+
+```nix
+services.hrafnsyn.users.ops = {
+  password = "change-me-now";
+  email = "ops@example.com";
+  admin = true;
+};
+```
+
+These passwords are only used on first boot for missing users. Hrafnsyn hashes them during startup
+and leaves existing users unchanged.
+
+The module also still exposes `bootstrapAdminEmail` and `bootstrapAdminPasswordHashFile` for the
+legacy single-user bootstrap path, but new deployments should use `users` instead.
+
 ## Secret File Format
 
 These module options expect raw file contents, not `KEY=value` shell snippets:
@@ -64,8 +105,9 @@ These module options expect raw file contents, not `KEY=value` shell snippets:
 - `databaseUrlFile` -> only the Postgres URL
 - `secretKeyBaseFile` -> only the secret key base
 - `sourcesJsonFile` -> only the JSON array
+- `bootstrapAdminPasswordHashFile` -> only the bcrypt hash when using the legacy bootstrap path
 
-## Example Source JSON
+Example source JSON:
 
 ```json
 [
@@ -90,43 +132,9 @@ These module options expect raw file contents, not `KEY=value` shell snippets:
 ]
 ```
 
-Bootstrap user passwords are hashed by Hrafnsyn during startup and skipped once the user already exists.
+## gRPC
 
-## Opt-in nginx Helper
-
-The module now has an optional nginx helper that mirrors the `vardrun` approach:
-
-- plain HTTP proxying to the Phoenix endpoint
-- websocket forwarding for LiveView
-- optional ACME certificate handling
-- optional content-type based gRPC passthrough for the gRPC listener
-
-Example with built-in nginx + ACME:
-
-```nix
-{
-  services.hrafnsyn = {
-    enable = true;
-    package = hrafnsyn.packages.${pkgs.system}.default;
-    host = "tracks.example.com";
-    listenAddress = "127.0.0.1";
-    port = 4000;
-    databaseUrlFile = /run/secrets/hrafnsyn-database-url;
-    secretKeyBaseFile = /run/secrets/hrafnsyn-secret-key-base;
-
-    nginxHelper = {
-      enable = true;
-      domain = "tracks.example.com";
-      enableACME = true;
-      # acmeServer = "https://acme-staging-v02.api.letsencrypt.org/directory";
-    };
-  };
-}
-```
-
-If you want nginx provisioning but not automatic certificate management, leave `enableACME = false`.
-
-If you want to expose the gRPC API too:
+The gRPC listener is disabled unless `services.hrafnsyn.grpc.enable = true`.
 
 ```nix
 {
@@ -138,26 +146,61 @@ If you want to expose the gRPC API too:
 }
 ```
 
-When `grpc.enable = true`, the helper follows the same nginx pattern used in `vardrun`: requests whose `Content-Type` matches `application/grpc` are routed to the gRPC upstream, and everything else stays on the Phoenix upstream. That keeps Hrafnsyn on one clean external URL instead of splitting HTTP and gRPC across separate hostnames.
+When enabled, Hrafnsyn serves:
 
-JWT signing for the gRPC API defaults to the same secret material as `SECRET_KEY_BASE`. If you need a separate signing secret, set `HRAFNSYN_JWT_SIGNING_SECRET` through `extraEnv` or a wrapped systemd credential/env file.
+- `AuthService`
+- `TrackingService`
+- `TrackingIngress`
 
-## Metrics, Scraping, and Dashboards
+The web app also exposes:
 
-The NixOS module can also wire observability in the same opt-in style:
+- `/grpc` for a browsable contract page
+- `/grpc/tracking.proto` for the checked-in protobuf contract
+
+JWT signing defaults to `SECRET_KEY_BASE`. If you want a separate signing secret or custom token TTLs,
+set them through `services.hrafnsyn.extraEnv`:
+
+```nix
+{
+  services.hrafnsyn.extraEnv = {
+    HRAFNSYN_JWT_SIGNING_SECRET = "replace-me";
+    HRAFNSYN_JWT_ACCESS_TTL_SECONDS = "900";
+    HRAFNSYN_JWT_REFRESH_TTL_SECONDS = "2592000";
+  };
+}
+```
+
+## nginx Helper
+
+The optional nginx helper keeps Phoenix/LiveView and gRPC on one external URL.
+
+```nix
+{
+  services.hrafnsyn.nginxHelper = {
+    enable = true;
+    domain = "tracks.example.com";
+    enableACME = true;
+    # acmeServer = "https://acme-staging-v02.api.letsencrypt.org/directory";
+  };
+}
+```
+
+When `grpc.enable = true`, the helper routes requests with `Content-Type: application/grpc`
+to the gRPC upstream and everything else to Phoenix. If you prefer to manage nginx yourself,
+leave `nginxHelper.enable = false`.
+
+`trustedProxies` controls which upstream proxy IP ranges are trusted for forwarded host, port,
+and scheme headers. The default trusts loopback only.
+
+## Metrics, Prometheus, and Grafana
+
+The main Phoenix endpoint always serves `/metrics`. If you want a dedicated metrics listener,
+set `metricsPort`:
 
 ```nix
 {
   services.hrafnsyn = {
-    enable = true;
-    package = hrafnsyn.packages.${pkgs.system}.default;
-    host = "tracks.example.com";
-    listenAddress = "127.0.0.1";
-    port = 4000;
     metricsPort = 9568;
-
-    databaseUrlFile = /run/secrets/hrafnsyn-database-url;
-    secretKeyBaseFile = /run/secrets/hrafnsyn-secret-key-base;
 
     prometheus = {
       enable = true;
@@ -176,48 +219,27 @@ The NixOS module can also wire observability in the same opt-in style:
 
 What this does:
 
-- `metricsPort` enables a dedicated PromEx metrics server on that port
+- `metricsPort` exposes PromEx on a dedicated port
 - `prometheus.enable` appends a scrape job to `services.prometheus.scrapeConfigs`
-- `grafana.enable` provisions:
-  - a Prometheus datasource
-  - the bundled `Hrafnsyn Overview` dashboard from `grafana/dashboards/hrafnsyn-overview.json`
+- `grafana.enable` provisions a Prometheus datasource and the bundled overview dashboard
 
-If you already manage Grafana elsewhere, leave `grafana.enable = false` and import the dashboard JSON manually.
-
-## Manual nginx
-
-If you do not want the helper, you can still manage nginx yourself:
-
-```nix
-{
-  services.nginx.virtualHosts."tracks.example.com" = {
-    enableACME = true;
-    forceSSL = true;
-    locations."/" = {
-      proxyPass = "http://127.0.0.1:4000";
-      proxyWebsockets = true;
-      extraConfig = ''
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-      '';
-    };
-  };
-}
-```
+If `metricsPort = null`, Prometheus should scrape the main web port instead.
 
 ## PostgreSQL
 
-For Pakhet or another existing Postgres service, point `databaseUrlFile` at the remote URL. Example:
+Point `databaseUrlFile` at any reachable PostgreSQL instance. Example raw file contents:
 
 ```text
 ecto://hrafnsyn:supersecret@pakhet.example.internal:5432/hrafnsyn
 ```
 
-PostgreSQL 18 works fine with the current schema and extensions (`citext`, `pg_trgm`, `postgis`).
+The current schema expects these extensions in the target database:
 
-If you run PostgreSQL locally on NixOS, enable PostGIS in the PostgreSQL service too:
+- `citext`
+- `pg_trgm`
+- `postgis`
+
+If PostgreSQL runs locally on NixOS, enable PostGIS there too:
 
 ```nix
 {

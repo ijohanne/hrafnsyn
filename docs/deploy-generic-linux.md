@@ -1,12 +1,15 @@
 # Deploy on Generic Linux
 
+This guide is for release deployments outside the bundled NixOS module. It matches the
+runtime contract in `config/runtime.exs`.
+
 ## Requirements
 
 Install:
 
 - Erlang/OTP `27`
 - Elixir `1.18+`
-- PostgreSQL `18` or similar
+- PostgreSQL `18` or another recent PostgreSQL release with PostGIS
 - Node.js `22+`
 - `git`, `make`, and a build toolchain for native deps
 
@@ -36,13 +39,13 @@ MIX_ENV=prod mix assets.deploy
 MIX_ENV=prod mix release
 ```
 
-The release ends up under:
+The release bundle ends up under:
 
 ```text
 _build/prod/rel/hrafnsyn
 ```
 
-## Environment
+## Environment File
 
 Create `/etc/hrafnsyn.env`:
 
@@ -51,21 +54,27 @@ PHX_SERVER=true
 PHX_HOST=tracks.example.com
 LISTEN_ADDRESS=127.0.0.1
 PORT=4000
-METRICS_PORT=9568
+
 HRAFNSYN_SCHEME=https
 HRAFNSYN_EXTERNAL_PORT=443
 HRAFNSYN_TRUSTED_PROXIES=127.0.0.1/8,::1/128
+
 DATABASE_URL=ecto://hrafnsyn:replace-me@127.0.0.1:5432/hrafnsyn
 SECRET_KEY_BASE=replace-with-mix-phx-gen-secret
-HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"admin@example.com","is_admin":true}}'
+
 HRAFNSYN_PUBLIC_READONLY=false
+HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"admin@example.com","is_admin":true}}'
+
 HRAFNSYN_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 HRAFNSYN_SOURCES_JSON=[{"id":"planes-main","name":"Airplane SDR","vehicle_type":"plane","adapter":"dump1090","base_url":"http://10.255.101.202","poll_interval_ms":1000,"enabled":true},{"id":"boats-main","name":"Boat SDR","vehicle_type":"vessel","adapter":"ais_catcher","base_url":"http://10.255.101.202:8100","poll_interval_ms":2500,"enabled":true}]
+
+METRICS_PORT=9568
+
 GRPC_PORT=50051
 GRPC_LISTEN_ADDRESS=127.0.0.1
 HRAFNSYN_JWT_ACCESS_TTL_SECONDS=900
 HRAFNSYN_JWT_REFRESH_TTL_SECONDS=2592000
-# Optional; defaults to SECRET_KEY_BASE if unset
+# Optional; defaults to SECRET_KEY_BASE when unset
 # HRAFNSYN_JWT_SIGNING_SECRET=replace-with-separate-jwt-secret
 ```
 
@@ -75,7 +84,47 @@ Generate a secret key with:
 mix phx.gen.secret
 ```
 
-Bootstrap passwords are hashed on first start and skipped if the named user already exists. When the gRPC listener is enabled, JWT signing will use `HRAFNSYN_JWT_SIGNING_SECRET` when set or fall back to `SECRET_KEY_BASE`.
+### Required settings
+
+- `PHX_SERVER=true`
+- `PHX_HOST`
+- `DATABASE_URL`
+- `SECRET_KEY_BASE`
+
+### Common operator settings
+
+- `LISTEN_ADDRESS` and `PORT` control the Phoenix bind address
+- `HRAFNSYN_SCHEME`, `HRAFNSYN_EXTERNAL_PORT`, and `HRAFNSYN_TRUSTED_PROXIES` keep URL generation and proxy handling correct behind nginx
+- `HRAFNSYN_PUBLIC_READONLY` controls whether anonymous access is allowed
+- `HRAFNSYN_BOOTSTRAP_USERS_JSON` is the preferred first-user bootstrap path
+- `HRAFNSYN_SOURCES_JSON` defines the live collectors
+- `METRICS_PORT` is optional; omit it to keep metrics on the main web port
+
+Legacy single-user bootstrap environment variables are still supported for compatibility:
+
+- `BOOTSTRAP_ADMIN_USERNAME`
+- `BOOTSTRAP_ADMIN_EMAIL`
+- `BOOTSTRAP_ADMIN_PASSWORD`
+- `BOOTSTRAP_ADMIN_PASSWORD_HASH`
+
+New deployments should prefer `HRAFNSYN_BOOTSTRAP_USERS_JSON`.
+
+## Auth and Operator Modes
+
+`HRAFNSYN_PUBLIC_READONLY` controls both the web UI and the gRPC auth posture:
+
+- `true`:
+  - anonymous users can open the dashboard in readonly mode
+  - `TrackingService` gRPC calls can be made without login
+  - `TrackingIngress` accepts optional auth
+- `false`:
+  - anonymous web users are redirected to `/users/log-in`
+  - `TrackingService` requires JWT access tokens
+  - `TrackingIngress` requires an authenticated admin token
+
+Authenticated non-admin users remain readonly in the web app and gRPC auth model.
+
+Bootstrap passwords are hashed on first start and skipped for users that already exist.
 
 ## Migrate
 
@@ -123,7 +172,6 @@ server {
   server_name tracks.example.com;
 
   location / {
-    # gRPC traffic stays on the same public URL and is selected by Content-Type.
     grpc_read_timeout 1h;
     grpc_send_timeout 1h;
     grpc_set_header X-Real-IP $remote_addr;
@@ -133,7 +181,6 @@ server {
       grpc_pass grpc://127.0.0.1:50051;
     }
 
-    # Everything else continues to Phoenix/LiveView on the same URL.
     proxy_pass http://127.0.0.1:4000;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -146,21 +193,26 @@ server {
 }
 ```
 
-This keeps both transports on one clean external URL. You do not need a separate `grpc.` subdomain unless you want one.
+This keeps Phoenix/LiveView and gRPC on one public URL. If you are not exposing the gRPC listener,
+remove the `grpc_*` lines and the conditional `grpc_pass` block.
 
-If you are not exposing the gRPC listener, remove the `grpc_*` lines and the conditional `grpc_pass` block.
+When gRPC is enabled, Hrafnsyn serves:
 
-The gRPC API now includes:
+- `AuthService`
+- `TrackingService`
+- `TrackingIngress`
 
-- `AuthService` for login, refresh, auth status, self revocation, and admin global revocation
-- `TrackingService` for active track reads, detail/history queries, and live updates
-- `TrackingIngress` for bidirectional observation ingestion
+The web app also publishes:
 
-For ACME-managed TLS, pair the server block with your preferred certbot/acme.sh/lego flow, or use distro-native nginx ACME integration where available. The app-side environment contract above already supports running behind HTTPS on an external `443` while binding Phoenix locally.
+- `/grpc` for a browsable contract page
+- `/grpc/tracking.proto` for the checked-in protobuf contract
+
+For ACME-managed TLS, pair this with your preferred certbot, acme.sh, lego, or distro-native
+ACME flow.
 
 ## Prometheus and Grafana
 
-If you want Prometheus to scrape a dedicated metrics listener, keep `METRICS_PORT` set and add a job like:
+If you set `METRICS_PORT`, Prometheus can scrape that dedicated listener:
 
 ```yaml
 - job_name: hrafnsyn
@@ -171,20 +223,23 @@ If you want Prometheus to scrape a dedicated metrics listener, keep `METRICS_POR
         - 127.0.0.1:9568
 ```
 
+If you omit `METRICS_PORT`, scrape the main Phoenix port instead.
+
 The repository also ships a Grafana dashboard at:
 
 ```text
 grafana/dashboards/hrafnsyn-overview.json
 ```
 
-You can import it manually into Grafana or provision it with your existing deployment tooling. If you do not need a separate scrape port, you can omit `METRICS_PORT` and scrape `http://127.0.0.1:4000/metrics` instead.
+Import it manually or provision it with your existing Grafana tooling.
 
 ## Nix-built Release on Non-NixOS
 
-If you prefer a Nix-built artifact but are deploying to another Linux host, you can build the release with:
+If you prefer a Nix-built artifact but are deploying to another Linux host, build with:
 
 ```sh
 nix build .#default
 ```
 
-Then copy the resulting release bundle to the target machine and run it under systemd with the same environment contract shown above.
+Then copy the resulting release bundle to the target machine and run it under systemd with the
+same environment contract shown above.
