@@ -2,6 +2,10 @@
 let
   cfg = config.services.hrafnsyn;
   releaseTmp = "/tmp/${cfg.user}";
+  proxyListenAddress =
+    if cfg.listenAddress == "0.0.0.0" then "127.0.0.1"
+    else if cfg.listenAddress == "::" then "::1"
+    else cfg.listenAddress;
   nginxEnabled = cfg.nginxHelper.enable;
   localPostgresEnabled =
     cfg.databaseUrl == null &&
@@ -525,7 +529,7 @@ in
           forceSSL = cfg.nginxHelper.enableACME;
           enableACME = cfg.nginxHelper.enableACME;
           locations."~ ^/" = {
-            proxyPass = "http://${cfg.listenAddress}:${builtins.toString cfg.port}";
+            proxyPass = "http://${proxyListenAddress}:${builtins.toString cfg.port}";
             proxyWebsockets = true;
             extraConfig =
               ''
@@ -543,7 +547,7 @@ in
                 grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
                 if ($http_content_type ~* "application/grpc") {
-                  grpc_pass grpc://${cfg.grpc.listenAddress}:${builtins.toString cfg.grpc.port};
+                  grpc_pass grpc://${if cfg.grpc.listenAddress == "0.0.0.0" then "127.0.0.1" else if cfg.grpc.listenAddress == "::" then "::1" else cfg.grpc.listenAddress}:${builtins.toString cfg.grpc.port};
                 }
               '';
           };
