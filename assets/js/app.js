@@ -68,6 +68,148 @@ const PreserveScroll = {
   },
 }
 
+const Flash = {
+  mounted() {
+    this.dismissTimer = null
+    this.dismissStartedAt = null
+    this.remainingMs = this.timeoutMs()
+    this.handlePause = () => this.pauseTimer()
+    this.handleResume = () => this.resumeTimer()
+
+    this.el.addEventListener("mouseenter", this.handlePause)
+    this.el.addEventListener("mouseleave", this.handleResume)
+    this.el.addEventListener("focusin", this.handlePause)
+    this.el.addEventListener("focusout", this.handleResume)
+
+    this.resetTimer()
+  },
+
+  updated() {
+    this.resetTimer()
+  },
+
+  destroyed() {
+    this.clearTimer()
+    this.el.removeEventListener("mouseenter", this.handlePause)
+    this.el.removeEventListener("mouseleave", this.handleResume)
+    this.el.removeEventListener("focusin", this.handlePause)
+    this.el.removeEventListener("focusout", this.handleResume)
+  },
+
+  timeoutMs() {
+    return Number.parseInt(this.el.dataset.timeout || "0", 10)
+  },
+
+  resetTimer() {
+    this.clearTimer()
+    this.remainingMs = this.timeoutMs()
+    this.resumeTimer()
+  },
+
+  pauseTimer() {
+    if (!this.dismissTimer) return
+
+    window.clearTimeout(this.dismissTimer)
+    this.dismissTimer = null
+
+    if (this.dismissStartedAt) {
+      const elapsed = Date.now() - this.dismissStartedAt
+      this.remainingMs = Math.max(this.remainingMs - elapsed, 0)
+    }
+
+    this.dismissStartedAt = null
+  },
+
+  resumeTimer() {
+    if (this.dismissTimer || this.remainingMs <= 0) return
+
+    this.dismissStartedAt = Date.now()
+    this.dismissTimer = window.setTimeout(() => this.dismiss(), this.remainingMs)
+  },
+
+  clearTimer() {
+    if (this.dismissTimer) window.clearTimeout(this.dismissTimer)
+    this.dismissTimer = null
+    this.dismissStartedAt = null
+  },
+
+  dismiss() {
+    this.clearTimer()
+    if (!this.el.isConnected) return
+    this.el.click()
+  },
+}
+
+const ProfileMenu = {
+  mounted() {
+    this.closeTimer = null
+    this.wasOpen = this.el.open
+    this.closeDelay = Number.parseInt(this.el.dataset.closeDelay || "180", 10)
+    this.handleToggle = () => {
+      this.wasOpen = this.el.open
+      if (this.el.open) this.cancelClose()
+    }
+    this.handlePointerEnter = () => this.cancelClose()
+    this.handlePointerLeave = event => {
+      if (!this.el.open) return
+      if (event.relatedTarget && this.el.contains(event.relatedTarget)) return
+      this.scheduleClose()
+    }
+    this.handleDocumentPointerDown = event => {
+      if (!this.el.open) return
+      if (this.el.contains(event.target)) return
+      this.close()
+    }
+    this.handleEscape = event => {
+      if (event.key === "Escape") this.close()
+    }
+
+    this.el.addEventListener("toggle", this.handleToggle)
+    this.el.addEventListener("pointerenter", this.handlePointerEnter)
+    this.el.addEventListener("pointerleave", this.handlePointerLeave)
+    this.el.addEventListener("keydown", this.handleEscape)
+    document.addEventListener("pointerdown", this.handleDocumentPointerDown)
+  },
+
+  beforeUpdate() {
+    this.wasOpen = this.el.open
+  },
+
+  updated() {
+    if (!this.wasOpen || this.el.open) return
+
+    window.requestAnimationFrame(() => {
+      if (this.el.isConnected) this.el.open = true
+    })
+  },
+
+  destroyed() {
+    this.cancelClose()
+    this.el.removeEventListener("toggle", this.handleToggle)
+    this.el.removeEventListener("pointerenter", this.handlePointerEnter)
+    this.el.removeEventListener("pointerleave", this.handlePointerLeave)
+    this.el.removeEventListener("keydown", this.handleEscape)
+    document.removeEventListener("pointerdown", this.handleDocumentPointerDown)
+  },
+
+  scheduleClose() {
+    this.cancelClose()
+    this.closeTimer = window.setTimeout(() => this.close(), this.closeDelay)
+  },
+
+  cancelClose() {
+    if (!this.closeTimer) return
+    window.clearTimeout(this.closeTimer)
+    this.closeTimer = null
+  },
+
+  close() {
+    this.cancelClose()
+    this.wasOpen = false
+    this.el.open = false
+  },
+}
+
 const TrackingMap = {
   mounted() {
     this.pendingPayload = null
@@ -673,7 +815,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, PreserveScroll, TrackingMap},
+  hooks: {...colocatedHooks, Flash, PreserveScroll, ProfileMenu, TrackingMap},
 })
 
 // Show progress bar on live navigation and form submits

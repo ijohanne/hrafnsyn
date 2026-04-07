@@ -91,6 +91,8 @@ defmodule HrafnsynWeb.UserSessionControllerTest do
       assert response =~ "Unified Air and Sea Tracking"
       assert response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
+      assert response =~ ~s(phx-hook="Flash")
+      assert response =~ ~s(data-timeout="3200")
     end
 
     test "logs the user in with remember me", %{conn: conn, user: user} do

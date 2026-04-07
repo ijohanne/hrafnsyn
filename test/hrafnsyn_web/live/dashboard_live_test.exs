@@ -1,6 +1,7 @@
 defmodule HrafnsynWeb.DashboardLiveTest do
   use HrafnsynWeb.ConnCase, async: false
 
+  import Hrafnsyn.AccountsFixtures
   import Phoenix.LiveViewTest
 
   alias Hrafnsyn.Collectors.Source
@@ -34,6 +35,21 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     conn = get(conn, ~p"/")
 
     assert html_response(conn, 200) =~ "Unified Air and Sea Tracking"
+  end
+
+  test "logged-in users get the durable profile menu shell", %{conn: conn} do
+    Application.put_env(:hrafnsyn, :public_readonly?, true)
+
+    user = user_fixture()
+
+    {:ok, _view, html} =
+      conn
+      |> log_in_user(user)
+      |> live(~p"/")
+
+    assert html =~ ~s(id="profile-menu")
+    assert html =~ ~s(phx-hook="ProfileMenu")
+    assert html =~ ~s(data-close-delay="180")
   end
 
   test "search stays collapsed by default and submitting an exact match selects the track", %{
@@ -139,7 +155,8 @@ defmodule HrafnsynWeb.DashboardLiveTest do
              "Flight page"
            )
 
-    assert render(view) =~ "External lookup. Opens in a new tab when this aircraft has enough identifiers."
+    assert render(view) =~
+             "External lookup. Opens in a new tab when this aircraft has enough identifiers."
   end
 
   defp plane_source_fixture do

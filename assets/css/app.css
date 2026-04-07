@@ -196,6 +196,15 @@ body.app-body {
   position: relative;
 }
 
+.profile-menu[open]::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: max(100%, 12rem);
+  height: 0.8rem;
+}
+
 .profile-trigger {
   min-width: 0;
   display: inline-flex;
@@ -208,6 +217,11 @@ body.app-body {
   cursor: pointer;
   list-style: none;
   backdrop-filter: blur(18px);
+}
+
+.profile-menu[open] .profile-trigger {
+  border-color: rgba(100, 210, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .profile-trigger::-webkit-details-marker {
@@ -245,7 +259,7 @@ body.app-body {
 .profile-dropdown {
   position: absolute;
   right: 0;
-  top: calc(100% + 0.55rem);
+  top: calc(100% + 0.35rem);
   min-width: 12rem;
   display: grid;
   gap: 0.35rem;

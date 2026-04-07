@@ -56,7 +56,13 @@ defmodule HrafnsynWeb.Layouts do
           <.link :if={Scope.admin?(@current_scope)} navigate={~p"/admin/users"}>Admin</.link>
           <.link :if={is_nil(@current_scope)} href={~p"/users/log-in"}>Log in</.link>
 
-          <details :if={@current_scope} class="profile-menu">
+          <details
+            :if={@current_scope}
+            id="profile-menu"
+            class="profile-menu"
+            phx-hook="ProfileMenu"
+            data-close-delay="180"
+          >
             <summary class="profile-trigger">
               <span class="profile-trigger-copy">
                 <strong>{@current_scope.user.username}</strong>
@@ -102,6 +108,7 @@ defmodule HrafnsynWeb.Layouts do
         id="client-error"
         kind={:error}
         title={gettext("We can't find the internet")}
+        timeout={0}
         phx-disconnected={show(".phx-client-error #client-error") |> JS.remove_attribute("hidden")}
         phx-connected={hide("#client-error") |> JS.set_attribute({"hidden", ""})}
         hidden
@@ -114,6 +121,7 @@ defmodule HrafnsynWeb.Layouts do
         id="server-error"
         kind={:error}
         title={gettext("Something went wrong!")}
+        timeout={0}
         phx-disconnected={show(".phx-server-error #server-error") |> JS.remove_attribute("hidden")}
         phx-connected={hide("#server-error") |> JS.set_attribute({"hidden", ""})}
         hidden

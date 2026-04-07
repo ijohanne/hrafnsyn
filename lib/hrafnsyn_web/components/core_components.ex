@@ -44,20 +44,27 @@ defmodule HrafnsynWeb.CoreComponents do
   attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
   attr :title, :string, default: nil
   attr :kind, :atom, values: [:info, :error], doc: "used for styling and flash lookup"
+  attr :timeout, :integer, default: nil, doc: "milliseconds before auto-dismiss; 0 disables it"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
 
   slot :inner_block, doc: "the optional inner block that renders the flash message"
 
   def flash(assigns) do
-    assigns = assign_new(assigns, :id, fn -> "flash-#{assigns.kind}" end)
+    assigns =
+      assigns
+      |> assign_new(:id, fn -> "flash-#{assigns.kind}" end)
+      |> assign(:timeout, flash_timeout(assigns.kind, assigns.timeout))
 
     ~H"""
     <div
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
+      phx-hook={@timeout > 0 && "Flash"}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
       class="toast toast-top toast-end z-50"
+      data-flash-kind={@kind}
+      data-timeout={@timeout > 0 && @timeout}
       {@rest}
     >
       <div class={[
@@ -468,6 +475,10 @@ defmodule HrafnsynWeb.CoreComponents do
          "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
     )
   end
+
+  defp flash_timeout(_kind, timeout) when is_integer(timeout) and timeout >= 0, do: timeout
+  defp flash_timeout(:info, _timeout), do: 3200
+  defp flash_timeout(:error, _timeout), do: 5200
 
   @doc """
   Translates an error message using gettext.
