@@ -232,6 +232,26 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     assert render(view) =~ "🇧🇸 BS"
   end
 
+  test "selected aircraft render derived registration and flag details", %{conn: conn} do
+    observed_at = DateTime.utc_now(:second)
+
+    assert {:ok, [_track_id]} =
+             Ingest.ingest_batch(plane_source_fixture(), [
+               plane_observation(observed_at, "A00001", nil, nil, 36.101, -6.141)
+             ])
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view
+    |> element("#track-grid .track-row")
+    |> render_click()
+
+    assert render(view) =~ "Registration"
+    assert render(view) =~ "N1"
+    assert render(view) =~ "Flag"
+    assert render(view) =~ "🇺🇸 US"
+  end
+
   defp plane_source_fixture do
     %Source{
       id: "dump1090-main",

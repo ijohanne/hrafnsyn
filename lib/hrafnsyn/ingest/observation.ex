@@ -3,6 +3,8 @@ defmodule Hrafnsyn.Ingest.Observation do
   Canonical normalized observation shape used by the ingest pipeline.
   """
 
+  alias Hrafnsyn.Aircraft.Metadata
+
   @enforce_keys [:vehicle_type, :identity, :observed_at]
   defstruct [
     :vehicle_type,
@@ -157,8 +159,21 @@ defmodule Hrafnsyn.Ingest.Observation do
         observed_at: normalize_datetime(observation.observed_at),
         last_payload: normalize_payload(observation.last_payload)
     }
+    |> enrich_plane_metadata()
     |> fill_display_name()
   end
+
+  defp enrich_plane_metadata(%__MODULE__{vehicle_type: "plane"} = observation) do
+    derived = Metadata.derive(observation.identity)
+
+    %__MODULE__{
+      observation
+      | registration: observation.registration || derived.registration,
+        country: observation.country || derived.country
+    }
+  end
+
+  defp enrich_plane_metadata(%__MODULE__{} = observation), do: observation
 
   defp fill_display_name(%__MODULE__{} = observation) do
     fallback =
