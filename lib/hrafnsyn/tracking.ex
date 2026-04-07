@@ -61,6 +61,16 @@ defmodule Hrafnsyn.Tracking do
     |> Repo.one()
   end
 
+  def get_track_by_identity(vehicle_type, identity)
+      when vehicle_type in ["plane", "vessel"] and is_binary(identity) do
+    Track
+    |> where([track], track.vehicle_type == ^vehicle_type and track.identity == ^identity)
+    |> with_coordinates()
+    |> Repo.one()
+  end
+
+  def get_track_by_identity(_vehicle_type, _identity), do: nil
+
   def active_counts(minutes \\ @default_active_window_minutes) do
     grouped_counts =
       Track

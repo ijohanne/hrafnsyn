@@ -128,6 +128,26 @@ defmodule HrafnsynWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Welcome back!"
     end
 
+    test "logs the user back into a shared dashboard deep link", %{conn: conn, user: user} do
+      user = set_password(user)
+
+      return_to =
+        "/?vehicle=plane&identity=406ABC&range=24&lat=36.15100&lon=-6.10100&zoom=10.40&bearing=18.00&pitch=32.00"
+
+      conn =
+        conn
+        |> init_test_session(user_return_to: return_to)
+        |> post(~p"/users/log-in", %{
+          "user" => %{
+            "username" => user.username,
+            "password" => valid_user_password()
+          }
+        })
+
+      assert redirected_to(conn) == return_to
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Welcome back!"
+    end
+
     test "emits error message with invalid credentials", %{conn: conn, user: user} do
       conn =
         post(conn, ~p"/users/log-in?mode=password", %{

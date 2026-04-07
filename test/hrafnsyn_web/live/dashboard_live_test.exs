@@ -37,6 +37,18 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     assert html_response(conn, 200) =~ "Unified Air and Sea Tracking"
   end
 
+  test "auth-required dashboard deep links preserve the full shared target", %{conn: conn} do
+    Application.put_env(:hrafnsyn, :public_readonly?, false)
+
+    path =
+      "/?vehicle=plane&identity=406ABC&range=24&lat=36.15100&lon=-6.10100&zoom=10.40&bearing=18.00&pitch=32.00"
+
+    conn = get(conn, path)
+
+    assert redirected_to(conn) == ~p"/users/log-in"
+    assert get_session(conn, :user_return_to) == path
+  end
+
   test "logged-in users get the durable profile menu shell", %{conn: conn} do
     Application.put_env(:hrafnsyn, :public_readonly?, true)
 
@@ -176,6 +188,30 @@ defmodule HrafnsynWeb.DashboardLiveTest do
 
     assert render(view) =~
              "External lookup. Opens in a new tab when this aircraft has enough identifiers."
+  end
+
+  test "deep links restore the selected track, range, and share metadata", %{conn: conn} do
+    observed_at = DateTime.utc_now(:second)
+
+    assert {:ok, [_track_id]} =
+             Ingest.ingest_batch(plane_source_fixture(), [
+               plane_observation(observed_at, "406ABC", "AFR69ZJ", "F-GZNE", 36.101, -6.141)
+             ])
+
+    path =
+      "/?vehicle=plane&identity=406ABC&range=24&lat=36.15100&lon=-6.10100&zoom=10.40&bearing=18.00&pitch=32.00"
+
+    {:ok, view, html} = live(conn, path)
+
+    assert html =~ "AFR69ZJ"
+    assert has_element?(view, ".detail-hero p", "406ABC")
+    assert has_element?(view, ".range-tab.is-active", "24h")
+
+    assert has_element?(
+             view,
+             "#share-selected-track[data-share-vehicle='plane'][data-share-identity='406ABC'][data-share-range='24']",
+             "Copy link"
+           )
   end
 
   test "selected vessels render flag emoji and code in the detail card", %{conn: conn} do

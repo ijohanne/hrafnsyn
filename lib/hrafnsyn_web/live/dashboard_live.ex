@@ -7,9 +7,11 @@ defmodule HrafnsynWeb.DashboardLive do
   alias Hrafnsyn.Tracking.ExternalLinks
 
   @ranges [{"1h", 1}, {"6h", 6}, {"24h", 24}, {"72h", 72}]
+  @default_range_hours 6
+  @range_hours Enum.map(@ranges, &elem(&1, 1))
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     if connected?(socket), do: Phoenix.PubSub.subscribe(Hrafnsyn.PubSub, Tracking.topic())
 
     socket =
@@ -24,13 +26,15 @@ defmodule HrafnsynWeb.DashboardLive do
       |> assign(:search_open, false)
       |> assign(:search_results, [])
       |> assign(:search_feedback, nil)
-      |> assign(:range_hours, 6)
+      |> assign(:range_hours, @default_range_hours)
+      |> assign(:shared_map_view, nil)
       |> assign(:tracks, Tracking.list_active_tracks())
       |> assign(:selected_track, nil)
       |> assign(:route_points, [])
       |> assign(:route_stats, %{distance_meters: 0.0, observed_seconds: 0})
       |> assign(:log_entries, [])
       |> sync_counts()
+      |> restore_shared_context(params)
 
     if connected?(socket), do: send(self(), :sync_map)
 
@@ -81,6 +85,23 @@ defmodule HrafnsynWeb.DashboardLive do
 
   def handle_event("select_track", %{"id" => id}, socket) do
     {:noreply, select_track(socket, id)}
+  end
+
+  def handle_event("share_link_copied", _params, socket) do
+    {:noreply, put_flash(socket, :info, "Share link copied to your clipboard.")}
+  end
+
+  def handle_event("share_link_ready", _params, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :info,
+       "Clipboard access was blocked. Copy the share link from the dialog."
+     )}
+  end
+
+  def handle_event("share_link_failed", _params, socket) do
+    {:noreply, put_flash(socket, :error, "Couldn't prepare a share link right now.")}
   end
 
   def handle_event("set_range", %{"hours" => hours}, socket) do
@@ -318,6 +339,28 @@ defmodule HrafnsynWeb.DashboardLive do
                 </div>
               </div>
 
+              <div class="detail-actions">
+                <div class="detail-actions-row">
+                  <span class="detail-actions-label">Share</span>
+
+                  <button
+                    id="share-selected-track"
+                    type="button"
+                    class="detail-action"
+                    phx-hook="ShareSelection"
+                    data-share-vehicle={@selected_track.vehicle_type}
+                    data-share-identity={@selected_track.identity}
+                    data-share-range={@range_hours}
+                  >
+                    Copy link
+                  </button>
+                </div>
+
+                <p class="detail-actions-note">
+                  Copies a deep link that restores this selected track and map view.
+                </p>
+              </div>
+
               <div :if={external_actions != []} class="detail-actions">
                 <div class="detail-actions-row">
                   <span class="detail-actions-label">FlightAware</span>
@@ -402,23 +445,18 @@ defmodule HrafnsynWeb.DashboardLive do
   end
 
   defp select_track(socket, id) do
+    select_track(socket, id, [])
+  end
+
+  defp select_track(socket, id, opts) do
     case Tracking.get_track(id) do
       nil ->
         socket
 
       track ->
-        socket =
-          socket
-          |> assign(:selected_track, track)
-          |> assign(:route_points, Tracking.recent_points(track.id, socket.assigns.range_hours))
-          |> assign(
-            :route_stats,
-            Tracking.recent_route_stats(track.id, socket.assigns.range_hours)
-          )
-          |> assign(:log_entries, Tracking.recent_log_entries(track.id))
-
-        send(self(), :sync_map)
         socket
+        |> load_selected_track(track)
+        |> maybe_sync_map(opts)
     end
   end
 
@@ -466,8 +504,110 @@ defmodule HrafnsynWeb.DashboardLive do
     push_event(socket, "map:sync", %{
       selected_track_id: socket.assigns.selected_track && socket.assigns.selected_track.id,
       tracks: Enum.map(socket.assigns.tracks, &serialize_track/1),
-      route: Enum.map(socket.assigns.route_points, &serialize_point/1)
+      route: Enum.map(socket.assigns.route_points, &serialize_point/1),
+      shared_view: socket.assigns.shared_map_view
     })
+  end
+
+  defp restore_shared_context(socket, params) do
+    socket =
+      socket
+      |> assign(:range_hours, parse_range_hours(params["range"]))
+      |> assign(:shared_map_view, parse_shared_map_view(params))
+
+    case shared_track_selector(params) do
+      nil ->
+        socket
+
+      {vehicle_type, identity} ->
+        case Tracking.get_track_by_identity(vehicle_type, identity) do
+          nil ->
+            put_flash(socket, :error, "The shared track is no longer available.")
+
+          track ->
+            select_track(socket, track.id, sync?: false)
+        end
+    end
+  end
+
+  defp load_selected_track(socket, track) do
+    socket
+    |> assign(:selected_track, track)
+    |> assign(:route_points, Tracking.recent_points(track.id, socket.assigns.range_hours))
+    |> assign(
+      :route_stats,
+      Tracking.recent_route_stats(track.id, socket.assigns.range_hours)
+    )
+    |> assign(:log_entries, Tracking.recent_log_entries(track.id))
+  end
+
+  defp maybe_sync_map(socket, opts) do
+    if Keyword.get(opts, :sync?, true), do: send(self(), :sync_map)
+    socket
+  end
+
+  defp shared_track_selector(%{"vehicle" => vehicle_type, "identity" => identity})
+       when vehicle_type in ["plane", "vessel"] and is_binary(identity) and identity != "" do
+    {vehicle_type, identity}
+  end
+
+  defp shared_track_selector(_params), do: nil
+
+  defp parse_range_hours(nil), do: @default_range_hours
+
+  defp parse_range_hours(value) do
+    case Integer.parse(value) do
+      {hours, ""} when hours in @range_hours -> hours
+      _other -> @default_range_hours
+    end
+  end
+
+  defp parse_shared_map_view(params) do
+    with {:ok, latitude} <- parse_bounded_float(params["lat"], -90.0, 90.0),
+         {:ok, longitude} <- parse_bounded_float(params["lon"], -180.0, 180.0),
+         {:ok, zoom} <- parse_bounded_float(params["zoom"], 0.0, 22.0),
+         {:ok, bearing} <- parse_optional_bounded_float(params["bearing"], -360.0, 360.0, 0.0),
+         {:ok, pitch} <- parse_optional_bounded_float(params["pitch"], 0.0, 85.0, 0.0) do
+      %{
+        latitude: latitude,
+        longitude: longitude,
+        zoom: zoom,
+        bearing: bearing,
+        pitch: pitch,
+        key:
+          Enum.join(
+            [
+              format_share_float(latitude, 5),
+              format_share_float(longitude, 5),
+              format_share_float(zoom, 2),
+              format_share_float(bearing, 2),
+              format_share_float(pitch, 2)
+            ],
+            ":"
+          )
+      }
+    else
+      _error -> nil
+    end
+  end
+
+  defp parse_bounded_float(nil, _min, _max), do: :error
+
+  defp parse_bounded_float(value, min, max) do
+    case Float.parse(value) do
+      {number, ""} when number >= min and number <= max -> {:ok, number}
+      _other -> :error
+    end
+  end
+
+  defp parse_optional_bounded_float(nil, _min, _max, default), do: {:ok, default}
+  defp parse_optional_bounded_float("", _min, _max, default), do: {:ok, default}
+
+  defp parse_optional_bounded_float(value, min, max, _default),
+    do: parse_bounded_float(value, min, max)
+
+  defp format_share_float(number, decimals) do
+    :erlang.float_to_binary(number, decimals: decimals)
   end
 
   defp serialize_track(track) do
