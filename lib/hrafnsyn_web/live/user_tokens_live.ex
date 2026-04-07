@@ -1,7 +1,7 @@
 defmodule HrafnsynWeb.UserTokensLive do
   use HrafnsynWeb, :live_view
 
-  alias Hrafnsyn.Accounts.ApiAuth
+  alias Hrafnsyn.Accounts.{ApiAuth, ApiSession}
   alias Hrafnsyn.Accounts.Scope
 
   @impl true
@@ -10,24 +10,87 @@ defmodule HrafnsynWeb.UserTokensLive do
      socket
      |> assign(:page_title, "API Tokens")
      |> assign(:issued_token_pair, nil)
+     |> assign(:editing_session_id, nil)
+     |> assign(:rename_form, rename_form())
+     |> assign(:issue_form, issue_form())
      |> load_token_state()}
   end
 
   @impl true
-  def handle_event("issue_token", _params, socket) do
-    case ApiAuth.issue_token_pair(current_user(socket)) do
+  def handle_event("validate_issue_token", %{"issue_token" => params}, socket) do
+    {:noreply, assign(socket, :issue_form, issue_form(params, :validate))}
+  end
+
+  def handle_event("issue_token", %{"issue_token" => params}, socket) do
+    case ApiAuth.issue_token_pair(current_user(socket), params) do
       {:ok, token_pair} ->
         {:noreply,
          socket
          |> assign(:issued_token_pair, token_pair)
+         |> assign(:issue_form, issue_form())
          |> put_flash(
            :info,
            "New API token issued. Copy the refresh token now; it is only shown once."
          )
          |> load_token_state(token_pair.session.id)}
 
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply,
+         assign(socket, :issue_form, to_form(%{changeset | action: :insert}, as: :issue_token))}
+
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "Could not issue API token: #{inspect(reason)}")}
+    end
+  end
+
+  def handle_event("start_rename", %{"id" => session_id, "name" => name}, socket) do
+    {:noreply,
+     socket
+     |> assign(:editing_session_id, session_id)
+     |> assign(:rename_form, rename_form(%{"name" => name}))}
+  end
+
+  def handle_event("cancel_rename", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:editing_session_id, nil)
+     |> assign(:rename_form, rename_form())}
+  end
+
+  def handle_event("validate_rename_token", %{"rename_token" => params}, socket) do
+    {:noreply, assign(socket, :rename_form, rename_form(params, :validate))}
+  end
+
+  def handle_event(
+        "rename_token",
+        %{"_session_id" => session_id, "rename_token" => params},
+        socket
+      ) do
+    case ApiAuth.rename_session(current_user(socket), session_id, params) do
+      {:ok, _session} ->
+        {:noreply,
+         socket
+         |> assign(:editing_session_id, nil)
+         |> assign(:rename_form, rename_form())
+         |> put_flash(:info, "API token renamed.")
+         |> load_token_state()}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply,
+         socket
+         |> assign(:editing_session_id, session_id)
+         |> assign(:rename_form, to_form(%{changeset | action: :validate}, as: :rename_token))}
+
+      {:error, :not_found} ->
+        {:noreply,
+         socket
+         |> assign(:editing_session_id, nil)
+         |> assign(:rename_form, rename_form())
+         |> put_flash(:error, "That API token is no longer available.")
+         |> load_token_state()}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Could not rename API token: #{inspect(reason)}")}
     end
   end
 
@@ -37,6 +100,7 @@ defmodule HrafnsynWeb.UserTokensLive do
         {:noreply,
          socket
          |> maybe_clear_issued_token_pair(session_id)
+         |> maybe_clear_rename_state(session_id)
          |> put_flash(:info, "API token revoked.")
          |> load_token_state()}
 
@@ -178,9 +242,24 @@ defmodule HrafnsynWeb.UserTokensLive do
                   <span class="token-action-badge">Ready</span>
                   <strong>Provision a new client session</strong>
                   <p>Creates a fresh access token immediately and tracks the session below.</p>
-                  <.button variant="primary" phx-click="issue_token" data-role="issue-token">
-                    Issue new token
-                  </.button>
+                  <.form
+                    for={@issue_form}
+                    id="issue-token-form"
+                    as={:issue_token}
+                    phx-change="validate_issue_token"
+                    phx-submit="issue_token"
+                    class="token-issue-form"
+                  >
+                    <.input
+                      field={@issue_form[:name]}
+                      type="text"
+                      label="Token name"
+                      placeholder="Bridge iPad, Ops laptop, Watchtower"
+                    />
+                    <.button variant="primary" data-role="issue-token">
+                      Issue new token
+                    </.button>
+                  </.form>
                 </div>
               </div>
             </section>
@@ -238,9 +317,12 @@ defmodule HrafnsynWeb.UserTokensLive do
                 >
                   <div class="token-row-copy">
                     <div class="token-row-head">
-                      <strong>{short_id(session.id)}</strong>
+                      <strong>{session.name}</strong>
                       <span :if={session.current} class="track-pill">NEW</span>
                     </div>
+                    <p class="token-user-meta">
+                      <span>Session {short_id(session.id)}</span>
+                    </p>
                     <p class="token-row-summary">
                       {if session.current,
                         do: "This is the newest session issued from the web UI.",
@@ -260,8 +342,51 @@ defmodule HrafnsynWeb.UserTokensLive do
                         <dd>{format_datetime(session.expires_at)}</dd>
                       </div>
                     </dl>
+
+                    <div :if={@editing_session_id == session.id} class="token-rename-card">
+                      <.form
+                        for={@rename_form}
+                        id={"rename-token-form-#{session.id}"}
+                        as={:rename_token}
+                        phx-change="validate_rename_token"
+                        phx-submit="rename_token"
+                        class="token-inline-form"
+                      >
+                        <input type="hidden" name="_session_id" value={session.id} />
+                        <.input
+                          field={@rename_form[:name]}
+                          type="text"
+                          label="Rename token"
+                          placeholder="New token label"
+                        />
+                        <div class="token-inline-actions">
+                          <.button class="btn btn-primary btn-sm" data-role="save-token-rename">
+                            Save name
+                          </.button>
+                          <.button
+                            type="button"
+                            class="btn btn-soft btn-sm"
+                            phx-click="cancel_rename"
+                            data-role="cancel-token-rename"
+                          >
+                            Cancel
+                          </.button>
+                        </div>
+                      </.form>
+                    </div>
                   </div>
                   <div class="token-row-actions">
+                    <.button
+                      :if={@editing_session_id != session.id}
+                      class="btn btn-soft btn-sm"
+                      data-role="rename-own-token"
+                      data-session-id={session.id}
+                      phx-click="start_rename"
+                      phx-value-id={session.id}
+                      phx-value-name={session.name}
+                    >
+                      Rename
+                    </.button>
                     <.button
                       class="btn btn-soft btn-error btn-sm"
                       data-role="revoke-own-token"
@@ -331,7 +456,7 @@ defmodule HrafnsynWeb.UserTokensLive do
                 >
                   <div class="token-row-copy">
                     <div class="token-row-head">
-                      <strong>{session.user.username}</strong>
+                      <strong>{session.name}</strong>
                       <span class={[
                         "track-pill",
                         if(session.user.is_admin, do: "plane", else: "vessel")
@@ -340,6 +465,7 @@ defmodule HrafnsynWeb.UserTokensLive do
                       </span>
                     </div>
                     <p class="token-user-meta">
+                      <span>{session.user.username}</span>
                       <span>{session.user.email || "No email configured"}</span>
                       <span>Session {short_id(session.id)}</span>
                     </p>
@@ -410,6 +536,16 @@ defmodule HrafnsynWeb.UserTokensLive do
     end
   end
 
+  defp maybe_clear_rename_state(socket, session_id) do
+    if socket.assigns.editing_session_id == session_id do
+      socket
+      |> assign(:editing_session_id, nil)
+      |> assign(:rename_form, rename_form())
+    else
+      socket
+    end
+  end
+
   defp short_id(id) when is_binary(id), do: String.slice(id, 0, 8)
 
   defp format_datetime(nil), do: "Never"
@@ -417,4 +553,21 @@ defmodule HrafnsynWeb.UserTokensLive do
   defp format_datetime(%DateTime{} = value) do
     Calendar.strftime(value, "%Y-%m-%d %H:%M UTC")
   end
+
+  defp issue_form(attrs \\ %{}, action \\ nil) do
+    %ApiSession{}
+    |> ApiSession.rename_changeset(attrs)
+    |> maybe_put_action(action)
+    |> to_form(as: :issue_token)
+  end
+
+  defp rename_form(attrs \\ %{}, action \\ nil) do
+    %ApiSession{}
+    |> ApiSession.rename_changeset(attrs)
+    |> maybe_put_action(action)
+    |> to_form(as: :rename_token)
+  end
+
+  defp maybe_put_action(changeset, nil), do: changeset
+  defp maybe_put_action(changeset, action), do: Map.put(changeset, :action, action)
 end

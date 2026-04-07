@@ -62,9 +62,16 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     end
   end
 
-  @spec issue_token_pair(User.t()) :: {:ok, map()} | {:error, term()}
-  def issue_token_pair(%User{} = user) do
-    create_session(user)
+  @spec issue_token_pair(User.t(), map()) :: {:ok, map()} | {:error, term()}
+  def issue_token_pair(%User{} = user, attrs \\ %{}) when is_map(attrs) do
+    create_session(user, attrs)
+  end
+
+  @spec rename_session(User.t(), Ecto.UUID.t(), map()) ::
+          {:ok, map()} | {:error, Ecto.Changeset.t() | atom()}
+  def rename_session(%User{} = user, session_id, attrs)
+      when is_binary(session_id) and is_map(attrs) do
+    Repo.transact(fn -> do_rename_session(user.id, session_id, attrs) end)
   end
 
   @spec list_sessions(User.t(), Ecto.UUID.t() | nil) :: [map()]
@@ -141,13 +148,15 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     end
   end
 
-  defp create_session(%User{} = user) do
+  defp create_session(%User{} = user, attrs \\ %{}) do
     Repo.transact(fn ->
       session_id = Ecto.UUID.generate()
+      now = DateTime.utc_now(:second)
+      attrs = normalize_session_attrs(attrs, now)
 
       with {:ok, refresh_token, refresh_claims} <-
              ApiJwt.generate_refresh_token(user, session_id),
-           {:ok, session} <- insert_session(user, session_id, refresh_claims),
+           {:ok, session} <- insert_session(user, session_id, refresh_claims, attrs, now),
            {:ok, access_token, access_claims} <- ApiJwt.generate_access_token(user, session.id) do
         {:ok,
          build_token_pair(
@@ -189,13 +198,12 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     end
   end
 
-  defp insert_session(%User{} = user, session_id, refresh_claims) do
-    now = DateTime.utc_now(:second)
-
+  defp insert_session(%User{} = user, session_id, refresh_claims, attrs, now) do
     %ApiSession{}
-    |> ApiSession.changeset(%{
+    |> ApiSession.create_changeset(%{
       id: session_id,
       user_id: user.id,
+      name: attrs[:name] || attrs["name"],
       refresh_token_hash: hash_jti(refresh_claims["jti"]),
       last_used_at: now,
       expires_at: ApiJwt.expires_at!(refresh_claims)
@@ -303,6 +311,19 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     end
   end
 
+  defp do_rename_session(user_id, session_id, attrs) do
+    case fetch_revokeable_session(user_id, session_id) do
+      nil ->
+        {:error, :not_found}
+
+      %ApiSession{} = session ->
+        case Repo.update(ApiSession.rename_changeset(session, attrs)) do
+          {:ok, updated_session} -> {:ok, session_to_map(updated_session, nil)}
+          {:error, changeset} -> {:error, changeset}
+        end
+    end
+  end
+
   defp update_revoked_session(%ApiSession{} = session) do
     revoked_at = DateTime.utc_now(:second)
 
@@ -348,6 +369,7 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
   defp session_to_map(%ApiSession{} = session, current_session_id) do
     %{
       id: session.id,
+      name: session.name || default_session_name(session.inserted_at),
       current: session.id == current_session_id,
       created_at: session.inserted_at,
       last_used_at: session.last_used_at,
@@ -360,5 +382,21 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     session
     |> session_to_map(current_session_id)
     |> Map.put(:user, user_to_map(user))
+  end
+
+  defp default_session_name(%DateTime{} = value) do
+    "API session #{Calendar.strftime(value, "%Y-%m-%d %H:%M UTC")}"
+  end
+
+  defp normalize_session_attrs(attrs, now) do
+    default_name = default_session_name(now)
+
+    case Map.fetch(attrs, "name") do
+      {:ok, _name} ->
+        attrs
+
+      :error ->
+        Map.put_new(attrs, :name, default_name)
+    end
   end
 end

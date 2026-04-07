@@ -20,7 +20,7 @@ defmodule HrafnsynWeb.UserTokensLiveTest do
 
   test "users can issue and revoke their own API tokens", %{conn: conn} do
     user = user_fixture() |> set_password()
-    {:ok, existing_pair} = ApiAuth.issue_token_pair(user)
+    {:ok, existing_pair} = ApiAuth.issue_token_pair(user, %{"name" => "Ops laptop"})
 
     {:ok, view, html} =
       conn
@@ -30,17 +30,35 @@ defmodule HrafnsynWeb.UserTokensLiveTest do
     assert html =~ "Mint a fresh token pair"
     assert html =~ "Your active API tokens"
     refute html =~ "Admin controls"
-    assert has_element?(view, "[data-session-id='#{existing_pair.session.id}']")
+    assert has_element?(view, "[data-session-id='#{existing_pair.session.id}']", "Ops laptop")
 
     token_count_before = Repo.aggregate(ApiSession, :count, :id)
 
     view
-    |> element("[data-role='issue-token']")
-    |> render_click()
+    |> form("#issue-token-form", issue_token: %{name: "Bridge iPad"})
+    |> render_submit()
 
     assert render(view) =~ "New API token issued."
     assert Repo.aggregate(ApiSession, :count, :id) == token_count_before + 1
     assert render(view) =~ "Latest issued token pair"
+    assert render(view) =~ "Bridge iPad"
+
+    view
+    |> element("[data-role='rename-own-token'][data-session-id='#{existing_pair.session.id}']")
+    |> render_click()
+
+    assert has_element?(view, "#rename-token-form-#{existing_pair.session.id}")
+
+    view
+    |> form("#rename-token-form-#{existing_pair.session.id}", %{
+      _session_id: existing_pair.session.id,
+      rename_token: %{name: "Field tablet"}
+    })
+    |> render_submit()
+
+    assert render(view) =~ "API token renamed."
+    assert has_element?(view, "[data-session-id='#{existing_pair.session.id}']", "Field tablet")
+    assert %ApiSession{name: "Field tablet"} = Repo.get!(ApiSession, existing_pair.session.id)
 
     view
     |> element("[data-role='revoke-own-token'][data-session-id='#{existing_pair.session.id}']")
@@ -53,8 +71,8 @@ defmodule HrafnsynWeb.UserTokensLiveTest do
   test "admins can inspect all tokens, revoke one, and revoke all globally", %{conn: conn} do
     admin = admin_user_fixture() |> set_password()
     user = user_fixture() |> set_password()
-    {:ok, admin_pair} = ApiAuth.issue_token_pair(admin)
-    {:ok, user_pair} = ApiAuth.issue_token_pair(user)
+    {:ok, admin_pair} = ApiAuth.issue_token_pair(admin, %{"name" => "Admin laptop"})
+    {:ok, user_pair} = ApiAuth.issue_token_pair(user, %{"name" => "Deck console"})
 
     {:ok, view, html} =
       conn
@@ -62,7 +80,7 @@ defmodule HrafnsynWeb.UserTokensLiveTest do
       |> live(~p"/users/tokens")
 
     assert html =~ "Global controls"
-    assert has_element?(view, "[data-admin-session-id='#{user_pair.session.id}']")
+    assert has_element?(view, "[data-admin-session-id='#{user_pair.session.id}']", "Deck console")
     assert render(view) =~ user.username
 
     view

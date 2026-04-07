@@ -1094,6 +1094,28 @@ body.app-body {
   line-height: 1.55;
 }
 
+.token-issue-form,
+.token-inline-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.token-issue-form .fieldset,
+.token-inline-form .fieldset {
+  margin: 0;
+}
+
+.token-issue-form .input,
+.token-inline-form .input {
+  background: rgba(3, 12, 22, 0.58);
+  border-color: rgba(182, 216, 255, 0.12);
+}
+
+.token-issue-form .label,
+.token-inline-form .label {
+  color: var(--text-main);
+}
+
 .token-secret-panel {
   display: grid;
   gap: 0.85rem;
@@ -1246,6 +1268,23 @@ body.app-body {
 .token-row-actions {
   display: flex;
   align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.token-rename-card {
+  padding: 0.9rem;
+  border-radius: 1rem;
+  background:
+    linear-gradient(135deg, rgba(100, 210, 255, 0.1), transparent 46%),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(100, 210, 255, 0.14);
+}
+
+.token-inline-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .token-admin-callout {
