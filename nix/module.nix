@@ -402,6 +402,7 @@ in
           PHX_HOST = cfg.host;
           HRAFNSYN_SCHEME = cfg.scheme;
           HRAFNSYN_EXTERNAL_PORT = builtins.toString cfg.externalPort;
+          HRAFNSYN_FORCE_SSL = if cfg.nginxHelper.enable then "false" else "true";
           HRAFNSYN_TRUSTED_PROXIES = builtins.concatStringsSep "," cfg.trustedProxies;
           HRAFNSYN_MAP_STYLE_URL = cfg.mapStyleUrl;
           HRAFNSYN_PUBLIC_READONLY = if cfg.publicReadonly then "true" else "false";
