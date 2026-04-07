@@ -1,0 +1,187 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <section class="grpc-docs-shell">
+    <div class="grpc-docs-hero">
+      <div class="grpc-docs-kicker">Discover the contract</div>
+      <h1>Hrafnsyn gRPC API</h1>
+      <p class="grpc-docs-lead">
+        Browse the published service surface, inspect request and response types, and grab the
+        exact `tracking.proto` file used to generate clients.
+      </p>
+
+      <div class="grpc-docs-actions">
+        <.link
+          href={~p"/grpc/tracking.proto"}
+          class="grpc-docs-button grpc-docs-button-primary"
+          download
+        >
+          Download `tracking.proto`
+        </.link>
+        <a href="#grpc-services" class="grpc-docs-button">Browse services</a>
+      </div>
+
+      <dl class="grpc-docs-stats">
+        <div>
+          <dt>Package</dt>
+          <dd>{@grpc_contract.package}</dd>
+        </div>
+        <div>
+          <dt>Services</dt>
+          <dd>{@grpc_summary.service_count}</dd>
+        </div>
+        <div>
+          <dt>RPC methods</dt>
+          <dd>{@grpc_summary.rpc_count}</dd>
+        </div>
+        <div>
+          <dt>Schemas</dt>
+          <dd>{@grpc_summary.message_count + @grpc_summary.enum_count}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <aside class="grpc-docs-sidebar">
+      <section class="grpc-docs-panel">
+        <div class="grpc-docs-panel-label">Auth model</div>
+        <h2>{@grpc_auth.mode}</h2>
+        <p>{@grpc_auth.headline}</p>
+
+        <ul class="grpc-docs-note-list">
+          <li :for={note <- @grpc_auth.notes}>{note}</li>
+        </ul>
+      </section>
+
+      <section class="grpc-docs-panel">
+        <div class="grpc-docs-panel-label">Quick start</div>
+        <h2>Generate a client fast</h2>
+        <p>
+          Use the published proto as the source of truth for code generation and local inspection.
+        </p>
+
+        <pre class="grpc-docs-code"><code>curl -fsSL https://your-hrafnsyn-host/grpc/tracking.proto -o tracking.proto
+grpcurl -import-path . -proto tracking.proto \
+  your-hrafnsyn-host:443 hrafnsyn.v1.TrackingService/GetSystemInfo</code></pre>
+      </section>
+
+      <section class="grpc-docs-panel">
+        <div class="grpc-docs-panel-label">Imports</div>
+        <div class="grpc-docs-pill-list">
+          <span :for={import_path <- @grpc_contract.imports} class="grpc-docs-pill">
+            {import_path}
+          </span>
+        </div>
+      </section>
+    </aside>
+
+    <section id="grpc-services" class="grpc-docs-section">
+      <div class="grpc-docs-section-head">
+        <div>
+          <div class="grpc-docs-kicker">Services</div>
+          <h2>Browsable RPC surface</h2>
+        </div>
+        <p>
+          Every card below is generated from the checked-in `proto/hrafnsyn/v1/tracking.proto` contract.
+        </p>
+      </div>
+
+      <div class="grpc-service-grid">
+        <article
+          :for={service <- @grpc_contract.services}
+          id={service_anchor(service.name)}
+          class="grpc-service-card"
+        >
+          <div class="grpc-service-head">
+            <div>
+              <span class="grpc-service-badge">Service</span>
+              <h3>{service.name}</h3>
+            </div>
+            <p>{service.description}</p>
+          </div>
+
+          <ol class="grpc-rpc-list">
+            <li
+              :for={rpc <- service.rpcs}
+              id={rpc_anchor(service.name, rpc.name)}
+              class="grpc-rpc-row"
+            >
+              <div class="grpc-rpc-copy">
+                <div class="grpc-rpc-title-row">
+                  <h4>{rpc.name}</h4>
+                  <span class="grpc-rpc-mode">{rpc_mode(rpc)}</span>
+                </div>
+                <p>{rpc.description}</p>
+              </div>
+
+              <div class="grpc-rpc-signature">
+                <code>{short_type(rpc.request_type)}</code>
+                <span aria-hidden="true">→</span>
+                <code>{short_type(rpc.response_type)}</code>
+              </div>
+            </li>
+          </ol>
+        </article>
+      </div>
+    </section>
+
+    <section class="grpc-docs-section">
+      <div class="grpc-docs-section-head">
+        <div>
+          <div class="grpc-docs-kicker">Schemas</div>
+          <h2>Messages and enums</h2>
+        </div>
+        <p>Expand a type to inspect every field, number, and repeated or `oneof` mode.</p>
+      </div>
+
+      <div class="grpc-schema-grid">
+        <details
+          :for={enum <- @grpc_contract.enums}
+          id={schema_anchor(enum.name)}
+          class="grpc-schema-card"
+        >
+          <summary>
+            <div>
+              <span class="grpc-service-badge">Enum</span>
+              <h3>{enum.name}</h3>
+            </div>
+            <span>{length(enum.values)} values</span>
+          </summary>
+
+          <div class="grpc-schema-rows">
+            <div :for={value <- enum.values} class="grpc-schema-row">
+              <div>
+                <strong>{value.name}</strong>
+              </div>
+              <code>{value.number}</code>
+            </div>
+          </div>
+        </details>
+
+        <details
+          :for={message <- @grpc_contract.messages}
+          id={schema_anchor(message.name)}
+          class="grpc-schema-card"
+        >
+          <summary>
+            <div>
+              <span class="grpc-service-badge">Message</span>
+              <h3>{message.name}</h3>
+            </div>
+            <span>{length(message.fields)} fields</span>
+          </summary>
+
+          <div class="grpc-schema-rows">
+            <div :for={field <- message.fields} class="grpc-schema-row">
+              <div>
+                <strong>{field.name}</strong>
+                <small :if={field_mode(field)}>{field_mode(field)}</small>
+              </div>
+              <div class="grpc-schema-type">
+                <code>{short_type(field.type)}</code>
+                <code>{field.number}</code>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+  </section>
+</Layouts.app>

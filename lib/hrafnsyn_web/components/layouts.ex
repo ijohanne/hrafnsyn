@@ -52,6 +52,7 @@ defmodule HrafnsynWeb.Layouts do
 
         <nav class="top-nav">
           <.link navigate={~p"/"}>Live map</.link>
+          <.link navigate={~p"/grpc"}>gRPC API</.link>
           <.link :if={Scope.admin?(@current_scope)} navigate={~p"/admin/users"}>Admin</.link>
           <.link :if={is_nil(@current_scope)} href={~p"/users/log-in"}>Log in</.link>
 

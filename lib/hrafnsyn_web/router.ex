@@ -80,6 +80,8 @@ defmodule HrafnsynWeb.Router do
   scope "/", HrafnsynWeb do
     pipe_through [:browser]
 
+    get "/grpc", PageController, :grpc
+    get "/grpc/tracking.proto", PageController, :grpc_proto
     get "/users/log-in", UserSessionController, :new
     get "/users/log-in/:token", UserSessionController, :confirm
     post "/users/log-in", UserSessionController, :create

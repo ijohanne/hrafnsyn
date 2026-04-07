@@ -975,7 +975,371 @@ body.app-body {
   color: #7fa3bc;
 }
 
+.grpc-docs-shell {
+  width: var(--shell-width);
+  margin: 0 auto;
+  padding: 1.25rem 0 3rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(20rem, 0.8fr);
+  gap: 1.25rem;
+}
+
+.grpc-docs-hero,
+.grpc-docs-panel,
+.grpc-service-card,
+.grpc-schema-card {
+  border: 1px solid rgba(162, 205, 242, 0.12);
+  box-shadow: var(--shadow-heavy);
+}
+
+.grpc-docs-hero {
+  padding: 1.8rem;
+  border-radius: 1.9rem;
+  background:
+    radial-gradient(circle at top right, rgba(100, 210, 255, 0.2), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(244, 201, 93, 0.16), transparent 30%),
+    linear-gradient(180deg, rgba(7, 23, 37, 0.9), rgba(5, 17, 29, 0.96));
+}
+
+.grpc-docs-kicker,
+.grpc-docs-panel-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.grpc-docs-kicker::before,
+.grpc-docs-panel-label::before {
+  content: "";
+  width: 1.5rem;
+  height: 1px;
+  background: currentColor;
+}
+
+.grpc-docs-hero h1,
+.grpc-docs-section-head h2,
+.grpc-service-head h3,
+.grpc-schema-card h3 {
+  margin: 0;
+  font-family: "Space Grotesk", ui-sans-serif, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.grpc-docs-hero h1 {
+  margin-top: 0.9rem;
+  font-size: clamp(2.4rem, 4vw, 3.8rem);
+  line-height: 0.95;
+}
+
+.grpc-docs-lead,
+.grpc-docs-section-head p,
+.grpc-docs-panel p,
+.grpc-service-head p,
+.grpc-rpc-copy p {
+  color: var(--text-soft);
+}
+
+.grpc-docs-lead {
+  max-width: 42rem;
+  margin: 1rem 0 0;
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.grpc-docs-actions {
+  margin-top: 1.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.grpc-docs-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.15rem;
+  border-radius: 999px;
+  border: 1px solid rgba(162, 205, 242, 0.18);
+  color: var(--text-main);
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px);
+}
+
+.grpc-docs-button-primary {
+  color: #05111d;
+  background: linear-gradient(135deg, rgba(100, 210, 255, 0.96), rgba(244, 201, 93, 0.86));
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.grpc-docs-stats {
+  margin: 1.4rem 0 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.grpc-docs-stats div,
+.grpc-docs-panel,
+.grpc-rpc-row,
+.grpc-schema-row {
+  border-radius: 1.15rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(12px);
+}
+
+.grpc-docs-stats div {
+  padding: 0.95rem 1rem;
+}
+
+.grpc-docs-stats dt {
+  color: #7fa3bc;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.grpc-docs-stats dd {
+  margin: 0.35rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.grpc-docs-sidebar {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.grpc-docs-panel {
+  padding: 1.2rem;
+}
+
+.grpc-docs-panel h2 {
+  margin: 0.85rem 0 0;
+  font-family: "Space Grotesk", ui-sans-serif, sans-serif;
+  font-size: 1.2rem;
+}
+
+.grpc-docs-note-list {
+  margin: 0.95rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.65rem;
+  color: var(--text-soft);
+}
+
+.grpc-docs-code {
+  margin: 1rem 0 0;
+  padding: 1rem;
+  overflow-x: auto;
+  border-radius: 1rem;
+  background: rgba(3, 10, 18, 0.78);
+  border: 1px solid rgba(162, 205, 242, 0.12);
+  color: #dff4ff;
+  font-family: "SFMono-Regular", ui-monospace, monospace;
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+.grpc-docs-pill-list {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.grpc-docs-pill {
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(100, 210, 255, 0.1);
+  border: 1px solid rgba(100, 210, 255, 0.16);
+  color: #dff4ff;
+  font-size: 0.82rem;
+}
+
+.grpc-docs-section {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 1rem;
+}
+
+.grpc-docs-section-head {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.grpc-docs-section-head p {
+  max-width: 36rem;
+  margin: 0;
+}
+
+.grpc-service-grid,
+.grpc-schema-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.grpc-service-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grpc-schema-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grpc-service-card,
+.grpc-schema-card {
+  padding: 1.15rem;
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at top right, rgba(100, 210, 255, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(8, 23, 37, 0.88), rgba(5, 17, 29, 0.94));
+}
+
+.grpc-service-head {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.grpc-service-head p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.grpc-service-badge {
+  display: inline-flex;
+  margin-bottom: 0.45rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(244, 201, 93, 0.12);
+  color: var(--accent);
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.grpc-rpc-list {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.grpc-rpc-row,
+.grpc-schema-row {
+  padding: 0.9rem;
+  border: 1px solid rgba(162, 205, 242, 0.1);
+}
+
+.grpc-rpc-row {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.grpc-rpc-title-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.grpc-rpc-copy h4,
+.grpc-schema-row strong {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.grpc-rpc-copy p {
+  margin: 0.45rem 0 0;
+  line-height: 1.55;
+}
+
+.grpc-rpc-mode {
+  white-space: nowrap;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(100, 210, 255, 0.12);
+  color: #dff4ff;
+  font-size: 0.72rem;
+}
+
+.grpc-rpc-signature,
+.grpc-schema-type {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.grpc-rpc-signature code,
+.grpc-schema-type code {
+  padding: 0.3rem 0.48rem;
+  border-radius: 0.7rem;
+  background: rgba(3, 10, 18, 0.72);
+  border: 1px solid rgba(162, 205, 242, 0.12);
+  color: #dff4ff;
+  font-size: 0.78rem;
+}
+
+.grpc-schema-card summary {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.grpc-schema-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.grpc-schema-card summary span:last-child {
+  color: #7fa3bc;
+  font-size: 0.82rem;
+}
+
+.grpc-schema-rows {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.grpc-schema-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.grpc-schema-row small {
+  display: block;
+  margin-top: 0.18rem;
+  color: #7fa3bc;
+}
+
 @media (max-width: 1080px) {
+  .grpc-docs-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .grpc-service-grid,
+  .grpc-schema-grid {
+    grid-template-columns: 1fr;
+  }
+
   .shell-grid,
   .map-header,
   .admin-shell {
@@ -996,6 +1360,17 @@ body.app-body {
 }
 
 @media (max-width: 720px) {
+  .grpc-docs-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grpc-docs-section-head,
+  .grpc-schema-row,
+  .grpc-rpc-title-row {
+    flex-direction: column;
+    align-items: start;
+  }
+
   .brand-bar {
     flex-direction: column;
     align-items: stretch;

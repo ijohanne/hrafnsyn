@@ -6,5 +6,28 @@ defmodule HrafnsynWeb.PageControllerTest do
     response = html_response(conn, 200)
     assert response =~ "Air and sea traffic on one living map."
     assert response =~ "Live Contacts"
+    assert response =~ "gRPC API"
+  end
+
+  test "GET /grpc renders the API docs and service surface", %{conn: conn} do
+    conn = get(conn, ~p"/grpc")
+    response = html_response(conn, 200)
+
+    assert response =~ "Hrafnsyn gRPC API"
+    assert response =~ "Download `tracking.proto`"
+    assert response =~ "TrackingService"
+    assert response =~ "StreamTrackUpdates"
+    assert response =~ "StreamObservationsRequest"
+    assert response =~ "VehicleType"
+  end
+
+  test "GET /grpc/tracking.proto downloads the published proto", %{conn: conn} do
+    conn = get(conn, ~p"/grpc/tracking.proto")
+
+    assert get_resp_header(conn, "content-type") == ["text/plain; charset=utf-8"]
+    assert [disposition] = get_resp_header(conn, "content-disposition")
+    assert disposition =~ ~s(filename="tracking.proto")
+    assert response(conn, 200) =~ ~s(syntax = "proto3";)
+    assert response(conn, 200) =~ "service TrackingService"
   end
 end
