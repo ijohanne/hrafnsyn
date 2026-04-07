@@ -99,16 +99,37 @@ export HRAFNSYN_SOURCES_JSON='[
 ]'
 ```
 
-## Bootstrap Admin
+## Local Auth Testing
 
-To require login locally and create the first admin on boot:
+The runtime switch for anonymous readonly mode is `HRAFNSYN_PUBLIC_READONLY`. Set it to `false`
+to require login locally.
+
+The repository includes a safe local example at `.env.example`:
 
 ```sh
-export HRAFNSYN_PUBLIC_READONLY=false
-export HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"admin@example.com","is_admin":true}}'
+cp .env.example .env.local
+set -a; source .env.local; set +a
 ```
 
-Bootstrap passwords are hashed during startup and ignored for users that already exist.
+Hrafnsyn reads these values directly from the shell environment and does not auto-load `.env` files.
+
+The example config boots a local admin user with username/password auth:
+
+- username: `admin`
+- password: `change-me-now`
+
+Run the app after sourcing the file:
+
+```sh
+app
+```
+
+Then sign in at [http://localhost:4000/users/log-in](http://localhost:4000/users/log-in) to test
+login and admin flows.
+
+Bootstrap passwords are hashed during startup and ignored for users that already exist. If you are
+using the manual Postgres helpers and need to replay the bootstrap flow, run `pg-reset` first so
+the local user table starts clean.
 
 ## Assets
 

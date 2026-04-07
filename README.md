@@ -52,16 +52,32 @@ mix phx.server
 Without Nix, install Elixir `1.18+`, Erlang/OTP `27`, PostgreSQL `18` or another modern
 PostgreSQL release with PostGIS, and Node.js `22+`, then follow the development guide below.
 
-### Local auth bootstrap
+### Local auth testing
 
-Public mode is readonly by default. To require login locally and create the first admin on boot:
+Hrafnsyn is readonly by default for anonymous users. The runtime switch for private/local-auth mode is:
 
 ```sh
-export HRAFNSYN_PUBLIC_READONLY=false
-export HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"admin@example.com","is_admin":true}}'
+HRAFNSYN_PUBLIC_READONLY=false
 ```
 
-Bootstrap passwords are hashed on first boot and skipped for users that already exist.
+For repeatable local auth work, start from the committed example config:
+
+```sh
+cp .env.example .env.local
+set -a; source .env.local; set +a
+app
+```
+
+Hrafnsyn does not auto-load `.env` files, so sourcing the file is the step that makes the example active.
+
+With the sample config above, the app boots in non-public mode and creates this local admin user on first boot:
+
+- username: `admin`
+- password: `change-me-now`
+
+Then sign in at [http://localhost:4000/users/log-in](http://localhost:4000/users/log-in) to test login and admin flows.
+
+Bootstrap passwords are hashed on first boot and skipped for users that already exist. If you want to re-run the sample bootstrap from scratch, use `app` or `pg-reset` to recreate the local database first.
 
 ## Runtime Snapshot
 
