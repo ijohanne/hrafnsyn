@@ -100,10 +100,7 @@
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
 /* Make LiveView wrapper divs transparent for layout */
-[data-phx-session],
-[data-phx-teleported-src] {
-  display: contents;
-}
+[data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
 
@@ -133,16 +130,8 @@ body.app-body {
   font-family: "Instrument Sans", ui-sans-serif, sans-serif;
   font-size: 15px;
   background:
-    radial-gradient(
-      circle at top left,
-      rgba(100, 210, 255, 0.14),
-      transparent 36%
-    ),
-    radial-gradient(
-      circle at top right,
-      rgba(244, 201, 93, 0.1),
-      transparent 28%
-    ),
+    radial-gradient(circle at top left, rgba(100, 210, 255, 0.14), transparent 36%),
+    radial-gradient(circle at top right, rgba(244, 201, 93, 0.1), transparent 28%),
     linear-gradient(180deg, var(--bg-night), var(--bg-ocean));
 }
 
@@ -260,11 +249,7 @@ body.app-body {
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
-  background: linear-gradient(
-    135deg,
-    rgba(100, 210, 255, 0.92),
-    rgba(244, 201, 93, 0.78)
-  );
+  background: linear-gradient(135deg, rgba(100, 210, 255, 0.92), rgba(244, 201, 93, 0.78));
   color: #05111d;
   font-family: "Space Grotesk", ui-sans-serif, sans-serif;
   font-size: 0.82rem;
@@ -314,16 +299,8 @@ body.app-body {
   border: 1px solid var(--line-soft);
   border-radius: 1.4rem;
   background:
-    radial-gradient(
-      circle at top right,
-      rgba(244, 201, 93, 0.12),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at top left,
-      rgba(100, 210, 255, 0.14),
-      transparent 36%
-    ),
+    radial-gradient(circle at top right, rgba(244, 201, 93, 0.12), transparent 34%),
+    radial-gradient(circle at top left, rgba(100, 210, 255, 0.14), transparent 36%),
     var(--bg-panel);
   box-shadow: var(--shadow-heavy);
   backdrop-filter: blur(18px);
@@ -931,11 +908,7 @@ body.app-body {
   padding: 1.55rem;
   background:
     linear-gradient(135deg, rgba(100, 210, 255, 0.12), transparent 42%),
-    radial-gradient(
-      circle at top right,
-      rgba(244, 201, 93, 0.18),
-      transparent 34%
-    ),
+    radial-gradient(circle at top right, rgba(244, 201, 93, 0.18), transparent 34%),
     linear-gradient(180deg, rgba(8, 25, 40, 0.96), rgba(5, 17, 29, 0.94));
 }
 
@@ -946,11 +919,7 @@ body.app-body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.04),
-    transparent 26%
-  );
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 26%);
 }
 
 .token-kicker,
@@ -1013,11 +982,7 @@ body.app-body {
 .token-hero-board {
   padding: 1.2rem;
   background:
-    radial-gradient(
-      circle at top left,
-      rgba(249, 115, 22, 0.12),
-      transparent 28%
-    ),
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.12), transparent 28%),
     linear-gradient(180deg, rgba(8, 23, 37, 0.98), rgba(6, 18, 30, 0.96));
 }
 
@@ -1092,16 +1057,8 @@ body.app-body {
 .token-panel {
   padding: 1.15rem;
   background:
-    radial-gradient(
-      circle at top right,
-      rgba(244, 201, 93, 0.08),
-      transparent 28%
-    ),
-    radial-gradient(
-      circle at top left,
-      rgba(100, 210, 255, 0.1),
-      transparent 32%
-    ),
+    radial-gradient(circle at top right, rgba(244, 201, 93, 0.08), transparent 28%),
+    radial-gradient(circle at top left, rgba(100, 210, 255, 0.1), transparent 32%),
     var(--bg-panel);
 }
 
@@ -1469,11 +1426,7 @@ body.app-body {
 .track-popup.maplibregl-popup .maplibregl-popup-content {
   padding: 0 !important;
   max-height: var(--track-popup-max-height, calc(100vh - 2rem));
-  background: linear-gradient(
-    180deg,
-    rgba(7, 20, 33, 0.98),
-    rgba(9, 26, 41, 0.97)
-  ) !important;
+  background: linear-gradient(180deg, rgba(7, 20, 33, 0.98), rgba(9, 26, 41, 0.97)) !important;
   color: var(--text-main) !important;
   border: 1px solid rgba(133, 194, 255, 0.2) !important;
   border-radius: 1.15rem !important;
@@ -1489,9 +1442,7 @@ body.app-body {
   font-weight: 600;
   padding: 0.45rem 0.68rem;
   background: transparent !important;
-  transition:
-    color 120ms ease,
-    transform 120ms ease;
+  transition: color 120ms ease, transform 120ms ease;
 }
 
 .track-popup.maplibregl-popup .maplibregl-popup-close-button:hover {
@@ -1513,16 +1464,8 @@ body.app-body {
   display: grid;
   gap: 0.55rem;
   background:
-    radial-gradient(
-      circle at top right,
-      rgba(244, 201, 93, 0.14),
-      transparent 32%
-    ),
-    radial-gradient(
-      circle at top left,
-      rgba(100, 210, 255, 0.14),
-      transparent 36%
-    ),
+    radial-gradient(circle at top right, rgba(244, 201, 93, 0.14), transparent 32%),
+    radial-gradient(circle at top left, rgba(100, 210, 255, 0.14), transparent 36%),
     transparent;
 }
 
@@ -1595,11 +1538,7 @@ body.app-body {
 .track-popup-meta div {
   padding: 0.52rem 0.58rem;
   border-radius: 0.85rem;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.045),
-    rgba(255, 255, 255, 0.02)
-  );
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
   border: 1px solid rgba(162, 205, 242, 0.12);
   backdrop-filter: blur(10px);
 }
@@ -1663,16 +1602,8 @@ body.app-body {
   padding: 1.15rem;
   border-radius: 2rem;
   background:
-    radial-gradient(
-      circle at top left,
-      rgba(141, 232, 255, 0.17),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at top right,
-      rgba(246, 203, 109, 0.18),
-      transparent 24%
-    ),
+    radial-gradient(circle at top left, rgba(141, 232, 255, 0.17), transparent 34%),
+    radial-gradient(circle at top right, rgba(246, 203, 109, 0.18), transparent 24%),
     linear-gradient(135deg, rgba(8, 25, 40, 0.98), rgba(5, 16, 29, 0.98));
 }
 
@@ -1709,11 +1640,7 @@ body.app-body {
   padding: 1.9rem;
   border-radius: 1.5rem;
   background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.04),
-      rgba(255, 255, 255, 0.015)
-    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
     rgba(4, 15, 26, 0.3);
 }
 
@@ -1724,11 +1651,7 @@ body.app-body {
   padding: 1.35rem;
   border-radius: 1.5rem;
   background:
-    radial-gradient(
-      circle at top left,
-      rgba(246, 203, 109, 0.14),
-      transparent 32%
-    ),
+    radial-gradient(circle at top left, rgba(246, 203, 109, 0.14), transparent 32%),
     linear-gradient(180deg, rgba(8, 24, 38, 0.94), rgba(5, 15, 27, 0.98));
   border: 1px solid rgba(246, 203, 109, 0.14);
 }
@@ -1770,11 +1693,7 @@ body.app-body {
   gap: 0.24rem;
   padding: 0.9rem 0.95rem;
   border-radius: 1rem;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.04),
-    rgba(255, 255, 255, 0.015)
-  );
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
   border: 1px solid rgba(141, 232, 255, 0.09);
 }
 
@@ -1874,11 +1793,7 @@ body.app-body {
 
 .grpc-docs-button-primary {
   color: #05111d;
-  background: linear-gradient(
-    135deg,
-    rgba(141, 232, 255, 0.98),
-    rgba(246, 203, 109, 0.9)
-  );
+  background: linear-gradient(135deg, rgba(141, 232, 255, 0.98), rgba(246, 203, 109, 0.9));
   border-color: transparent;
   font-weight: 700;
 }
@@ -1895,11 +1810,7 @@ body.app-body {
 .grpc-schema-row {
   border-radius: 1rem;
   background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.055),
-      rgba(255, 255, 255, 0.018)
-    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
     rgba(4, 15, 26, 0.34);
   backdrop-filter: blur(12px);
 }
@@ -1933,11 +1844,7 @@ body.app-body {
   padding: 1.25rem;
   border-radius: 1.55rem;
   background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.045),
-      rgba(255, 255, 255, 0.015)
-    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
     linear-gradient(135deg, rgba(8, 23, 38, 0.92), rgba(5, 15, 27, 0.98));
 }
 
@@ -1993,11 +1900,7 @@ body.app-body {
   padding: 0.85rem 0.9rem;
   border-radius: 1rem;
   background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.045),
-      rgba(255, 255, 255, 0.015)
-    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
     rgba(4, 15, 26, 0.28);
   border: 1px solid rgba(141, 232, 255, 0.08);
 }
@@ -2131,16 +2034,8 @@ body.app-body {
   padding: 1.2rem;
   border-radius: 1.6rem;
   background:
-    radial-gradient(
-      circle at top right,
-      rgba(141, 232, 255, 0.12),
-      transparent 28%
-    ),
-    radial-gradient(
-      circle at top left,
-      rgba(246, 203, 109, 0.08),
-      transparent 22%
-    ),
+    radial-gradient(circle at top right, rgba(141, 232, 255, 0.12), transparent 28%),
+    radial-gradient(circle at top left, rgba(246, 203, 109, 0.08), transparent 22%),
     linear-gradient(180deg, rgba(8, 23, 37, 0.9), rgba(5, 17, 29, 0.96));
 }
 
@@ -2194,11 +2089,7 @@ body.app-body {
   transform: translateY(-1px);
   border-color: rgba(141, 232, 255, 0.18);
   background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.065),
-      rgba(255, 255, 255, 0.025)
-    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.025)),
     rgba(4, 15, 26, 0.42);
 }
 
