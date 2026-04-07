@@ -113,6 +113,35 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     assert has_element?(view, ".detail-hero p", "406ABD")
   end
 
+  test "selected aircraft render FlightAware photos and flight page links", %{conn: conn} do
+    observed_at = DateTime.utc_now(:second)
+
+    assert {:ok, [_track_id]} =
+             Ingest.ingest_batch(plane_source_fixture(), [
+               plane_observation(observed_at, "406ABC", "AFR69ZJ", "F-GZNE", 36.101, -6.141)
+             ])
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view
+    |> element("#track-grid .track-row")
+    |> render_click()
+
+    assert has_element?(
+             view,
+             "a.detail-action[href='https://www.flightaware.com/photos/aircraft/FGZNE']",
+             "Photos"
+           )
+
+    assert has_element?(
+             view,
+             "a.detail-action[href='https://www.flightaware.com/live/modes/406abc/ident/AFR69ZJ/redirect']",
+             "Flight page"
+           )
+
+    assert render(view) =~ "External lookup. Opens in a new tab when this aircraft has enough identifiers."
+  end
+
   defp plane_source_fixture do
     %Source{
       id: "dump1090-main",

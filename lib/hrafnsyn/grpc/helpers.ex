@@ -6,7 +6,10 @@ defmodule Hrafnsyn.GRPC.Helpers do
   def timestamp(nil), do: nil
 
   def timestamp(%DateTime{} = value) do
-    %Google.Protobuf.Timestamp{seconds: DateTime.to_unix(value), nanos: value.microsecond |> elem(0) |> Kernel.*(1_000)}
+    %Google.Protobuf.Timestamp{
+      seconds: DateTime.to_unix(value),
+      nanos: value.microsecond |> elem(0) |> Kernel.*(1_000)
+    }
   end
 
   def timestamp(%NaiveDateTime{} = value) do

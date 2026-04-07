@@ -88,7 +88,9 @@ defmodule Hrafnsyn.GRPC.AuthServer do
         raise GRPC.RPCError, status: :permission_denied, message: "Admin privileges are required"
 
       {:error, reason} ->
-        raise GRPC.RPCError, status: :internal, message: "Global revocation failed: #{inspect(reason)}"
+        raise GRPC.RPCError,
+          status: :internal,
+          message: "Global revocation failed: #{inspect(reason)}"
     end
   end
 end

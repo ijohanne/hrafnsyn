@@ -73,7 +73,9 @@ defmodule Hrafnsyn.GRPC.AuthInterceptor do
     if method_name == "GetAuthStatus" and ApiAuth.auth_required?(), do: :optional, else: :none
   end
 
-  defp policy(%{service_name: "hrafnsyn.v1.AuthService", method_name: "RevokeAllSessions"}), do: :admin
+  defp policy(%{service_name: "hrafnsyn.v1.AuthService", method_name: "RevokeAllSessions"}),
+    do: :admin
+
   defp policy(%{service_name: "hrafnsyn.v1.AuthService"}), do: :authenticated
 
   defp policy(%{service_name: "hrafnsyn.v1.TrackingService"}) do

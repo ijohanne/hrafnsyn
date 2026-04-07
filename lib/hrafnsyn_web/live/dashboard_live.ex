@@ -3,6 +3,7 @@ defmodule HrafnsynWeb.DashboardLive do
 
   alias Hrafnsyn.Collectors.Config, as: CollectorConfig
   alias Hrafnsyn.Tracking
+  alias Hrafnsyn.Tracking.ExternalLinks
 
   @ranges [{"1h", 1}, {"6h", 6}, {"24h", 24}, {"72h", 72}]
 
@@ -294,6 +295,7 @@ defmodule HrafnsynWeb.DashboardLive do
             </div>
 
             <div :if={@selected_track} class="detail-card">
+              <% external_actions = detail_external_actions(@selected_track) %>
               <div class="detail-hero">
                 <span class={["track-pill", @selected_track.vehicle_type]}>
                   {String.upcase(@selected_track.vehicle_type)}
@@ -302,6 +304,27 @@ defmodule HrafnsynWeb.DashboardLive do
                   <h2>{@selected_track.display_name || @selected_track.identity}</h2>
                   <p>{@selected_track.identity}</p>
                 </div>
+              </div>
+
+              <div :if={external_actions != []} class="detail-actions">
+                <div class="detail-actions-row">
+                  <span class="detail-actions-label">FlightAware</span>
+
+                  <a
+                    :for={action <- external_actions}
+                    class="detail-action"
+                    href={action.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={action.description}
+                  >
+                    {action.label}
+                  </a>
+                </div>
+
+                <p class="detail-actions-note">
+                  External lookup. Opens in a new tab when this aircraft has enough identifiers.
+                </p>
               </div>
 
               <dl class="detail-grid">
@@ -513,6 +536,8 @@ defmodule HrafnsynWeb.DashboardLive do
       _other -> common
     end
   end
+
+  defp detail_external_actions(track), do: ExternalLinks.aircraft_actions(track)
 
   defp plane_detail_items(track) do
     [

@@ -80,7 +80,10 @@ defmodule Hrafnsyn.AccountsTest do
     test "registers users without password" do
       username = unique_user_username()
       email = unique_user_email()
-      {:ok, user} = Accounts.register_user(valid_user_attributes(username: username, email: email))
+
+      {:ok, user} =
+        Accounts.register_user(valid_user_attributes(username: username, email: email))
+
       assert user.username == username
       assert user.email == email
       assert is_nil(user.hashed_password)

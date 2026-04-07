@@ -325,7 +325,8 @@ defmodule Hrafnsyn.Accounts do
     :ok
   end
 
-  defp create_bootstrap_user(%{password: password} = attrs) when is_binary(password) and password != "" do
+  defp create_bootstrap_user(%{password: password} = attrs)
+       when is_binary(password) and password != "" do
     %User{}
     |> User.admin_create_changeset(attrs)
     |> Repo.insert()

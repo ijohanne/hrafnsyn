@@ -62,7 +62,7 @@ end
 defmodule Hrafnsyn.V1.StreamObservationsRequest do
   use Protobuf, syntax: :proto3
 
-  oneof :message, 0
+  oneof(:message, 0)
 
   field :hello, 1, type: Hrafnsyn.V1.ClientHello, oneof: 0
   field :observation, 2, type: Hrafnsyn.V1.ObservationEnvelope, oneof: 0
@@ -95,7 +95,7 @@ end
 defmodule Hrafnsyn.V1.StreamObservationsResponse do
   use Protobuf, syntax: :proto3
 
-  oneof :message, 0
+  oneof(:message, 0)
 
   field :accepted, 1, type: Hrafnsyn.V1.StreamAccepted, oneof: 0
   field :ack, 2, type: Hrafnsyn.V1.ObservationAck, oneof: 0
@@ -150,12 +150,15 @@ defmodule Hrafnsyn.V1.TokenPair do
 
   field :access_token, 1, type: :string, json_name: "accessToken"
   field :refresh_token, 2, type: :string, json_name: "refreshToken"
+
   field :access_token_expires_at, 3,
     type: Google.Protobuf.Timestamp,
     json_name: "accessTokenExpiresAt"
+
   field :refresh_token_expires_at, 4,
     type: Google.Protobuf.Timestamp,
     json_name: "refreshTokenExpiresAt"
+
   field :session, 5, type: Hrafnsyn.V1.SessionInfo
   field :user, 6, type: Hrafnsyn.V1.UserProfile
 end

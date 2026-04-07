@@ -117,10 +117,19 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     Repo.transact(fn ->
       session_id = Ecto.UUID.generate()
 
-      with {:ok, refresh_token, refresh_claims} <- ApiJwt.generate_refresh_token(user, session_id),
+      with {:ok, refresh_token, refresh_claims} <-
+             ApiJwt.generate_refresh_token(user, session_id),
            {:ok, session} <- insert_session(user, session_id, refresh_claims),
            {:ok, access_token, access_claims} <- ApiJwt.generate_access_token(user, session.id) do
-        {:ok, build_token_pair(user, session, access_token, access_claims, refresh_token, refresh_claims)}
+        {:ok,
+         build_token_pair(
+           user,
+           session,
+           access_token,
+           access_claims,
+           refresh_token,
+           refresh_claims
+         )}
       else
         {:error, reason} -> {:error, reason}
       end
@@ -131,7 +140,8 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     with {:ok, refresh_token, refresh_claims} <- ApiJwt.generate_refresh_token(user, session.id),
          {:ok, access_token, access_claims} <- ApiJwt.generate_access_token(user, session.id),
          {:ok, session} <- update_refresh_session(session, refresh_claims) do
-      {:ok, build_token_pair(user, session, access_token, access_claims, refresh_token, refresh_claims)}
+      {:ok,
+       build_token_pair(user, session, access_token, access_claims, refresh_token, refresh_claims)}
     else
       {:error, _reason} = error -> error
     end

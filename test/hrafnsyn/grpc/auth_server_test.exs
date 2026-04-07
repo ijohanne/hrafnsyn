@@ -34,7 +34,8 @@ defmodule Hrafnsyn.GRPC.AuthServerTest do
 
       assert is_rpc_error(error, @unauthenticated)
 
-      assert {:ok, %Hrafnsyn.V1.TokenPair{access_token: access_token, refresh_token: refresh_token}} =
+      assert {:ok,
+              %Hrafnsyn.V1.TokenPair{access_token: access_token, refresh_token: refresh_token}} =
                AuthStub.login(channel, %Hrafnsyn.V1.LoginRequest{
                  username: user.username,
                  password: valid_user_password()
@@ -210,7 +211,9 @@ defmodule Hrafnsyn.GRPC.AuthServerTest do
   defp ensure_grpc_client_supervisor! do
     case Process.whereis(GRPC.Client.Supervisor) do
       nil ->
-        start_supervised!({DynamicSupervisor, strategy: :one_for_one, name: GRPC.Client.Supervisor})
+        start_supervised!(
+          {DynamicSupervisor, strategy: :one_for_one, name: GRPC.Client.Supervisor}
+        )
 
       _pid ->
         :ok
@@ -222,7 +225,12 @@ defmodule Hrafnsyn.GRPC.AuthServerTest do
     original_grpc_config = Application.get_env(:hrafnsyn, Hrafnsyn.GRPC, [])
 
     Application.put_env(:hrafnsyn, :public_readonly?, public_readonly?)
-    Application.put_env(:hrafnsyn, Hrafnsyn.GRPC, Keyword.put(original_grpc_config, :jwt_secret, "test-grpc-secret"))
+
+    Application.put_env(
+      :hrafnsyn,
+      Hrafnsyn.GRPC,
+      Keyword.put(original_grpc_config, :jwt_secret, "test-grpc-secret")
+    )
 
     on_exit(fn ->
       Application.put_env(:hrafnsyn, :public_readonly?, original_public_readonly)

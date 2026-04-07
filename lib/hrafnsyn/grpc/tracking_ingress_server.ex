@@ -36,12 +36,20 @@ defmodule Hrafnsyn.GRPC.TrackingIngressServer do
   defp handle_message(_other) do
     [
       %Hrafnsyn.V1.StreamObservationsResponse{
-        message: {:notice, %Hrafnsyn.V1.StreamNotice{code: "invalid_message", message: "Unsupported ingress message"}}
+        message:
+          {:notice,
+           %Hrafnsyn.V1.StreamNotice{
+             code: "invalid_message",
+             message: "Unsupported ingress message"
+           }}
       }
     ]
   end
 
-  defp ingest_observation(%Hrafnsyn.V1.ObservationEnvelope{source: source, observation: observation}) do
+  defp ingest_observation(%Hrafnsyn.V1.ObservationEnvelope{
+         source: source,
+         observation: observation
+       }) do
     with {:ok, source} <- Helpers.grpc_source(source),
          {:ok, attrs} <- Helpers.observation_attrs(observation),
          {:ok, [track_id | _]} <- Ingest.ingest_batch(source, [attrs]) do
