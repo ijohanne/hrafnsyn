@@ -123,6 +123,7 @@ server {
   server_name tracks.example.com;
 
   location / {
+    # gRPC traffic stays on the same public URL and is selected by Content-Type.
     grpc_read_timeout 1h;
     grpc_send_timeout 1h;
     grpc_set_header X-Real-IP $remote_addr;
@@ -132,6 +133,7 @@ server {
       grpc_pass grpc://127.0.0.1:50051;
     }
 
+    # Everything else continues to Phoenix/LiveView on the same URL.
     proxy_pass http://127.0.0.1:4000;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -143,6 +145,8 @@ server {
   }
 }
 ```
+
+This keeps both transports on one clean external URL. You do not need a separate `grpc.` subdomain unless you want one.
 
 If you are not exposing the gRPC listener, remove the `grpc_*` lines and the conditional `grpc_pass` block.
 

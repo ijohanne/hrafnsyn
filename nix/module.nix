@@ -194,6 +194,11 @@ in
       enable = lib.mkOption {
         type = lib.types.bool;
         default = false;
+        description = ''
+          Enable an nginx vhost that keeps Phoenix and gRPC on one external URL.
+          Requests with `Content-Type: application/grpc` are forwarded to the
+          gRPC listener and everything else is proxied to Phoenix/LiveView.
+        '';
       };
 
       domain = lib.mkOption {
@@ -326,6 +331,8 @@ in
             proxyWebsockets = true;
             extraConfig =
               ''
+                # Keep HTTP/WebSocket and gRPC traffic on a single clean URL,
+                # matching the vardrun routing pattern.
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

@@ -138,7 +138,7 @@ If you want to expose the gRPC API too:
 }
 ```
 
-When `grpc.enable = true`, the helper adds conditional `grpc_pass` routing for requests whose `Content-Type` matches `application/grpc`.
+When `grpc.enable = true`, the helper follows the same nginx pattern used in `vardrun`: requests whose `Content-Type` matches `application/grpc` are routed to the gRPC upstream, and everything else stays on the Phoenix upstream. That keeps Hrafnsyn on one clean external URL instead of splitting HTTP and gRPC across separate hostnames.
 
 JWT signing for the gRPC API defaults to the same secret material as `SECRET_KEY_BASE`. If you need a separate signing secret, set `HRAFNSYN_JWT_SIGNING_SECRET` through `extraEnv` or a wrapped systemd credential/env file.
 
