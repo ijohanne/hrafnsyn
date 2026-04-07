@@ -243,7 +243,7 @@ EOF
             mix assets.deploy --no-deps-check
           '';
 
-          postInstall = ''
+          fixupPhase = ''
             echo "hrafnsyn_cookie" > $out/releases/COOKIE
           '';
         };

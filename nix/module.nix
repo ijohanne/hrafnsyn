@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.services.hrafnsyn;
+  releaseTmp = "/tmp/${cfg.user}";
   nginxEnabled = cfg.nginxHelper.enable;
   localPostgresEnabled =
     cfg.databaseUrl == null &&
@@ -396,6 +397,9 @@ in
           HRAFNSYN_TRUSTED_PROXIES = builtins.concatStringsSep "," cfg.trustedProxies;
           HRAFNSYN_MAP_STYLE_URL = cfg.mapStyleUrl;
           HRAFNSYN_PUBLIC_READONLY = if cfg.publicReadonly then "true" else "false";
+          RELEASE_NODE = cfg.user;
+          RELEASE_TMP = releaseTmp;
+          LANG = "en_US.UTF-8";
         }
         // lib.optionalAttrs (cfg.sourcesJsonFile == null) {
           HRAFNSYN_SOURCES_JSON = sourcesJson;
@@ -435,6 +439,7 @@ in
         Group = cfg.group;
         WorkingDirectory = "/var/lib/${cfg.user}";
         Restart = "on-failure";
+        RestartSec = 5;
         StateDirectory = cfg.user;
         RuntimeDirectory = cfg.user;
         LoadCredential =
