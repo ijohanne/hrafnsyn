@@ -461,12 +461,58 @@ body.app-body {
 .legend-card {
   display: grid;
   gap: 0.45rem;
+  pointer-events: auto;
 }
 
 .legend-row {
   display: flex;
   gap: 0.55rem;
   align-items: center;
+}
+
+.legend-toggle {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 999px;
+  transition:
+    opacity 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.legend-toggle:hover,
+.legend-toggle:focus-visible {
+  color: #f8fcff;
+}
+
+.legend-toggle:hover {
+  transform: translateX(1px);
+}
+
+.legend-toggle:focus-visible {
+  outline: 2px solid rgba(244, 201, 93, 0.75);
+  outline-offset: 3px;
+}
+
+.legend-toggle.is-muted {
+  color: var(--text-soft);
+  opacity: 0.62;
+}
+
+.legend-toggle.is-muted .legend-swatch {
+  box-shadow: none;
+  filter: saturate(0.6);
+  opacity: 0.5;
+}
+
+.legend-row-static {
+  color: var(--text-soft);
+  opacity: 0.86;
 }
 
 .legend-swatch {

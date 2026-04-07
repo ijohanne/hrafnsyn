@@ -212,7 +212,9 @@ const ProfileMenu = {
 
 const TrackingMap = {
   mounted() {
+    this.mapEl = this.el.querySelector("[data-map-canvas]")
     this.pendingPayload = null
+    this.lastTrackFeatures = []
     this.lastSelectedTrackId = null
     this.activePopupTrackId = null
     this.activePopupCoordinates = null
@@ -222,9 +224,25 @@ const TrackingMap = {
     this.popupMargin = 12
     this.popupOffset = 16
     this.popupRepositionFrame = null
+    this.visibility = {plane: true, vessel: true}
+    this.handleLegendClick = event => {
+      const button = event.target.closest("[data-track-toggle]")
+      if (!button || !this.el.contains(button)) return
+
+      const vehicleType = button.dataset.trackToggle
+      if (!Object.hasOwn(this.visibility, vehicleType)) return
+
+      this.visibility[vehicleType] = !this.visibility[vehicleType]
+      this.syncLegendState()
+      this.applyTrackVisibility()
+      this.refreshPopupVisibility()
+    }
+
+    this.el.addEventListener("click", this.handleLegendClick)
+    this.syncLegendState()
 
     this.map = new window.maplibregl.Map({
-      container: this.el,
+      container: this.mapEl,
       style: this.el.dataset.styleUrl,
       center: [-5.3, 36.1],
       zoom: 8.1,
@@ -419,13 +437,20 @@ const TrackingMap = {
       if (this.pendingPayload) {
         this.sync(this.pendingPayload)
       }
+
+      this.applyTrackVisibility()
     })
 
     this.handleEvent("map:sync", payload => this.sync(payload))
   },
 
+  updated() {
+    this.syncLegendState()
+  },
+
   destroyed() {
     if (this.popupRepositionFrame) window.cancelAnimationFrame(this.popupRepositionFrame)
+    this.el.removeEventListener("click", this.handleLegendClick)
     if (this.map) this.map.remove()
   },
 
@@ -490,6 +515,8 @@ const TrackingMap = {
       },
     }))
 
+    this.lastTrackFeatures = trackFeatures
+
     this.map.getSource("tracks").setData({
       type: "FeatureCollection",
       features: trackFeatures,
@@ -504,6 +531,8 @@ const TrackingMap = {
       type: "FeatureCollection",
       features: routePointFeatures,
     })
+
+    this.applyTrackVisibility()
 
     if (payload.selected_track_id && payload.selected_track_id !== this.lastSelectedTrackId && routeFeatures.length > 0) {
       const bounds = new window.maplibregl.LngLatBounds()
@@ -528,6 +557,62 @@ const TrackingMap = {
 
   emptyCollection() {
     return {type: "FeatureCollection", features: []}
+  },
+
+  syncLegendState() {
+    this.el.querySelectorAll("[data-track-toggle]").forEach(button => {
+      const active = this.visibility[button.dataset.trackToggle] !== false
+
+      button.setAttribute("aria-pressed", active ? "true" : "false")
+      button.classList.toggle("is-active", active)
+      button.classList.toggle("is-muted", !active)
+    })
+  },
+
+  visibleTrackFilter() {
+    const filters = Object.entries(this.visibility)
+      .filter(([, visible]) => visible)
+      .map(([vehicleType]) => ["==", ["get", "vehicle_type"], vehicleType])
+
+    if (filters.length === 0) return ["==", ["get", "vehicle_type"], "__hidden__"]
+    if (filters.length === 1) return filters[0]
+    return ["any", ...filters]
+  },
+
+  selectedTrackVisible() {
+    const selectedTrack = this.pendingPayload?.tracks?.find(
+      track => track.id === this.pendingPayload?.selected_track_id,
+    )
+
+    if (!selectedTrack) return false
+    return this.visibility[selectedTrack.vehicle_type] !== false
+  },
+
+  applyTrackVisibility() {
+    if (!this.map?.isStyleLoaded()) return
+
+    const trackFilter = this.visibleTrackFilter()
+    const haloFilter = ["all", ["==", ["get", "selected"], true], trackFilter]
+
+    if (this.map.getLayer("tracks-layer")) this.map.setFilter("tracks-layer", trackFilter)
+    if (this.map.getLayer("tracks-labels")) this.map.setFilter("tracks-labels", trackFilter)
+    if (this.map.getLayer("tracks-selected-halo")) this.map.setFilter("tracks-selected-halo", haloFilter)
+
+    const routeVisibility = this.selectedTrackVisible() ? "visible" : "none"
+
+    if (this.map.getLayer("route-layer")) this.map.setLayoutProperty("route-layer", "visibility", routeVisibility)
+    if (this.map.getLayer("route-points-layer")) {
+      this.map.setLayoutProperty("route-points-layer", "visibility", routeVisibility)
+    }
+  },
+
+  refreshPopupVisibility() {
+    if (!this.lastTrackFeatures.length) return
+    this.refreshPopup(this.lastTrackFeatures, this.pendingPayload?.selected_track_id)
+  },
+
+  isFeatureVisible(feature) {
+    return this.visibility[feature?.properties?.vehicle_type] !== false
   },
 
   async installTrackIcons() {
@@ -707,7 +792,7 @@ const TrackingMap = {
     ) {
       const selectedFeature = trackFeatures.find(track => track.properties.id === selectedTrackId)
 
-      if (selectedFeature) {
+      if (selectedFeature && this.isFeatureVisible(selectedFeature)) {
         this.openPopup(selectedFeature, true)
         return
       }
@@ -726,6 +811,11 @@ const TrackingMap = {
       this.popup.remove()
       this.activePopupTrackId = null
       this.popupPinned = false
+      return
+    }
+
+    if (!this.isFeatureVisible(feature)) {
+      this.popup.remove()
       return
     }
 

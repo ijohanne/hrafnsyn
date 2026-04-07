@@ -53,6 +53,24 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     assert html =~ ~s(href="/users/tokens")
   end
 
+  test "legend renders plane and vessel toggles enabled by default", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    assert has_element?(
+             view,
+             "button.legend-toggle[data-track-toggle='plane'][aria-pressed='true']",
+             "Aircraft"
+           )
+
+    assert has_element?(
+             view,
+             "button.legend-toggle[data-track-toggle='vessel'][aria-pressed='true']",
+             "Vessels"
+           )
+
+    assert has_element?(view, ".legend-row-static", "Selected route")
+  end
+
   test "search stays collapsed by default and submitting an exact match selects the track", %{
     conn: conn
   } do

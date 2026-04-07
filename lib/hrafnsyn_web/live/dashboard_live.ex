@@ -139,27 +139,38 @@ defmodule HrafnsynWeb.DashboardLive do
             </section>
           </div>
 
-          <div class="tracking-map-frame">
-            <div
-              id="tracking-map"
-              class="tracking-map"
-              phx-hook="TrackingMap"
-              phx-update="ignore"
-              data-style-url={@map_style_url}
-              data-glyph-color={Application.get_env(:hrafnsyn, :map_glyph_color)}
-            >
-            </div>
+          <div
+            id="tracking-map-frame"
+            class="tracking-map-frame"
+            phx-hook="TrackingMap"
+            data-style-url={@map_style_url}
+            data-glyph-color={Application.get_env(:hrafnsyn, :map_glyph_color)}
+          >
+            <div id="tracking-map" class="tracking-map" phx-update="ignore" data-map-canvas></div>
 
-            <div class="map-overlay bottom-left legend-card">
-              <div class="legend-row">
+            <div
+              class="map-overlay bottom-left legend-card"
+              aria-label="Map legend and visibility controls"
+            >
+              <button
+                type="button"
+                class="legend-row legend-toggle is-active"
+                data-track-toggle="plane"
+                aria-pressed="true"
+              >
                 <span class="legend-swatch plane"></span>
                 <span>Aircraft</span>
-              </div>
-              <div class="legend-row">
+              </button>
+              <button
+                type="button"
+                class="legend-row legend-toggle is-active"
+                data-track-toggle="vessel"
+                aria-pressed="true"
+              >
                 <span class="legend-swatch vessel"></span>
                 <span>Vessels</span>
-              </div>
-              <div class="legend-row">
+              </button>
+              <div class="legend-row legend-row-static">
                 <span class="legend-swatch route"></span>
                 <span>Selected route</span>
               </div>
