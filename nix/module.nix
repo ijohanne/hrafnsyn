@@ -2,6 +2,59 @@
 let
   cfg = config.services.hrafnsyn;
   nginxEnabled = cfg.nginxHelper.enable;
+  sourceType = lib.types.submodule ({ ... }: {
+    options = {
+      id = lib.mkOption {
+        type = lib.types.str;
+        description = "Stable source identifier used in logs, metrics, and track history.";
+      };
+
+      name = lib.mkOption {
+        type = lib.types.str;
+        description = "Human-friendly source label shown in the UI.";
+      };
+
+      vehicleType = lib.mkOption {
+        type = lib.types.enum [ "plane" "vessel" ];
+        description = "Vehicle family collected by this source.";
+      };
+
+      adapter = lib.mkOption {
+        type = lib.types.enum [ "dump1090" "ais_catcher" ];
+        description = "Collector adapter used to poll the upstream feed.";
+      };
+
+      baseUrl = lib.mkOption {
+        type = lib.types.str;
+        description = "Base URL for the upstream collector endpoint.";
+      };
+
+      pollIntervalMs = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 2500;
+        description = "Polling interval in milliseconds.";
+      };
+
+      enabled = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Whether this source should run.";
+      };
+    };
+  });
+  sourcesJson =
+    builtins.toJSON
+      (map
+        (source: {
+          id = source.id;
+          name = source.name;
+          vehicle_type = source.vehicleType;
+          adapter = source.adapter;
+          base_url = source.baseUrl;
+          poll_interval_ms = source.pollIntervalMs;
+          enabled = source.enabled;
+        })
+        cfg.sources);
   grafanaDashboardPath = pkgs.runCommand "hrafnsyn-grafana-dashboards" { } ''
     mkdir -p "$out"
     cp ${../grafana/dashboards/hrafnsyn-overview.json} "$out/hrafnsyn-overview.json"
@@ -118,10 +171,40 @@ in
       default = "https://tiles.openfreemap.org/styles/liberty";
     };
 
+    sources = lib.mkOption {
+      type = lib.types.listOf sourceType;
+      default = [ ];
+      description = ''
+        Structured collector definitions. These are rendered into
+        `HRAFNSYN_SOURCES_JSON` for the release at runtime.
+      '';
+      example = [
+        {
+          id = "planes-main";
+          name = "Airplane SDR";
+          vehicleType = "plane";
+          adapter = "dump1090";
+          baseUrl = "http://10.255.101.202";
+          pollIntervalMs = 1000;
+        }
+        {
+          id = "boats-main";
+          name = "Boat SDR";
+          vehicleType = "vessel";
+          adapter = "ais_catcher";
+          baseUrl = "http://10.255.101.202:8100";
+          pollIntervalMs = 2500;
+        }
+      ];
+    };
+
     sourcesJsonFile = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
-      description = "Path to a raw JSON file describing configured collectors.";
+      description = ''
+        Deprecated escape hatch for loading collector definitions from a raw JSON
+        file. Prefer `services.hrafnsyn.sources`.
+      '';
     };
 
     publicReadonly = lib.mkOption {
@@ -224,10 +307,18 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    warnings =
+      lib.optional (cfg.sourcesJsonFile != null)
+        "services.hrafnsyn.sourcesJsonFile is deprecated; prefer services.hrafnsyn.sources.";
+
     assertions = [
       {
         assertion = cfg.databaseUrl != null || cfg.databaseUrlFile != null;
         message = "services.hrafnsyn.databaseUrl or databaseUrlFile must be configured.";
+      }
+      {
+        assertion = !(cfg.sources != [ ] && cfg.sourcesJsonFile != null);
+        message = "services.hrafnsyn.sources and sourcesJsonFile cannot both be configured at the same time.";
       }
     ];
 
@@ -255,6 +346,9 @@ in
           HRAFNSYN_TRUSTED_PROXIES = builtins.concatStringsSep "," cfg.trustedProxies;
           HRAFNSYN_MAP_STYLE_URL = cfg.mapStyleUrl;
           HRAFNSYN_PUBLIC_READONLY = if cfg.publicReadonly then "true" else "false";
+        }
+        // lib.optionalAttrs (cfg.sourcesJsonFile == null) {
+          HRAFNSYN_SOURCES_JSON = sourcesJson;
         }
         // lib.optionalAttrs (cfg.databaseUrl != null) { DATABASE_URL = cfg.databaseUrl; }
         // lib.optionalAttrs (cfg.metricsPort != null) {

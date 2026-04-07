@@ -41,7 +41,24 @@ Add the repository as a flake input and import the module:
 
     databaseUrlFile = /run/secrets/hrafnsyn-database-url;
     secretKeyBaseFile = /run/secrets/hrafnsyn-secret-key-base;
-    sourcesJsonFile = /run/secrets/hrafnsyn-sources.json;
+    sources = [
+      {
+        id = "planes-main";
+        name = "Airplane SDR";
+        vehicleType = "plane";
+        adapter = "dump1090";
+        baseUrl = "http://10.255.101.202";
+        pollIntervalMs = 1000;
+      }
+      {
+        id = "boats-main";
+        name = "Boat SDR";
+        vehicleType = "vessel";
+        adapter = "ais_catcher";
+        baseUrl = "http://10.255.101.202:8100";
+        pollIntervalMs = 2500;
+      }
+    ];
 
     publicReadonly = false;
 
@@ -66,7 +83,7 @@ This sets:
 - `PORT`, `LISTEN_ADDRESS`, `PHX_HOST`
 - `HRAFNSYN_SCHEME`, `HRAFNSYN_EXTERNAL_PORT`, `HRAFNSYN_TRUSTED_PROXIES`
 - `HRAFNSYN_PUBLIC_READONLY`
-- `HRAFNSYN_SOURCES_JSON` from `sourcesJsonFile`
+- `HRAFNSYN_SOURCES_JSON` generated from `services.hrafnsyn.sources`
 - `DATABASE_URL` and `SECRET_KEY_BASE` from systemd credentials
 
 ## Auth and Operator Modes
@@ -98,16 +115,47 @@ and leaves existing users unchanged.
 The module also still exposes `bootstrapAdminEmail` and `bootstrapAdminPasswordHashFile` for the
 legacy single-user bootstrap path, but new deployments should use `users` instead.
 
+## Collector Sources
+
+The preferred way to define collectors is `services.hrafnsyn.sources`:
+
+```nix
+services.hrafnsyn.sources = [
+  {
+    id = "planes-main";
+    name = "Airplane SDR";
+    vehicleType = "plane";
+    adapter = "dump1090";
+    baseUrl = "http://10.255.101.202";
+    pollIntervalMs = 1000;
+  }
+  {
+    id = "boats-main";
+    name = "Boat SDR";
+    vehicleType = "vessel";
+    adapter = "ais_catcher";
+    baseUrl = "http://10.255.101.202:8100";
+    pollIntervalMs = 2500;
+    enabled = true;
+  }
+];
+```
+
+The module converts that structured Nix data into the `HRAFNSYN_SOURCES_JSON`
+runtime environment variable expected by the release.
+
+`services.hrafnsyn.sourcesJsonFile` still works as a compatibility escape hatch,
+but it is deprecated for normal use.
+
 ## Secret File Format
 
 These module options expect raw file contents, not `KEY=value` shell snippets:
 
 - `databaseUrlFile` -> only the Postgres URL
 - `secretKeyBaseFile` -> only the secret key base
-- `sourcesJsonFile` -> only the JSON array
 - `bootstrapAdminPasswordHashFile` -> only the bcrypt hash when using the legacy bootstrap path
 
-Example source JSON:
+If you still need `sourcesJsonFile`, the file should contain only the JSON array:
 
 ```json
 [
