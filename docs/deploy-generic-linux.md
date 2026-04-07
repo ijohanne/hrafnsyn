@@ -57,9 +57,8 @@ HRAFNSYN_EXTERNAL_PORT=443
 HRAFNSYN_TRUSTED_PROXIES=127.0.0.1/8,::1/128
 DATABASE_URL=ecto://hrafnsyn:replace-me@127.0.0.1:5432/hrafnsyn
 SECRET_KEY_BASE=replace-with-mix-phx-gen-secret
-BOOTSTRAP_ADMIN_EMAIL=admin@example.com
-BOOTSTRAP_ADMIN_PASSWORD_HASH=$2b$12$replace-me
-HRAFNSYN_PUBLIC_READONLY=true
+HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"admin@example.com","is_admin":true}}'
+HRAFNSYN_PUBLIC_READONLY=false
 HRAFNSYN_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 HRAFNSYN_SOURCES_JSON=[{"id":"planes-main","name":"Airplane SDR","vehicle_type":"plane","adapter":"dump1090","base_url":"http://10.255.101.202","poll_interval_ms":1000,"enabled":true},{"id":"boats-main","name":"Boat SDR","vehicle_type":"vessel","adapter":"ais_catcher","base_url":"http://10.255.101.202:8100","poll_interval_ms":2500,"enabled":true}]
 ```
@@ -70,11 +69,7 @@ Generate a secret key with:
 mix phx.gen.secret
 ```
 
-Generate the admin password hash with:
-
-```sh
-mix run -e 'IO.puts(Bcrypt.hash_pwd_salt("change-me-now"))'
-```
+Bootstrap passwords are hashed on first start and skipped if the named user already exists.
 
 ## Migrate
 

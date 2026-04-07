@@ -2,9 +2,12 @@ defmodule Hrafnsyn.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @username_regex ~r/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "users" do
+    field :username, :string
     field :email, :string
     field :is_admin, :boolean, default: false
     field :password, :string, virtual: true, redact: true
@@ -29,13 +32,20 @@ defmodule Hrafnsyn.Accounts.User do
   def email_changeset(user, attrs, opts \\ []) do
     user
     |> cast(attrs, [:email])
+    |> validate_required([:email])
     |> validate_email(opts)
+  end
+
+  def registration_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:username, :email])
+    |> validate_username()
+    |> validate_optional_email()
   end
 
   defp validate_email(changeset, opts) do
     changeset =
       changeset
-      |> validate_required([:email])
       |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
         message: "must have the @ sign and no spaces"
       )
@@ -49,6 +59,25 @@ defmodule Hrafnsyn.Accounts.User do
     else
       changeset
     end
+  end
+
+  defp validate_optional_email(changeset, opts \\ []) do
+    case get_field(changeset, :email) do
+      nil -> changeset
+      _email -> validate_email(changeset, opts)
+    end
+  end
+
+  defp validate_username(changeset) do
+    changeset
+    |> validate_required([:username])
+    |> validate_length(:username, min: 1, max: 32)
+    |> validate_format(:username, @username_regex,
+      message:
+        "must start with a letter or number and only contain letters, numbers, dots, underscores, or dashes"
+    )
+    |> unsafe_validate_unique(:username, Hrafnsyn.Repo)
+    |> unique_constraint(:username)
   end
 
   defp validate_email_changed(changeset) do
@@ -119,16 +148,18 @@ defmodule Hrafnsyn.Accounts.User do
 
   def admin_create_changeset(user, attrs) do
     user
-    |> cast(attrs, [:email, :is_admin])
-    |> validate_email([])
+    |> cast(attrs, [:username, :email, :is_admin])
+    |> validate_username()
+    |> validate_optional_email()
     |> password_changeset(attrs)
     |> put_change(:confirmed_at, DateTime.utc_now(:second))
   end
 
   def bootstrap_changeset(user, attrs) do
     user
-    |> cast(attrs, [:email, :is_admin, :hashed_password, :confirmed_at])
-    |> validate_email([])
+    |> cast(attrs, [:username, :email, :is_admin, :hashed_password, :confirmed_at])
+    |> validate_username()
+    |> validate_optional_email()
     |> validate_required([:hashed_password])
   end
 

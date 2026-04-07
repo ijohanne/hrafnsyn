@@ -49,10 +49,10 @@ defmodule Hrafnsyn.AccountsTest do
   end
 
   describe "register_user/1" do
-    test "requires email to be set" do
+    test "requires username to be set" do
       {:error, changeset} = Accounts.register_user(%{})
 
-      assert %{email: ["can't be blank"]} = errors_on(changeset)
+      assert %{username: ["can't be blank"]} = errors_on(changeset)
     end
 
     test "validates email when given" do
@@ -78,8 +78,10 @@ defmodule Hrafnsyn.AccountsTest do
     end
 
     test "registers users without password" do
+      username = unique_user_username()
       email = unique_user_email()
-      {:ok, user} = Accounts.register_user(valid_user_attributes(email: email))
+      {:ok, user} = Accounts.register_user(valid_user_attributes(username: username, email: email))
+      assert user.username == username
       assert user.email == email
       assert is_nil(user.hashed_password)
       assert is_nil(user.confirmed_at)

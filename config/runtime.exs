@@ -58,6 +58,23 @@ if public_readonly = System.get_env("HRAFNSYN_PUBLIC_READONLY") do
   config :hrafnsyn, :public_readonly?, public_readonly in ~w(true 1 yes on)
 end
 
+if bootstrap_users_json = System.get_env("HRAFNSYN_BOOTSTRAP_USERS_JSON") do
+  bootstrap_users =
+    bootstrap_users_json
+    |> Jason.decode!()
+    |> Enum.map(fn {username, attrs} ->
+      Enum.reduce(attrs, %{username: username}, fn
+        {"email", value}, acc -> Map.put(acc, :email, value)
+        {"hashed_password", value}, acc -> Map.put(acc, :hashed_password, value)
+        {"is_admin", value}, acc -> Map.put(acc, :is_admin, value)
+        {"password", value}, acc -> Map.put(acc, :password, value)
+        {_key, _value}, acc -> acc
+      end)
+    end)
+
+  config :hrafnsyn, :bootstrap_users, bootstrap_users
+end
+
 config :hrafnsyn, HrafnsynWeb.Endpoint,
   http: [ip: listen_ip, port: String.to_integer(System.get_env("PORT", "4000"))]
 

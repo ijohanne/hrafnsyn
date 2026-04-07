@@ -91,19 +91,14 @@ export HRAFNSYN_SOURCES_JSON='[
 
 ## Bootstrap Admin
 
-To create the first admin on boot:
+To require login locally and create the first admin on boot:
 
 ```sh
-export BOOTSTRAP_ADMIN_EMAIL="admin@example.com"
-export BOOTSTRAP_ADMIN_PASSWORD="change-me-now"
+export HRAFNSYN_PUBLIC_READONLY=false
+export HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"admin@example.com","is_admin":true}}'
 ```
 
-For a hashed secret:
-
-```sh
-mix run -e 'IO.puts(Bcrypt.hash_pwd_salt("change-me-now"))'
-export BOOTSTRAP_ADMIN_PASSWORD_HASH='$2b$12$...'
-```
+Bootstrap passwords are hashed during startup and ignored for users that already exist.
 
 ## Assets
 

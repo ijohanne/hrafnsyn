@@ -23,7 +23,7 @@ Add the repository as a flake input and import the module:
 ## Minimal Service Configuration
 
 ```nix
-{ pkgs, hrafnsyn, ... }:
+{ pkgs, config, hrafnsyn, ... }:
 {
   services.hrafnsyn = {
     enable = true;
@@ -38,9 +38,13 @@ Add the repository as a flake input and import the module:
 
     databaseUrlFile = /run/secrets/hrafnsyn-database-url;
     secretKeyBaseFile = /run/secrets/hrafnsyn-secret-key-base;
+    publicReadonly = false;
 
-    bootstrapAdminEmail = "admin@example.com";
-    bootstrapAdminPasswordHashFile = /run/secrets/hrafnsyn-admin-password-hash;
+    users.admin = {
+      password = config.sops.placeholder.hrafnsyn-admin-password;
+      email = "admin@example.com";
+      admin = true;
+    };
 
     sourcesJsonFile = /run/secrets/hrafnsyn-sources.json;
 
@@ -59,7 +63,6 @@ These module options expect raw file contents, not `KEY=value` shell snippets:
 
 - `databaseUrlFile` -> only the Postgres URL
 - `secretKeyBaseFile` -> only the secret key base
-- `bootstrapAdminPasswordHashFile` -> only the bcrypt hash
 - `sourcesJsonFile` -> only the JSON array
 
 ## Example Source JSON
@@ -87,13 +90,7 @@ These module options expect raw file contents, not `KEY=value` shell snippets:
 ]
 ```
 
-## Password Hash Generation
-
-Generate a bcrypt hash from the dev shell:
-
-```sh
-nix develop -c mix run -e 'IO.puts(Bcrypt.hash_pwd_salt("change-me-now"))'
-```
+Bootstrap user passwords are hashed by Hrafnsyn during startup and skipped once the user already exists.
 
 ## Opt-in nginx Helper
 

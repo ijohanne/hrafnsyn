@@ -88,19 +88,14 @@ mix phx.server
 
 ### Bootstrap admin
 
-Public access is readonly by default. To create the first admin at boot:
+Public access is readonly by default. Set `HRAFNSYN_PUBLIC_READONLY=false` to require login, then bootstrap the first local admin with a username/password definition:
 
 ```sh
-export BOOTSTRAP_ADMIN_EMAIL="admin@example.com"
-export BOOTSTRAP_ADMIN_PASSWORD="change-me-now"
+export HRAFNSYN_PUBLIC_READONLY=false
+export HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"admin@example.com","is_admin":true}}'
 ```
 
-For production, prefer a bcrypt hash instead:
-
-```sh
-mix run -e 'IO.puts(Bcrypt.hash_pwd_salt("change-me-now"))'
-export BOOTSTRAP_ADMIN_PASSWORD_HASH='$2b$12$...'
-```
+Configured bootstrap passwords are hashed on first boot and skipped for users that already exist.
 
 ## Runtime Model
 
@@ -121,8 +116,11 @@ Track merging is deliberate:
 ## Authentication Model
 
 - anonymous users can view the live map in readonly mode when `public_readonly?` is enabled
+- anonymous users are redirected to `/users/log-in` when `public_readonly?` is disabled
+- login uses username + password, not email delivery
 - authenticated non-admin users are still readonly
 - admins can create users from `/admin/users`
+- logged-in users get a profile menu with password change and logout actions
 - public signup is intentionally disabled
 
 ## Source Configuration

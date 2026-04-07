@@ -48,7 +48,8 @@ defmodule HrafnsynWeb.Admin.UsersLive do
             <span class="subtle">Passwords are local-only and hashed on save.</span>
           </div>
           <.form for={@form} phx-change="validate" phx-submit="create" class="admin-form">
-            <.input field={@form[:email]} type="email" label="Email" />
+            <.input field={@form[:username]} type="text" label="Username" />
+            <.input field={@form[:email]} type="email" label="Email (optional)" />
             <.input field={@form[:password]} type="password" label="Password" />
             <.input field={@form[:is_admin]} type="checkbox" label="Admin access" />
             <.button>Create user</.button>
@@ -63,8 +64,8 @@ defmodule HrafnsynWeb.Admin.UsersLive do
           <div class="user-list">
             <article :for={user <- @users} class="user-row">
               <div>
-                <strong>{user.email}</strong>
-                <span>{if user.confirmed_at, do: "confirmed", else: "pending"}</span>
+                <strong>{user.username}</strong>
+                <span>{user.email || "No email configured"}</span>
               </div>
               <span class={["track-pill", if(user.is_admin, do: "plane", else: "vessel")]}>
                 {if user.is_admin, do: "ADMIN", else: "READONLY"}

@@ -60,7 +60,7 @@ defmodule HrafnsynWeb.UserAuth do
     conn
     |> renew_session(nil)
     |> delete_resp_cookie(@remember_me_cookie, @remember_me_options)
-    |> redirect(to: ~p"/")
+    |> redirect(to: signed_out_path())
   end
 
   @doc """
@@ -215,9 +215,32 @@ defmodule HrafnsynWeb.UserAuth do
     end
   end
 
+  @doc """
+  Plug for routes that require authentication only when the app is not in public mode.
+  """
+  def require_authenticated_user_unless_public(conn, _opts) do
+    if public_readonly?() || (conn.assigns.current_scope && conn.assigns.current_scope.user) do
+      conn
+    else
+      conn
+      |> put_flash(:error, "You must log in to access this page.")
+      |> maybe_store_return_to()
+      |> redirect(to: ~p"/users/log-in")
+      |> halt()
+    end
+  end
+
+  def public_readonly? do
+    Application.get_env(:hrafnsyn, :public_readonly?, true)
+  end
+
   defp maybe_store_return_to(%{method: "GET"} = conn) do
     put_session(conn, :user_return_to, current_path(conn))
   end
 
   defp maybe_store_return_to(conn), do: conn
+
+  defp signed_out_path do
+    if public_readonly?(), do: ~p"/", else: ~p"/users/log-in"
+  end
 end

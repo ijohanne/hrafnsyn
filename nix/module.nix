@@ -87,6 +87,32 @@ in
       description = "Path to a raw file containing the bcrypt hash for the bootstrap admin.";
     };
 
+    users = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule ({ ... }: {
+        options = {
+          password = lib.mkOption {
+            type = lib.types.str;
+            description = "Initial plaintext password to hash on first boot only.";
+          };
+
+          email = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+          };
+
+          admin = lib.mkOption {
+            type = lib.types.bool;
+            default = true;
+          };
+        };
+      }));
+      default = { };
+      description = ''
+        Bootstrap users to provision at startup. Attribute names are usernames.
+        Existing users are left unchanged.
+      '';
+    };
+
     mapStyleUrl = lib.mkOption {
       type = lib.types.str;
       default = "https://tiles.openfreemap.org/styles/liberty";
@@ -235,6 +261,17 @@ in
         }
         // lib.optionalAttrs (cfg.bootstrapAdminEmail != null) {
           BOOTSTRAP_ADMIN_EMAIL = cfg.bootstrapAdminEmail;
+        }
+        // lib.optionalAttrs (cfg.users != { }) {
+          HRAFNSYN_BOOTSTRAP_USERS_JSON =
+            builtins.toJSON
+              (lib.mapAttrs
+                (_username: user: {
+                  password = user.password;
+                  email = user.email;
+                  is_admin = user.admin;
+                })
+                cfg.users);
         }
         // cfg.extraEnv;
 

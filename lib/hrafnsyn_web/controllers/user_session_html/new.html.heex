@@ -1,69 +1,45 @@
 <Layouts.app flash={@flash} current_scope={@current_scope}>
-  <div class="mx-auto max-w-sm space-y-4">
-    <div class="text-center">
-      <.header>
-        <p>Log in</p>
-        <:subtitle>
-          <%= if @current_scope do %>
-            You need to reauthenticate to perform sensitive actions on your account.
-          <% else %>
-            Public map access is readonly. User accounts are created by an administrator.
-          <% end %>
-        </:subtitle>
-      </.header>
-    </div>
-
-    <div :if={local_mail_adapter?()} class="alert alert-info">
-      <.icon name="hero-information-circle" class="size-6 shrink-0" />
-      <div>
-        <p>You are running the local mail adapter.</p>
-        <p>
-          To see sent emails, visit <.link href="/dev/mailbox" class="underline">the mailbox page</.link>.
-        </p>
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="text-center">
+        <.header>
+          <p>{if @current_scope, do: "Re-authenticate", else: "Log in"}</p>
+          <:subtitle>
+            <%= if @current_scope do %>
+              Confirm your password to keep managing your account.
+            <% else %>
+              Private deployments require a local Hrafnsyn account. Ask an administrator if you need access.
+            <% end %>
+          </:subtitle>
+        </.header>
       </div>
+
+      <.form :let={f} for={@form} as={:user} id="login_form_password" action={~p"/users/log-in"}>
+        <.input
+          readonly={!!@current_scope}
+          field={f[:username]}
+          type="text"
+          label="Username"
+          autocomplete="username"
+          spellcheck="false"
+          required
+          phx-mounted={JS.focus()}
+        />
+        <.input
+          field={f[:password]}
+          type="password"
+          label="Password"
+          autocomplete="current-password"
+          spellcheck="false"
+          required
+        />
+        <.button class="btn btn-primary w-full" name={@form[:remember_me].name} value="true">
+          Log in and stay logged in <span aria-hidden="true">→</span>
+        </.button>
+        <.button class="btn btn-primary btn-soft w-full mt-2">
+          Log in only this time
+        </.button>
+      </.form>
     </div>
-
-    <.form :let={f} for={@form} as={:user} id="login_form_magic" action={~p"/users/log-in"}>
-      <.input
-        readonly={!!@current_scope}
-        field={f[:email]}
-        type="email"
-        label="Email"
-        autocomplete="username"
-        spellcheck="false"
-        required
-        phx-mounted={JS.focus()}
-      />
-      <.button class="btn btn-primary w-full">
-        Log in with email <span aria-hidden="true">→</span>
-      </.button>
-    </.form>
-
-    <div class="divider">or</div>
-
-    <.form :let={f} for={@form} as={:user} id="login_form_password" action={~p"/users/log-in"}>
-      <.input
-        readonly={!!@current_scope}
-        field={f[:email]}
-        type="email"
-        label="Email"
-        autocomplete="username"
-        spellcheck="false"
-        required
-      />
-      <.input
-        field={f[:password]}
-        type="password"
-        label="Password"
-        autocomplete="current-password"
-        spellcheck="false"
-      />
-      <.button class="btn btn-primary w-full" name={@form[:remember_me].name} value="true">
-        Log in and stay logged in <span aria-hidden="true">→</span>
-      </.button>
-      <.button class="btn btn-primary btn-soft w-full mt-2">
-        Log in only this time
-      </.button>
-    </.form>
   </div>
 </Layouts.app>

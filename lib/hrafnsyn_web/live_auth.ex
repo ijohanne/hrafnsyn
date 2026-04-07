@@ -8,6 +8,7 @@ defmodule HrafnsynWeb.LiveAuth do
 
   alias Hrafnsyn.Accounts
   alias Hrafnsyn.Accounts.Scope
+  alias HrafnsynWeb.UserAuth
 
   def on_mount(:mount_current_scope, _params, session, socket) do
     scope =
@@ -33,6 +34,17 @@ defmodule HrafnsynWeb.LiveAuth do
        socket
        |> put_flash(:error, "Admin access required.")
        |> redirect(to: ~p"/")}
+    end
+  end
+
+  def on_mount(:ensure_authenticated_user_unless_public, _params, _session, socket) do
+    if UserAuth.public_readonly?() || socket.assigns.current_scope do
+      {:cont, socket}
+    else
+      {:halt,
+       socket
+       |> put_flash(:error, "You must log in to access this page.")
+       |> redirect(to: ~p"/users/log-in")}
     end
   end
 end

@@ -1,11 +1,40 @@
 defmodule HrafnsynWeb.DashboardLiveTest do
-  use HrafnsynWeb.ConnCase, async: true
+  use HrafnsynWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
 
   alias Hrafnsyn.Collectors.Source
   alias Hrafnsyn.Ingest
   alias Hrafnsyn.Tracking
+
+  setup do
+    public_readonly? = Application.get_env(:hrafnsyn, :public_readonly?, true)
+
+    on_exit(fn ->
+      Application.put_env(:hrafnsyn, :public_readonly?, public_readonly?)
+    end)
+
+    :ok
+  end
+
+  test "redirects guests to the login page when public mode is disabled", %{conn: conn} do
+    Application.put_env(:hrafnsyn, :public_readonly?, false)
+
+    conn = get(conn, ~p"/")
+
+    assert redirected_to(conn) == ~p"/users/log-in"
+
+    assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
+             "You must log in to access this page."
+  end
+
+  test "allows guests to reach the dashboard when public mode is enabled", %{conn: conn} do
+    Application.put_env(:hrafnsyn, :public_readonly?, true)
+
+    conn = get(conn, ~p"/")
+
+    assert html_response(conn, 200) =~ "Unified Air and Sea Tracking"
+  end
 
   test "search stays collapsed by default and submitting an exact match selects the track", %{
     conn: conn

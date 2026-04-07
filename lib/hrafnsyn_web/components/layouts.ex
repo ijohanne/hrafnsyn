@@ -36,6 +36,9 @@ defmodule HrafnsynWeb.Layouts do
   slot :inner_block, required: true
 
   def app(assigns) do
+    assigns =
+      assign(assigns, :profile_initials, profile_initials(assigns.current_scope))
+
     ~H"""
     <header class="app-shell">
       <div class="brand-bar">
@@ -50,9 +53,22 @@ defmodule HrafnsynWeb.Layouts do
         <nav class="top-nav">
           <.link navigate={~p"/"}>Live map</.link>
           <.link :if={Scope.admin?(@current_scope)} navigate={~p"/admin/users"}>Admin</.link>
-          <.link :if={@current_scope} href={~p"/users/settings"}>Settings</.link>
-          <.link :if={@current_scope} href={~p"/users/log-out"} method="delete">Log out</.link>
           <.link :if={is_nil(@current_scope)} href={~p"/users/log-in"}>Log in</.link>
+
+          <details :if={@current_scope} class="profile-menu">
+            <summary class="profile-trigger">
+              <span class="profile-trigger-copy">
+                <strong>{@current_scope.user.username}</strong>
+                <small>{if Scope.admin?(@current_scope), do: "Admin", else: "User"}</small>
+              </span>
+              <span class="profile-avatar" aria-hidden="true">{@profile_initials}</span>
+            </summary>
+
+            <div class="profile-dropdown">
+              <.link href={~p"/users/settings"}>Change password</.link>
+              <.link href={~p"/users/log-out"} method="delete">Log out</.link>
+            </div>
+          </details>
         </nav>
       </div>
 
@@ -107,4 +123,12 @@ defmodule HrafnsynWeb.Layouts do
     </div>
     """
   end
+
+  defp profile_initials(%Scope{user: %{username: username}}) when is_binary(username) do
+    username
+    |> String.upcase()
+    |> String.slice(0, 2)
+  end
+
+  defp profile_initials(_scope), do: "?"
 end

@@ -13,31 +13,31 @@ defmodule HrafnsynWeb.UserSessionControllerTest do
       conn = get(conn, ~p"/users/log-in")
       response = html_response(conn, 200)
       assert response =~ "Log in"
-      assert response =~ "accounts are created by an administrator"
-      assert response =~ "Log in with email"
+      assert response =~ "Private deployments require a local Hrafnsyn account"
+      assert response =~ "Username"
     end
 
-    test "renders login page with email filled in (sudo mode)", %{conn: conn, user: user} do
+    test "renders login page with username filled in (sudo mode)", %{conn: conn, user: user} do
       html =
         conn
         |> log_in_user(user)
         |> get(~p"/users/log-in")
         |> html_response(200)
 
-      assert html =~ "You need to reauthenticate"
+      assert html =~ "Confirm your password to keep managing your account"
       refute html =~ "Register"
-      assert html =~ "Log in with email"
+      assert html =~ "Username"
 
       assert html =~
-               ~s(<input type="email" name="user[email]" id="login_form_magic_email" value="#{user.email}")
+               ~s(<input type="text" name="user[username]" id="login_form_password_username" value="#{user.username}")
     end
 
-    test "renders login page (email + password)", %{conn: conn} do
+    test "renders login page (username + password)", %{conn: conn} do
       conn = get(conn, ~p"/users/log-in?mode=password")
       response = html_response(conn, 200)
       assert response =~ "Log in"
-      assert response =~ "accounts are created by an administrator"
-      assert response =~ "Log in with email"
+      assert response =~ "Username"
+      assert response =~ "Password"
     end
   end
 
@@ -73,13 +73,13 @@ defmodule HrafnsynWeb.UserSessionControllerTest do
     end
   end
 
-  describe "POST /users/log-in - email and password" do
+  describe "POST /users/log-in - username and password" do
     test "logs the user in", %{conn: conn, user: user} do
       user = set_password(user)
 
       conn =
         post(conn, ~p"/users/log-in", %{
-          "user" => %{"email" => user.email, "password" => valid_user_password()}
+          "user" => %{"username" => user.username, "password" => valid_user_password()}
         })
 
       assert get_session(conn, :user_token)
@@ -99,7 +99,7 @@ defmodule HrafnsynWeb.UserSessionControllerTest do
       conn =
         post(conn, ~p"/users/log-in", %{
           "user" => %{
-            "email" => user.email,
+            "username" => user.username,
             "password" => valid_user_password(),
             "remember_me" => "true"
           }
@@ -117,7 +117,7 @@ defmodule HrafnsynWeb.UserSessionControllerTest do
         |> init_test_session(user_return_to: "/foo/bar")
         |> post(~p"/users/log-in", %{
           "user" => %{
-            "email" => user.email,
+            "username" => user.username,
             "password" => valid_user_password()
           }
         })
@@ -129,12 +129,12 @@ defmodule HrafnsynWeb.UserSessionControllerTest do
     test "emits error message with invalid credentials", %{conn: conn, user: user} do
       conn =
         post(conn, ~p"/users/log-in?mode=password", %{
-          "user" => %{"email" => user.email, "password" => "invalid_password"}
+          "user" => %{"username" => user.username, "password" => "invalid_password"}
         })
 
       response = html_response(conn, 200)
       assert response =~ "Log in"
-      assert response =~ "Invalid email or password"
+      assert response =~ "Invalid username or password"
     end
   end
 

@@ -27,6 +27,13 @@ defmodule Hrafnsyn.Accounts do
   end
 
   @doc """
+  Gets a user by username.
+  """
+  def get_user_by_username(username) when is_binary(username) do
+    Repo.get_by(User, username: username)
+  end
+
+  @doc """
   Gets a user by email and password.
 
   ## Examples
@@ -41,6 +48,15 @@ defmodule Hrafnsyn.Accounts do
   def get_user_by_email_and_password(email, password)
       when is_binary(email) and is_binary(password) do
     user = Repo.get_by(User, email: email)
+    if User.valid_password?(user, password), do: user
+  end
+
+  @doc """
+  Gets a user by username and password.
+  """
+  def get_user_by_username_and_password(username, password)
+      when is_binary(username) and is_binary(password) do
+    user = Repo.get_by(User, username: username)
     if User.valid_password?(user, password), do: user
   end
 
@@ -76,13 +92,13 @@ defmodule Hrafnsyn.Accounts do
   """
   def register_user(attrs) do
     %User{}
-    |> User.email_changeset(attrs)
+    |> User.registration_changeset(attrs)
     |> Repo.insert()
   end
 
   def list_users do
     User
-    |> order_by([user], asc: user.email)
+    |> order_by([user], asc: user.username, asc: user.email)
     |> Repo.all()
   end
 
@@ -97,13 +113,11 @@ defmodule Hrafnsyn.Accounts do
   end
 
   def ensure_bootstrap_admin(attrs) do
-    email = Map.get(attrs, :email) || Map.get(attrs, "email")
+    attrs = normalize_bootstrap_attrs(attrs)
 
-    case get_user_by_email(email) do
+    case get_user_by_username(attrs.username) do
       nil ->
-        %User{}
-        |> User.bootstrap_changeset(attrs)
-        |> Repo.insert()
+        create_bootstrap_user(attrs)
 
       user ->
         {:ok, user}
@@ -309,6 +323,36 @@ defmodule Hrafnsyn.Accounts do
   def delete_user_session_token(token) do
     Repo.delete_all(from(UserToken, where: [token: ^token, context: "session"]))
     :ok
+  end
+
+  defp create_bootstrap_user(%{password: password} = attrs) when is_binary(password) and password != "" do
+    %User{}
+    |> User.admin_create_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  defp create_bootstrap_user(attrs) do
+    %User{}
+    |> User.bootstrap_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  defp normalize_bootstrap_attrs(attrs) do
+    %{
+      username: fetch_attr(attrs, :username),
+      email: fetch_attr(attrs, :email),
+      password: fetch_attr(attrs, :password),
+      hashed_password: fetch_attr(attrs, :hashed_password),
+      is_admin: fetch_attr(attrs, :is_admin, true),
+      confirmed_at: fetch_attr(attrs, :confirmed_at, DateTime.utc_now(:second))
+    }
+  end
+
+  defp fetch_attr(attrs, key, default \\ nil) do
+    case Map.fetch(attrs, key) do
+      {:ok, value} -> value
+      :error -> Map.get(attrs, Atom.to_string(key), default)
+    end
   end
 
   ## Token helper

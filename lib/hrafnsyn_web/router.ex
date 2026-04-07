@@ -17,10 +17,17 @@ defmodule HrafnsynWeb.Router do
     plug :accepts, ["json"]
   end
 
-  live_session :public,
-    on_mount: [{HrafnsynWeb.LiveAuth, :mount_current_scope}] do
+  pipeline :dashboard_access do
+    plug :require_authenticated_user_unless_public
+  end
+
+  live_session :dashboard,
+    on_mount: [
+      {HrafnsynWeb.LiveAuth, :mount_current_scope},
+      {HrafnsynWeb.LiveAuth, :ensure_authenticated_user_unless_public}
+    ] do
     scope "/", HrafnsynWeb do
-      pipe_through :browser
+      pipe_through [:browser, :dashboard_access]
 
       live "/", DashboardLive, :index
     end
@@ -32,7 +39,7 @@ defmodule HrafnsynWeb.Router do
       {HrafnsynWeb.LiveAuth, :ensure_admin}
     ] do
     scope "/admin", HrafnsynWeb do
-      pipe_through :browser
+      pipe_through [:browser, :require_authenticated_user]
 
       live "/users", Admin.UsersLive, :index
     end
