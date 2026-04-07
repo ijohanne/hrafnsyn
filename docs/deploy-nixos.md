@@ -245,7 +245,9 @@ to the gRPC upstream and everything else to Phoenix. If you prefer to manage ngi
 leave `nginxHelper.enable = false`.
 
 `trustedProxies` controls which upstream proxy IP ranges are trusted for forwarded host, port,
-and scheme headers. The default trusts loopback only.
+and scheme headers. The default trusts loopback only. This forwarded-header rewriting stays active
+even when `nginxHelper` is handling HTTPS redirects itself, so proxied HTTPS requests still arrive
+with the correct scheme for secure cookies and URL generation.
 
 ## Metrics, Prometheus, and Grafana
 

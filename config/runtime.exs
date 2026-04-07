@@ -146,31 +146,29 @@ if config_env() == :prod do
   scheme = System.get_env("HRAFNSYN_SCHEME", "https")
   external_port = String.to_integer(System.get_env("HRAFNSYN_EXTERNAL_PORT", "443"))
   force_ssl? = System.get_env("HRAFNSYN_FORCE_SSL", "true") in ~w(true 1 yes on)
+  trusted_proxies =
+    case System.get_env("HRAFNSYN_TRUSTED_PROXIES") do
+      nil -> []
+      proxies -> String.split(proxies, ",", trim: true) |> Enum.map(&String.trim/1)
+    end
 
   config :hrafnsyn, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :hrafnsyn, HrafnsynWeb.Endpoint,
     url: [host: host, port: external_port, scheme: scheme],
+    proxy_headers: [
+      trusted_proxies: trusted_proxies,
+      rewrite_on: [:x_forwarded_proto, :x_forwarded_host, :x_forwarded_port]
+    ],
     http: [
       ip: listen_ip
     ],
     secret_key_base: secret_key_base
 
   if force_ssl? do
-    trusted_proxies =
-      case System.get_env("HRAFNSYN_TRUSTED_PROXIES") do
-        nil -> []
-        proxies -> String.split(proxies, ",", trim: true) |> Enum.map(&String.trim/1)
-      end
-
-    rewrite_on =
-      if trusted_proxies != [],
-        do: [:x_forwarded_proto, :x_forwarded_host, :x_forwarded_port],
-        else: [:x_forwarded_proto]
-
     config :hrafnsyn, HrafnsynWeb.Endpoint,
-      force_ssl: [
-        rewrite_on: rewrite_on,
+      ssl_redirect: [
+        enabled: true,
         host: host,
         exclude: [
           paths: ["/metrics"],

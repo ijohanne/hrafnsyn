@@ -102,7 +102,7 @@ mix phx.gen.secret
 ### Common operator settings
 
 - `LISTEN_ADDRESS` and `PORT` control the Phoenix bind address
-- `HRAFNSYN_SCHEME`, `HRAFNSYN_EXTERNAL_PORT`, and `HRAFNSYN_TRUSTED_PROXIES` keep URL generation and proxy handling correct behind nginx
+- `HRAFNSYN_SCHEME`, `HRAFNSYN_EXTERNAL_PORT`, and `HRAFNSYN_TRUSTED_PROXIES` keep URL generation, secure-cookie handling, and proxy header rewriting correct behind nginx
 - `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER`, and optional `DATABASE_PASSWORD` provide the same structured DB contract as the NixOS module
 - `HRAFNSYN_PUBLIC_READONLY` controls whether anonymous access is allowed
 - `HRAFNSYN_BOOTSTRAP_USERS_JSON` is the preferred first-user bootstrap path
@@ -197,6 +197,8 @@ server {
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
     proxy_set_header X-Forwarded-Proto $scheme;
   }
 }
