@@ -220,7 +220,7 @@ EOF
           pname = "hrafnsyn-mix-deps";
           version = "0.1.0";
           src = ./.;
-          sha256 = "sha256-87BEqgrD8cKzhBsGj0U9UwgObnUu7gGNGmcfA8szAng=";
+          sha256 = "sha256-mnlWRHTi3A/UL//UHh9xmT1TkEj/FOVY4emG9bEk/dQ=";
         };
       in
       {
