@@ -2,6 +2,11 @@
 let
   cfg = config.services.hrafnsyn;
   nginxEnabled = cfg.nginxHelper.enable;
+  localPostgresEnabled =
+    cfg.databaseUrl == null &&
+      cfg.databaseUrlFile == null &&
+      cfg.database.passwordFile == null &&
+      lib.hasPrefix "/" cfg.database.host;
   sourceType = lib.types.submodule ({ ... }: {
     options = {
       id = lib.mkOption {
@@ -122,6 +127,35 @@ in
     databaseUrlFile = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
+    };
+
+    database = {
+      host = lib.mkOption {
+        type = lib.types.str;
+        default = "/run/postgresql";
+        description = "PostgreSQL host or socket directory when not using DATABASE_URL.";
+      };
+
+      name = lib.mkOption {
+        type = lib.types.str;
+        default = cfg.user;
+        description = "PostgreSQL database name when not using DATABASE_URL.";
+      };
+
+      user = lib.mkOption {
+        type = lib.types.str;
+        default = cfg.user;
+        description = "PostgreSQL role name when not using DATABASE_URL.";
+      };
+
+      passwordFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = ''
+          Path to a raw file containing the PostgreSQL password when not using
+          socket auth or DATABASE_URL.
+        '';
+      };
     };
 
     secretKeyBaseFile = lib.mkOption {
@@ -313,8 +347,24 @@ in
 
     assertions = [
       {
-        assertion = cfg.databaseUrl != null || cfg.databaseUrlFile != null;
-        message = "services.hrafnsyn.databaseUrl or databaseUrlFile must be configured.";
+        assertion = !(cfg.databaseUrl != null && cfg.databaseUrlFile != null);
+        message = "services.hrafnsyn.databaseUrl and databaseUrlFile are mutually exclusive.";
+      }
+      {
+        assertion = !(cfg.databaseUrl != null && cfg.database.passwordFile != null);
+        message = "services.hrafnsyn.databaseUrl and database.passwordFile are mutually exclusive.";
+      }
+      {
+        assertion = !(cfg.databaseUrlFile != null && cfg.database.passwordFile != null);
+        message = "services.hrafnsyn.databaseUrlFile and database.passwordFile are mutually exclusive.";
+      }
+      {
+        assertion = !localPostgresEnabled || config.services.postgresql.enable;
+        message = "services.hrafnsyn local PostgreSQL mode requires services.postgresql.enable = true.";
+      }
+      {
+        assertion = !localPostgresEnabled || cfg.database.user == cfg.user;
+        message = "services.hrafnsyn local PostgreSQL socket auth requires database.user to match services.hrafnsyn.user.";
       }
       {
         assertion = !(cfg.sources != [ ] && cfg.sourcesJsonFile != null);
@@ -332,8 +382,8 @@ in
     systemd.services.hrafnsyn = {
       description = "Hrafnsyn unified tracking";
       wantedBy = [ "multi-user.target" ];
-      after = [ "network.target" ];
-      wants = [ "network.target" ];
+      after = [ "network.target" ] ++ lib.optional localPostgresEnabled "postgresql.service";
+      wants = [ "network.target" ] ++ lib.optional localPostgresEnabled "postgresql.service";
 
       environment =
         {
@@ -351,6 +401,11 @@ in
           HRAFNSYN_SOURCES_JSON = sourcesJson;
         }
         // lib.optionalAttrs (cfg.databaseUrl != null) { DATABASE_URL = cfg.databaseUrl; }
+        // lib.optionalAttrs (cfg.databaseUrl == null) {
+          DATABASE_HOST = cfg.database.host;
+          DATABASE_NAME = cfg.database.name;
+          DATABASE_USER = cfg.database.user;
+        }
         // lib.optionalAttrs (cfg.metricsPort != null) {
           METRICS_PORT = builtins.toString cfg.metricsPort;
         }
@@ -386,6 +441,7 @@ in
           lib.filter (value: value != null) [
             "secret_key_base:${cfg.secretKeyBaseFile}"
             (if cfg.databaseUrlFile != null then "database_url:${cfg.databaseUrlFile}" else null)
+            (if cfg.database.passwordFile != null then "database_password:${cfg.database.passwordFile}" else null)
             (if cfg.bootstrapAdminPasswordHashFile != null then "bootstrap_admin_password_hash:${cfg.bootstrapAdminPasswordHashFile}" else null)
             (if cfg.sourcesJsonFile != null then "sources_json:${cfg.sourcesJsonFile}" else null)
           ];
@@ -396,6 +452,10 @@ in
 
         ${lib.optionalString (cfg.databaseUrlFile != null) ''
           export DATABASE_URL="$(< "$CREDENTIALS_DIRECTORY/database_url")"
+        ''}
+
+        ${lib.optionalString (cfg.database.passwordFile != null) ''
+          export DATABASE_PASSWORD="$(< "$CREDENTIALS_DIRECTORY/database_password")"
         ''}
 
         ${lib.optionalString (cfg.bootstrapAdminPasswordHashFile != null) ''
@@ -412,6 +472,16 @@ in
 
         exec ${cfg.package}/bin/hrafnsyn start
       '';
+    };
+
+    services.postgresql = lib.mkIf localPostgresEnabled {
+      ensureDatabases = [ cfg.database.name ];
+      ensureUsers = [
+        {
+          name = cfg.database.user;
+          ensureDBOwnership = true;
+        }
+      ];
     };
 
     services.nginx = lib.mkIf nginxEnabled {

@@ -59,7 +59,15 @@ HRAFNSYN_SCHEME=https
 HRAFNSYN_EXTERNAL_PORT=443
 HRAFNSYN_TRUSTED_PROXIES=127.0.0.1/8,::1/128
 
+# Either a full URL:
 DATABASE_URL=ecto://hrafnsyn:replace-me@127.0.0.1:5432/hrafnsyn
+
+# Or structured settings:
+# DATABASE_HOST=/run/postgresql
+# DATABASE_NAME=hrafnsyn
+# DATABASE_USER=hrafnsyn
+# DATABASE_PASSWORD=replace-me
+
 SECRET_KEY_BASE=replace-with-mix-phx-gen-secret
 
 HRAFNSYN_PUBLIC_READONLY=false
@@ -88,13 +96,14 @@ mix phx.gen.secret
 
 - `PHX_SERVER=true`
 - `PHX_HOST`
-- `DATABASE_URL`
+- either `DATABASE_URL` or `DATABASE_HOST` + `DATABASE_NAME` + `DATABASE_USER`
 - `SECRET_KEY_BASE`
 
 ### Common operator settings
 
 - `LISTEN_ADDRESS` and `PORT` control the Phoenix bind address
 - `HRAFNSYN_SCHEME`, `HRAFNSYN_EXTERNAL_PORT`, and `HRAFNSYN_TRUSTED_PROXIES` keep URL generation and proxy handling correct behind nginx
+- `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER`, and optional `DATABASE_PASSWORD` provide the same structured DB contract as the NixOS module
 - `HRAFNSYN_PUBLIC_READONLY` controls whether anonymous access is allowed
 - `HRAFNSYN_BOOTSTRAP_USERS_JSON` is the preferred first-user bootstrap path
 - `HRAFNSYN_SOURCES_JSON` defines the live collectors

@@ -28,6 +28,8 @@ Add the repository as a flake input and import the module:
 ```nix
 { pkgs, hrafnsyn, ... }:
 {
+  services.postgresql.enable = true;
+
   services.hrafnsyn = {
     enable = true;
     package = hrafnsyn.packages.${pkgs.system}.default;
@@ -39,7 +41,11 @@ Add the repository as a flake input and import the module:
     externalPort = 443;
     autoMigrate = true;
 
-    databaseUrlFile = /run/secrets/hrafnsyn-database-url;
+    database = {
+      host = "/run/postgresql";
+      name = "hrafnsyn";
+      user = "hrafnsyn";
+    };
     secretKeyBaseFile = /run/secrets/hrafnsyn-secret-key-base;
     sources = [
       {
@@ -84,7 +90,7 @@ This sets:
 - `HRAFNSYN_SCHEME`, `HRAFNSYN_EXTERNAL_PORT`, `HRAFNSYN_TRUSTED_PROXIES`
 - `HRAFNSYN_PUBLIC_READONLY`
 - `HRAFNSYN_SOURCES_JSON` generated from `services.hrafnsyn.sources`
-- `DATABASE_URL` and `SECRET_KEY_BASE` from systemd credentials
+- `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER`, and `SECRET_KEY_BASE`
 
 ## Auth and Operator Modes
 
@@ -152,6 +158,7 @@ but it is deprecated for normal use.
 These module options expect raw file contents, not `KEY=value` shell snippets:
 
 - `databaseUrlFile` -> only the Postgres URL
+- `database.passwordFile` -> only the Postgres password when using structured database settings
 - `secretKeyBaseFile` -> only the secret key base
 - `bootstrapAdminPasswordHashFile` -> only the bcrypt hash when using the legacy bootstrap path
 
@@ -273,19 +280,50 @@ What this does:
 
 If `metricsPort = null`, Prometheus should scrape the main web port instead.
 
-## PostgreSQL
+## Database
 
-Point `databaseUrlFile` at any reachable PostgreSQL instance. Example raw file contents:
+### Local PostgreSQL (Socket Auth)
+
+Local PostgreSQL databases are auto-created when `services.hrafnsyn` uses structured
+database settings with a socket host and no password file. The module populates
+`services.postgresql.ensureDatabases` and `services.postgresql.ensureUsers`
+automatically, matching the tested `vardrun` pattern.
+
+```nix
+{
+  services.postgresql.enable = true;
+
+  services.hrafnsyn.database = {
+    host = "/run/postgresql";  # default
+    name = "hrafnsyn";
+    user = "hrafnsyn";         # default: services.hrafnsyn.user
+  };
+}
+```
+
+### Remote PostgreSQL
+
+Use either a full URL or structured settings with a password file:
+
+```nix
+{
+  services.hrafnsyn.databaseUrlFile = /run/secrets/hrafnsyn-database-url;
+
+  # Or:
+  # services.hrafnsyn.database = {
+  #   host = "db.example.com";
+  #   name = "hrafnsyn";
+  #   user = "hrafnsyn";
+  #   passwordFile = /run/secrets/hrafnsyn-db-password;
+  # };
+}
+```
+
+Example raw `databaseUrlFile` contents:
 
 ```text
 ecto://hrafnsyn:supersecret@pakhet.example.internal:5432/hrafnsyn
 ```
-
-The current schema expects these extensions in the target database:
-
-- `citext`
-- `pg_trgm`
-- `postgis`
 
 If PostgreSQL runs locally on NixOS, enable PostGIS there too:
 
@@ -298,3 +336,9 @@ If PostgreSQL runs locally on NixOS, enable PostGIS there too:
   };
 }
 ```
+
+The current schema expects these extensions in the target database:
+
+- `citext`
+- `pg_trgm`
+- `postgis`
