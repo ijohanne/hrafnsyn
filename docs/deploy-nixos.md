@@ -287,7 +287,8 @@ If `metricsPort = null`, Prometheus should scrape the main web port instead.
 Local PostgreSQL databases are auto-created when `services.hrafnsyn` uses structured
 database settings with a socket host and no password file. The module populates
 `services.postgresql.ensureDatabases` and `services.postgresql.ensureUsers`
-automatically, matching the tested `vardrun` pattern.
+automatically, matching the tested `vardrun` pattern. It also provisions the
+required extensions in that database before `hrafnsyn.service` starts.
 
 ```nix
 {

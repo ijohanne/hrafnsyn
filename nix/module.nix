@@ -383,8 +383,12 @@ in
     systemd.services.hrafnsyn = {
       description = "Hrafnsyn unified tracking";
       wantedBy = [ "multi-user.target" ];
-      after = [ "network.target" ] ++ lib.optional localPostgresEnabled "postgresql.service";
+      after =
+        [ "network.target" ]
+        ++ lib.optional localPostgresEnabled "postgresql.service"
+        ++ lib.optional localPostgresEnabled "hrafnsyn-postgresql-setup.service";
       wants = [ "network.target" ] ++ lib.optional localPostgresEnabled "postgresql.service";
+      requires = lib.optional localPostgresEnabled "hrafnsyn-postgresql-setup.service";
 
       environment =
         {
@@ -487,6 +491,31 @@ in
           ensureDBOwnership = true;
         }
       ];
+    };
+
+    systemd.services.hrafnsyn-postgresql-setup = lib.mkIf localPostgresEnabled {
+      description = "Prepare PostgreSQL extensions for Hrafnsyn";
+      after = [ "postgresql.service" ];
+      wants = [ "postgresql.service" ];
+      before = [ "hrafnsyn.service" ];
+      wantedBy = [ "multi-user.target" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        User = "postgres";
+        Group = "postgres";
+      };
+
+      script = ''
+        ${config.services.postgresql.package}/bin/psql \
+          -v ON_ERROR_STOP=1 \
+          -h ${lib.escapeShellArg cfg.database.host} \
+          -d ${lib.escapeShellArg cfg.database.name} <<'SQL'
+        CREATE EXTENSION IF NOT EXISTS citext;
+        CREATE EXTENSION IF NOT EXISTS pg_trgm;
+        CREATE EXTENSION IF NOT EXISTS postgis;
+        SQL
+      '';
     };
 
     services.nginx = lib.mkIf nginxEnabled {
