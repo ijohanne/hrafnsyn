@@ -835,17 +835,218 @@ body.app-body {
 
 .token-shell {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 1.1rem;
 }
 
-.token-shell-single {
+.token-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(300px, 0.72fr);
+  gap: 1rem;
+}
+
+.token-hero-copy,
+.token-hero-board,
+.token-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.4rem;
+  border: 1px solid rgba(182, 216, 255, 0.12);
+  box-shadow: var(--shadow-heavy);
+  backdrop-filter: blur(18px);
+}
+
+.token-hero-copy {
+  padding: 1.55rem;
+  background:
+    linear-gradient(135deg, rgba(100, 210, 255, 0.12), transparent 42%),
+    radial-gradient(circle at top right, rgba(244, 201, 93, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(8, 25, 40, 0.96), rgba(5, 17, 29, 0.94));
+}
+
+.token-hero-copy::after,
+.token-hero-board::after,
+.token-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 26%);
+}
+
+.token-kicker,
+.token-section-kicker {
+  margin-bottom: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  font-size: 0.72rem;
+}
+
+.token-hero-copy h1,
+.token-section-head h2 {
+  margin: 0;
+  font-family: "Space Grotesk", ui-sans-serif, sans-serif;
+  line-height: 0.96;
+}
+
+.token-hero-copy h1 {
+  font-size: clamp(2.25rem, 4.6vw, 3.8rem);
+  max-width: 10ch;
+}
+
+.token-lead {
+  max-width: 62ch;
+  margin: 1rem 0 0;
+  color: #cbe1f1;
+  font-size: 0.97rem;
+  line-height: 1.7;
+}
+
+.token-stat-grid {
+  margin: 1.4rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.token-stat-grid div {
+  padding: 0.9rem 0.95rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.token-stat-grid dt {
+  margin-bottom: 0.35rem;
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.token-stat-grid dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.token-hero-board {
+  padding: 1.2rem;
+  background:
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(8, 23, 37, 0.98), rgba(6, 18, 30, 0.96));
+}
+
+.token-board-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.token-board-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.38rem 0.72rem;
+  background: rgba(244, 201, 93, 0.16);
+  color: var(--accent);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.token-board-chip-soft {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-soft);
+}
+
+.token-board-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.token-board-list li {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.token-board-list strong {
+  font-size: 0.88rem;
+}
+
+.token-board-list span {
+  color: #c5d9e9;
+  line-height: 1.5;
+  font-size: 0.84rem;
+}
+
+.token-content {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.72fr);
+  align-items: start;
+}
+
+.token-content-single {
   grid-template-columns: 1fr;
 }
 
 .token-stack {
   display: grid;
   gap: 1rem;
+}
+
+.token-panel {
+  padding: 1.15rem;
+  background:
+    radial-gradient(circle at top right, rgba(244, 201, 93, 0.08), transparent 28%),
+    radial-gradient(circle at top left, rgba(100, 210, 255, 0.1), transparent 32%),
+    var(--bg-panel);
+}
+
+.token-admin-rail {
+  position: sticky;
+  top: 1rem;
+}
+
+.token-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.9rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.token-section-head h2 {
+  font-size: 1.4rem;
+}
+
+.token-section-label {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.42rem 0.74rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.token-issue-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  gap: 0.95rem;
+  align-items: stretch;
 }
 
 .token-card-copy {
@@ -855,6 +1056,42 @@ body.app-body {
 
 .token-card-copy p {
   margin: 0;
+  line-height: 1.65;
+}
+
+.token-action-card {
+  display: grid;
+  align-content: start;
+  gap: 0.7rem;
+  padding: 1rem;
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(135deg, rgba(100, 210, 255, 0.14), transparent 42%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(100, 210, 255, 0.18);
+}
+
+.token-action-badge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.33rem 0.64rem;
+  background: rgba(100, 210, 255, 0.16);
+  color: var(--plane);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.token-action-card strong {
+  font-family: "Space Grotesk", ui-sans-serif, sans-serif;
+  font-size: 1.05rem;
+}
+
+.token-action-card p {
+  margin: 0;
+  color: #c5d9e9;
+  line-height: 1.55;
 }
 
 .token-secret-panel {
@@ -864,16 +1101,26 @@ body.app-body {
 
 .token-secret-grid {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
 }
 
 .token-secret-card {
   display: grid;
   gap: 0.6rem;
-  padding: 0.9rem;
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(135deg, rgba(100, 210, 255, 0.12), transparent 46%),
+    rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(100, 210, 255, 0.15);
+}
+
+.token-secret-card-refresh {
+  background:
+    linear-gradient(135deg, rgba(244, 201, 93, 0.14), transparent 44%),
+    rgba(255, 255, 255, 0.035);
+  border-color: rgba(244, 201, 93, 0.2);
 }
 
 .token-secret-head {
@@ -881,41 +1128,69 @@ body.app-body {
   justify-content: space-between;
   gap: 0.75rem;
   align-items: center;
-  font-size: 0.82rem;
+  font-size: 0.79rem;
   color: var(--text-soft);
 }
 
 .token-secret-card code {
   display: block;
   overflow-wrap: anywhere;
-  padding: 0.75rem 0.85rem;
-  border-radius: 0.85rem;
-  background: rgba(5, 17, 29, 0.75);
+  padding: 0.82rem 0.88rem;
+  border-radius: 0.92rem;
+  background: rgba(3, 12, 22, 0.72);
   color: #dbf3ff;
-  font-size: 0.8rem;
-  line-height: 1.45;
+  font-size: 0.79rem;
+  line-height: 1.52;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.token-empty-state {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 10rem;
+  place-content: center;
+  text-align: center;
+  padding: 1.25rem;
+  border-radius: 1.1rem;
+  border: 1px dashed rgba(182, 216, 255, 0.16);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.token-empty-state p {
+  margin: 0;
+  color: var(--text-soft);
 }
 
 .token-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.7rem;
 }
 
 .token-row {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.9rem;
-  border-radius: 1rem;
+  padding: 1rem;
+  border-radius: 1.1rem;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.token-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(244, 201, 93, 0.22);
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .token-row-copy {
   min-width: 0;
   display: grid;
-  gap: 0.65rem;
+  gap: 0.7rem;
 }
 
 .token-row-head {
@@ -925,6 +1200,12 @@ body.app-body {
   flex-wrap: wrap;
 }
 
+.token-row-head strong {
+  font-family: "Space Grotesk", ui-sans-serif, sans-serif;
+  font-size: 1rem;
+}
+
+.token-row-summary,
 .token-user-meta {
   margin: 0;
   display: flex;
@@ -932,6 +1213,7 @@ body.app-body {
   flex-wrap: wrap;
   color: var(--text-soft);
   font-size: 0.84rem;
+  line-height: 1.55;
 }
 
 .token-meta-grid {
@@ -941,7 +1223,7 @@ body.app-body {
 }
 
 .token-meta-grid div {
-  padding: 0.75rem;
+  padding: 0.78rem;
   border-radius: 0.95rem;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.04);
@@ -950,7 +1232,9 @@ body.app-body {
 .token-meta-grid dt {
   margin-bottom: 0.3rem;
   color: var(--text-soft);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .token-meta-grid dd {
@@ -962,6 +1246,30 @@ body.app-body {
 .token-row-actions {
   display: flex;
   align-items: center;
+}
+
+.token-admin-callout {
+  display: grid;
+  gap: 0.2rem;
+  margin-bottom: 0.95rem;
+  padding: 0.95rem;
+  border-radius: 1rem;
+  background:
+    linear-gradient(135deg, rgba(249, 115, 22, 0.12), transparent 45%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(249, 115, 22, 0.16);
+}
+
+.token-admin-callout span {
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.token-admin-callout strong {
+  font-family: "Space Grotesk", ui-sans-serif, sans-serif;
+  font-size: 1rem;
 }
 
 .live-contacts-panel {
@@ -1788,7 +2096,10 @@ body.app-body {
     grid-template-columns: 1fr;
   }
 
-  .grpc-docs-hero {
+  .grpc-docs-hero,
+  .token-hero,
+  .token-content,
+  .token-issue-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1801,6 +2112,15 @@ body.app-body {
   .map-header,
   .admin-shell {
     grid-template-columns: 1fr;
+  }
+
+  .token-admin-rail {
+    position: static;
+  }
+
+  .token-stat-grid,
+  .token-secret-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .track-grid {
@@ -1824,12 +2144,16 @@ body.app-body {
   .grpc-docs-section-head,
   .grpc-schema-row,
   .grpc-rpc-title-row,
-  .grpc-signal-head {
+  .grpc-signal-head,
+  .token-section-head,
+  .token-row {
     flex-direction: column;
     align-items: start;
   }
 
-  .grpc-docs-hero-copy {
+  .grpc-docs-hero-copy,
+  .token-hero-copy,
+  .token-hero-board {
     padding: 1.4rem;
   }
 
@@ -1870,8 +2194,9 @@ body.app-body {
     grid-template-columns: 1fr;
   }
 
-  .token-row {
-    flex-direction: column;
+  .token-stat-grid,
+  .token-secret-grid {
+    grid-template-columns: 1fr;
   }
 
   .token-meta-grid {

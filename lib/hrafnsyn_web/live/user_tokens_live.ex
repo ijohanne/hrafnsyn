@@ -90,111 +90,215 @@ defmodule HrafnsynWeb.UserTokensLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <section class={["token-shell", !@admin? && "token-shell-single"]}>
-        <div class="token-stack">
-          <div class="panel">
-            <div class="panel-title">
-              <span>Issue API token</span>
-              <span class="subtle">JWT access and refresh pair for gRPC clients</span>
-            </div>
-            <div class="token-card-copy">
-              <p>
-                Issue a new token pair for <strong>{@current_scope.user.username}</strong>. The refresh token is
-                only shown here once, so copy it somewhere safe right away.
-              </p>
-              <.button variant="primary" phx-click="issue_token" data-role="issue-token">
-                Issue new token
-              </.button>
-            </div>
+      <section class="token-shell">
+        <header class="token-hero">
+          <div class="token-hero-copy">
+            <div class="token-kicker">Credential control deck</div>
+            <h1>API token management</h1>
+            <p class="token-lead">
+              Issue gRPC credentials, track active sessions, and lock down exposure from one place.
+              Refresh secrets are shown once, revocations land immediately, and admin controls stay
+              clearly separated from personal access management.
+            </p>
+
+            <dl class="token-stat-grid">
+              <div>
+                <dt>Operator</dt>
+                <dd>{@current_scope.user.username}</dd>
+              </div>
+              <div>
+                <dt>Your active tokens</dt>
+                <dd>{length(@user_sessions)}</dd>
+              </div>
+              <div :if={@admin?}>
+                <dt>Fleet-wide active</dt>
+                <dd>{length(@admin_sessions)}</dd>
+              </div>
+              <div :if={@admin?}>
+                <dt>Last global reset</dt>
+                <dd>{format_datetime(@global_revoked_at)}</dd>
+              </div>
+            </dl>
           </div>
 
-          <div :if={@issued_token_pair} class="panel token-secret-panel">
-            <div class="panel-title">
-              <span>Latest issued token pair</span>
-              <span class="subtle">Shown once after creation</span>
+          <div class="token-hero-board">
+            <div class="token-board-head">
+              <span class="token-board-chip">Security posture</span>
+              <span class="token-board-chip token-board-chip-soft">
+                {if @admin?, do: "Admin deck", else: "Personal deck"}
+              </span>
             </div>
-            <div class="token-secret-grid">
-              <article class="token-secret-card">
-                <div class="token-secret-head">
-                  <strong>Access token</strong>
-                  <span>{format_datetime(@issued_token_pair.access_token_expires_at)}</span>
-                </div>
-                <code>{@issued_token_pair.access_token}</code>
-              </article>
-              <article class="token-secret-card">
-                <div class="token-secret-head">
-                  <strong>Refresh token</strong>
-                  <span>{format_datetime(@issued_token_pair.refresh_token_expires_at)}</span>
-                </div>
-                <code>{@issued_token_pair.refresh_token}</code>
-              </article>
-            </div>
-          </div>
 
-          <div class="panel">
-            <div class="panel-title">
-              <span>Your active API tokens</span>
-              <span class="subtle">{length(@user_sessions)} active</span>
-            </div>
-            <div :if={@user_sessions == []} class="list-empty">
-              No active API tokens yet.
-            </div>
-            <div :if={@user_sessions != []} class="token-list">
-              <article
-                :for={session <- @user_sessions}
-                class="token-row"
-                data-session-id={session.id}
-              >
-                <div class="token-row-copy">
-                  <div class="token-row-head">
-                    <strong>{short_id(session.id)}</strong>
-                    <span :if={session.current} class="track-pill">NEW</span>
-                  </div>
-                  <dl class="token-meta-grid">
-                    <div>
-                      <dt>Created</dt>
-                      <dd>{format_datetime(session.created_at)}</dd>
-                    </div>
-                    <div>
-                      <dt>Last used</dt>
-                      <dd>{format_datetime(session.last_used_at)}</dd>
-                    </div>
-                    <div>
-                      <dt>Expires</dt>
-                      <dd>{format_datetime(session.expires_at)}</dd>
-                    </div>
-                  </dl>
+            <ol class="token-board-list">
+              <li>
+                <strong>Issue a pair</strong>
+                <span>Generate access and refresh credentials for a new client session.</span>
+              </li>
+              <li>
+                <strong>Copy once</strong>
+                <span>Refresh secrets are exposed only at creation time on this page.</span>
+              </li>
+              <li :if={@admin?}>
+                <strong>Supervise globally</strong>
+                <span>
+                  Inspect active sessions across users and cut off the full fleet when needed.
+                </span>
+              </li>
+              <li :if={!@admin?}>
+                <strong>Self-manage safely</strong>
+                <span>Review your own sessions without stepping into admin-only controls.</span>
+              </li>
+            </ol>
+          </div>
+        </header>
+
+        <div class={["token-content", !@admin? && "token-content-single"]}>
+          <div class="token-stack">
+            <section class="token-panel token-issue-panel">
+              <div class="token-section-head">
+                <div>
+                  <div class="token-section-kicker">Issue</div>
+                  <h2>Mint a fresh token pair</h2>
                 </div>
-                <div class="token-row-actions">
-                  <.button
-                    class="btn btn-soft btn-error btn-sm"
-                    data-role="revoke-own-token"
-                    data-session-id={session.id}
-                    data-confirm="Revoke this API token?"
-                    phx-click={JS.push("revoke_own_session", value: %{id: session.id})}
-                  >
-                    Revoke
+                <span class="token-section-label">JWT access + refresh</span>
+              </div>
+
+              <div class="token-issue-grid">
+                <div class="token-card-copy">
+                  <p>
+                    Issue a new token pair for <strong>{@current_scope.user.username}</strong>. Use it for CLI
+                    tools, app-native clients, or any environment that needs gRPC access tied to your account.
+                  </p>
+                  <p class="subtle">
+                    The refresh token is only shown once after creation, so treat the next reveal as your handoff moment.
+                  </p>
+                </div>
+
+                <div class="token-action-card">
+                  <span class="token-action-badge">Ready</span>
+                  <strong>Provision a new client session</strong>
+                  <p>Creates a fresh access token immediately and tracks the session below.</p>
+                  <.button variant="primary" phx-click="issue_token" data-role="issue-token">
+                    Issue new token
                   </.button>
                 </div>
-              </article>
-            </div>
-          </div>
-        </div>
+              </div>
+            </section>
 
-        <div :if={@admin?} class="token-stack">
-          <div class="panel">
-            <div class="panel-title">
-              <span>Admin controls</span>
-              <span class="subtle">Global token management</span>
-            </div>
-            <div class="token-card-copy">
-              <p>
-                Global revocation invalidates every API token issued before the recorded cutoff. Use this when a
-                wider credential reset is needed.
-              </p>
-              <p class="subtle">
-                Last global revocation: <strong>{format_datetime(@global_revoked_at)}</strong>
-              </p>
+            <section :if={@issued_token_pair} class="token-panel token-secret-panel">
+              <div class="token-section-head">
+                <div>
+                  <div class="token-section-kicker">Reveal</div>
+                  <h2>Latest issued token pair</h2>
+                </div>
+                <span class="token-section-label">Shown once</span>
+              </div>
+
+              <div class="token-secret-grid">
+                <article class="token-secret-card">
+                  <div class="token-secret-head">
+                    <strong>Access token</strong>
+                    <span>Expires {format_datetime(@issued_token_pair.access_token_expires_at)}</span>
+                  </div>
+                  <code>{@issued_token_pair.access_token}</code>
+                </article>
+                <article class="token-secret-card token-secret-card-refresh">
+                  <div class="token-secret-head">
+                    <strong>Refresh token</strong>
+                    <span>
+                      Expires {format_datetime(@issued_token_pair.refresh_token_expires_at)}
+                    </span>
+                  </div>
+                  <code>{@issued_token_pair.refresh_token}</code>
+                </article>
+              </div>
+            </section>
+
+            <section class="token-panel">
+              <div class="token-section-head">
+                <div>
+                  <div class="token-section-kicker">Personal vault</div>
+                  <h2>Your active API tokens</h2>
+                </div>
+                <span class="token-section-label">{length(@user_sessions)} active</span>
+              </div>
+
+              <div :if={@user_sessions == []} class="token-empty-state">
+                <strong>No active tokens yet.</strong>
+                <p>
+                  Issue your first token pair to authorize a gRPC client and start tracking it here.
+                </p>
+              </div>
+
+              <div :if={@user_sessions != []} class="token-list">
+                <article
+                  :for={session <- @user_sessions}
+                  class="token-row"
+                  data-session-id={session.id}
+                >
+                  <div class="token-row-copy">
+                    <div class="token-row-head">
+                      <strong>{short_id(session.id)}</strong>
+                      <span :if={session.current} class="track-pill">NEW</span>
+                    </div>
+                    <p class="token-row-summary">
+                      {if session.current,
+                        do: "This is the newest session issued from the web UI.",
+                        else: "Existing client session still inside its validity window."}
+                    </p>
+                    <dl class="token-meta-grid">
+                      <div>
+                        <dt>Created</dt>
+                        <dd>{format_datetime(session.created_at)}</dd>
+                      </div>
+                      <div>
+                        <dt>Last used</dt>
+                        <dd>{format_datetime(session.last_used_at)}</dd>
+                      </div>
+                      <div>
+                        <dt>Expires</dt>
+                        <dd>{format_datetime(session.expires_at)}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                  <div class="token-row-actions">
+                    <.button
+                      class="btn btn-soft btn-error btn-sm"
+                      data-role="revoke-own-token"
+                      data-session-id={session.id}
+                      data-confirm="Revoke this API token?"
+                      phx-click={JS.push("revoke_own_session", value: %{id: session.id})}
+                    >
+                      Revoke
+                    </.button>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </div>
+
+          <aside :if={@admin?} class="token-stack token-admin-rail">
+            <section class="token-panel token-admin-panel">
+              <div class="token-section-head">
+                <div>
+                  <div class="token-section-kicker">Admin rail</div>
+                  <h2>Global controls</h2>
+                </div>
+                <span class="token-section-label">System-wide</span>
+              </div>
+
+              <div class="token-card-copy">
+                <p>
+                  Global revocation invalidates every API token issued before the recorded cutoff. Use it when a
+                  wider credential reset is needed across clients or environments.
+                </p>
+              </div>
+
+              <div class="token-admin-callout">
+                <span>Last global revocation</span>
+                <strong>{format_datetime(@global_revoked_at)}</strong>
+              </div>
+
               <.button
                 class="btn btn-error"
                 data-role="revoke-all-tokens"
@@ -203,65 +307,72 @@ defmodule HrafnsynWeb.UserTokensLive do
               >
                 Revoke all API tokens
               </.button>
-            </div>
-          </div>
+            </section>
 
-          <div class="panel">
-            <div class="panel-title">
-              <span>All active API tokens</span>
-              <span class="subtle">{length(@admin_sessions)} active</span>
-            </div>
-            <div :if={@admin_sessions == []} class="list-empty">
-              No active API tokens remain after the current revocation state.
-            </div>
-            <div :if={@admin_sessions != []} class="token-list">
-              <article
-                :for={session <- @admin_sessions}
-                class="token-row token-row-admin"
-                data-admin-session-id={session.id}
-              >
-                <div class="token-row-copy">
-                  <div class="token-row-head">
-                    <strong>{session.user.username}</strong>
-                    <span class={[
-                      "track-pill",
-                      if(session.user.is_admin, do: "plane", else: "vessel")
-                    ]}>
-                      {if session.user.is_admin, do: "ADMIN", else: "USER"}
-                    </span>
+            <section class="token-panel token-admin-list-panel">
+              <div class="token-section-head">
+                <div>
+                  <div class="token-section-kicker">Registry</div>
+                  <h2>All active API tokens</h2>
+                </div>
+                <span class="token-section-label">{length(@admin_sessions)} active</span>
+              </div>
+
+              <div :if={@admin_sessions == []} class="token-empty-state">
+                <strong>No active API tokens remain.</strong>
+                <p>The current revocation cutoff already excludes every tracked session.</p>
+              </div>
+
+              <div :if={@admin_sessions != []} class="token-list">
+                <article
+                  :for={session <- @admin_sessions}
+                  class="token-row token-row-admin"
+                  data-admin-session-id={session.id}
+                >
+                  <div class="token-row-copy">
+                    <div class="token-row-head">
+                      <strong>{session.user.username}</strong>
+                      <span class={[
+                        "track-pill",
+                        if(session.user.is_admin, do: "plane", else: "vessel")
+                      ]}>
+                        {if session.user.is_admin, do: "ADMIN", else: "USER"}
+                      </span>
+                    </div>
+                    <p class="token-user-meta">
+                      <span>{session.user.email || "No email configured"}</span>
+                      <span>Session {short_id(session.id)}</span>
+                    </p>
+                    <dl class="token-meta-grid">
+                      <div>
+                        <dt>Created</dt>
+                        <dd>{format_datetime(session.created_at)}</dd>
+                      </div>
+                      <div>
+                        <dt>Last used</dt>
+                        <dd>{format_datetime(session.last_used_at)}</dd>
+                      </div>
+                      <div>
+                        <dt>Expires</dt>
+                        <dd>{format_datetime(session.expires_at)}</dd>
+                      </div>
+                    </dl>
                   </div>
-                  <p class="token-user-meta">
-                    {session.user.email || "No email configured"}<span>Session {short_id(session.id)}</span>
-                  </p>
-                  <dl class="token-meta-grid">
-                    <div>
-                      <dt>Created</dt>
-                      <dd>{format_datetime(session.created_at)}</dd>
-                    </div>
-                    <div>
-                      <dt>Last used</dt>
-                      <dd>{format_datetime(session.last_used_at)}</dd>
-                    </div>
-                    <div>
-                      <dt>Expires</dt>
-                      <dd>{format_datetime(session.expires_at)}</dd>
-                    </div>
-                  </dl>
-                </div>
-                <div class="token-row-actions">
-                  <.button
-                    class="btn btn-soft btn-error btn-sm"
-                    data-role="revoke-admin-token"
-                    data-session-id={session.id}
-                    data-confirm="Revoke this user's API token?"
-                    phx-click={JS.push("revoke_admin_session", value: %{id: session.id})}
-                  >
-                    Revoke
-                  </.button>
-                </div>
-              </article>
-            </div>
-          </div>
+                  <div class="token-row-actions">
+                    <.button
+                      class="btn btn-soft btn-error btn-sm"
+                      data-role="revoke-admin-token"
+                      data-session-id={session.id}
+                      data-confirm="Revoke this user's API token?"
+                      phx-click={JS.push("revoke_admin_session", value: %{id: session.id})}
+                    >
+                      Revoke
+                    </.button>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </aside>
         </div>
       </section>
     </Layouts.app>

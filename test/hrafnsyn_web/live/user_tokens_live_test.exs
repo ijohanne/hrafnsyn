@@ -27,7 +27,7 @@ defmodule HrafnsynWeb.UserTokensLiveTest do
       |> log_in_user(user)
       |> live(~p"/users/tokens")
 
-    assert html =~ "Issue API token"
+    assert html =~ "Mint a fresh token pair"
     assert html =~ "Your active API tokens"
     refute html =~ "Admin controls"
     assert has_element?(view, "[data-session-id='#{existing_pair.session.id}']")
@@ -61,7 +61,7 @@ defmodule HrafnsynWeb.UserTokensLiveTest do
       |> log_in_user(admin)
       |> live(~p"/users/tokens")
 
-    assert html =~ "Admin controls"
+    assert html =~ "Global controls"
     assert has_element?(view, "[data-admin-session-id='#{user_pair.session.id}']")
     assert render(view) =~ user.username
 
