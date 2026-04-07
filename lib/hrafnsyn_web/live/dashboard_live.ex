@@ -2,6 +2,7 @@ defmodule HrafnsynWeb.DashboardLive do
   use HrafnsynWeb, :live_view
 
   alias Hrafnsyn.Collectors.Config, as: CollectorConfig
+  alias Hrafnsyn.CountryFlags
   alias Hrafnsyn.Tracking
   alias Hrafnsyn.Tracking.ExternalLinks
 
@@ -473,6 +474,7 @@ defmodule HrafnsynWeb.DashboardLive do
       registration: track.registration,
       destination: track.destination,
       country: track.country,
+      country_display: CountryFlags.format(track.country),
       status: track.status,
       source_name: track.latest_source_name,
       observed_at: DateTime.to_iso8601(track.observed_at)
@@ -531,8 +533,8 @@ defmodule HrafnsynWeb.DashboardLive do
     ]
 
     case track.vehicle_type do
-      "plane" -> common ++ plane_detail_items(track)
-      "vessel" -> common ++ vessel_detail_items(track)
+      "plane" -> common ++ detail_country_items(track) ++ plane_detail_items(track)
+      "vessel" -> common ++ detail_country_items(track) ++ vessel_detail_items(track)
       _other -> common
     end
   end
@@ -552,9 +554,16 @@ defmodule HrafnsynWeb.DashboardLive do
     [
       {"IMO", track.registration || "-"},
       {"Callsign", track.callsign || "-"},
-      {"Flag", track.country || "-"},
       {"Status", track.status || "-"}
     ]
+  end
+
+  defp detail_country_items(track) do
+    case CountryFlags.format(track.country) do
+      nil when track.vehicle_type == "vessel" -> [{"Flag", "-"}]
+      nil -> []
+      country_display -> [{"Flag", country_display}]
+    end
   end
 
   defp format_speed(nil), do: "-"

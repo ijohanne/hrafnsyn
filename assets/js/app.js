@@ -455,6 +455,7 @@ const TrackingMap = {
           callsign: track.callsign || "",
           registration: track.registration || "",
           country: track.country || "",
+          country_display: track.country_display || "",
           status: track.status || "",
           source_name: track.source_name || "",
           observed_at: track.observed_at,
@@ -742,6 +743,7 @@ const TrackingMap = {
       properties.destination ? {label: "Destination", value: properties.destination} : null,
       properties.callsign ? {label: "Callsign", value: properties.callsign} : null,
       properties.registration ? {label: properties.vehicle_type === "plane" ? "Registration" : "IMO", value: properties.registration} : null,
+      properties.country_display ? {label: "Flag", value: properties.country_display} : null,
       properties.source_name ? {label: "Feed", value: properties.source_name} : null,
       {label: "Seen", value: this.formatAge(properties.observed_at)},
     ].filter(Boolean)

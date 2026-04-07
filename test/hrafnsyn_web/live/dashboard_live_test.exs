@@ -160,6 +160,24 @@ defmodule HrafnsynWeb.DashboardLiveTest do
              "External lookup. Opens in a new tab when this aircraft has enough identifiers."
   end
 
+  test "selected vessels render flag emoji and code in the detail card", %{conn: conn} do
+    observed_at = DateTime.utc_now(:second)
+
+    assert {:ok, [_track_id]} =
+             Ingest.ingest_batch(vessel_source_fixture(), [
+               vessel_observation(observed_at, "Ocean Venture", 36.101, -6.141)
+             ])
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view
+    |> element("#track-grid .track-row")
+    |> render_click()
+
+    assert render(view) =~ "Flag"
+    assert render(view) =~ "🇧🇸 BS"
+  end
+
   defp plane_source_fixture do
     %Source{
       id: "dump1090-main",
@@ -185,6 +203,35 @@ defmodule HrafnsynWeb.DashboardLiveTest do
       altitude: 37_000,
       observed_at: observed_at,
       last_payload: %{"source" => "test"}
+    }
+  end
+
+  defp vessel_source_fixture do
+    %Source{
+      id: "ais-main",
+      name: "AIS Main",
+      vehicle_type: :vessel,
+      adapter: :ais_catcher,
+      base_url: "http://example.test"
+    }
+  end
+
+  defp vessel_observation(observed_at, name, latitude, longitude) do
+    %{
+      vehicle_type: "vessel",
+      identity: "242080116",
+      display_name: name,
+      callsign: "C6FQ7",
+      registration: "IMO 9262130",
+      country: "Bahamas",
+      status: "0",
+      destination: "ALGECIRAS",
+      latitude: latitude,
+      longitude: longitude,
+      speed: 16.4,
+      heading: 261,
+      observed_at: observed_at,
+      last_payload: %{"name" => name}
     }
   end
 end
