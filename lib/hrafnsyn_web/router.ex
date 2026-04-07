@@ -45,6 +45,18 @@ defmodule HrafnsynWeb.Router do
     end
   end
 
+  live_session :account,
+    on_mount: [
+      {HrafnsynWeb.LiveAuth, :mount_current_scope},
+      {HrafnsynWeb.LiveAuth, :ensure_authenticated_user}
+    ] do
+    scope "/", HrafnsynWeb do
+      pipe_through [:browser, :require_authenticated_user]
+
+      live "/users/tokens", UserTokensLive, :index
+    end
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", HrafnsynWeb do
   #   pipe_through :api

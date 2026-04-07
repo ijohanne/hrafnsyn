@@ -50,6 +50,7 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     assert html =~ ~s(id="profile-menu")
     assert html =~ ~s(phx-hook="ProfileMenu")
     assert html =~ ~s(data-close-delay="180")
+    assert html =~ ~s(href="/users/tokens")
   end
 
   test "search stays collapsed by default and submitting an exact match selects the track", %{

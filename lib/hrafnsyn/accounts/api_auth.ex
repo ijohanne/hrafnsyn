@@ -62,21 +62,49 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     end
   end
 
+  @spec issue_token_pair(User.t()) :: {:ok, map()} | {:error, term()}
+  def issue_token_pair(%User{} = user) do
+    create_session(user)
+  end
+
   @spec list_sessions(User.t(), Ecto.UUID.t() | nil) :: [map()]
   def list_sessions(%User{} = user, current_session_id \\ nil) do
-    ApiSession
+    active_sessions_query()
     |> where([session], session.user_id == ^user.id)
-    |> where([session], is_nil(session.revoked_at))
-    |> where([session], session.expires_at > ^DateTime.utc_now(:second))
+    |> filter_global_revoked_sessions()
     |> order_by([session], desc: session.inserted_at)
     |> Repo.all()
     |> Enum.map(&session_to_map(&1, current_session_id))
   end
 
+  @spec list_all_sessions(User.t(), Ecto.UUID.t() | nil) :: {:ok, [map()]} | {:error, :forbidden}
+  def list_all_sessions(user, current_session_id \\ nil)
+
+  def list_all_sessions(%User{is_admin: true}, current_session_id) do
+    sessions =
+      active_sessions_query()
+      |> filter_global_revoked_sessions()
+      |> order_by([session], desc: session.inserted_at)
+      |> preload(:user)
+      |> Repo.all()
+      |> Enum.map(&admin_session_to_map(&1, current_session_id))
+
+    {:ok, sessions}
+  end
+
+  def list_all_sessions(%User{}, _current_session_id), do: {:error, :forbidden}
+
   @spec revoke_session(User.t(), Ecto.UUID.t()) :: {:ok, DateTime.t()} | {:error, atom()}
   def revoke_session(%User{} = user, session_id) when is_binary(session_id) do
     Repo.transact(fn -> do_revoke_session(user.id, session_id) end)
   end
+
+  @spec revoke_any_session(User.t(), Ecto.UUID.t()) :: {:ok, DateTime.t()} | {:error, atom()}
+  def revoke_any_session(%User{is_admin: true}, session_id) when is_binary(session_id) do
+    Repo.transact(fn -> do_revoke_any_session(session_id) end)
+  end
+
+  def revoke_any_session(%User{}, _session_id), do: {:error, :forbidden}
 
   @spec revoke_all_sessions(User.t()) :: {:ok, DateTime.t()} | {:error, atom()}
   def revoke_all_sessions(%User{is_admin: true}) do
@@ -223,6 +251,24 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     end
   end
 
+  defp active_sessions_query do
+    now = DateTime.utc_now(:second)
+
+    ApiSession
+    |> where([session], is_nil(session.revoked_at))
+    |> where([session], session.expires_at > ^now)
+  end
+
+  defp filter_global_revoked_sessions(query) do
+    case global_revoked_at() do
+      %DateTime{} = revoked_at ->
+        where(query, [session], session.inserted_at > ^revoked_at)
+
+      nil ->
+        query
+    end
+  end
+
   defp fetch_revokeable_session(user_id, session_id) do
     ApiSession
     |> where([session], session.id == ^session_id and session.user_id == ^user_id)
@@ -230,8 +276,25 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
     |> Repo.one()
   end
 
+  defp fetch_revokeable_session(session_id) do
+    ApiSession
+    |> where([session], session.id == ^session_id)
+    |> where([session], is_nil(session.revoked_at))
+    |> Repo.one()
+  end
+
   defp do_revoke_session(user_id, session_id) do
     case fetch_revokeable_session(user_id, session_id) do
+      nil ->
+        {:error, :not_found}
+
+      %ApiSession{} = session ->
+        update_revoked_session(session)
+    end
+  end
+
+  defp do_revoke_any_session(session_id) do
+    case fetch_revokeable_session(session_id) do
       nil ->
         {:error, :not_found}
 
@@ -291,5 +354,11 @@ defmodule Hrafnsyn.Accounts.ApiAuth do
       expires_at: session.expires_at,
       revoked_at: session.revoked_at
     }
+  end
+
+  defp admin_session_to_map(%ApiSession{user: %User{} = user} = session, current_session_id) do
+    session
+    |> session_to_map(current_session_id)
+    |> Map.put(:user, user_to_map(user))
   end
 end

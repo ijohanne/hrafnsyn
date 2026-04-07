@@ -26,6 +26,17 @@ defmodule HrafnsynWeb.LiveAuth do
     {:cont, assign(socket, :current_scope, scope)}
   end
 
+  def on_mount(:ensure_authenticated_user, _params, _session, socket) do
+    if socket.assigns.current_scope do
+      {:cont, socket}
+    else
+      {:halt,
+       socket
+       |> put_flash(:error, "You must log in to access this page.")
+       |> redirect(to: ~p"/users/log-in")}
+    end
+  end
+
   def on_mount(:ensure_admin, _params, _session, socket) do
     if Scope.admin?(socket.assigns.current_scope) do
       {:cont, socket}
