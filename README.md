@@ -64,16 +64,19 @@ For repeatable local auth work, start from the committed example config:
 
 ```sh
 cp .env.example .env.local
-set -a; source .env.local; set +a
+direnv reload
 app
 ```
 
-Hrafnsyn does not auto-load `.env` files, so sourcing the file is the step that makes the example active.
+The repo `.envrc` loads `.env` and `.env.local` through `direnv`, so `direnv reload` is the step that makes the example active.
 
 With the sample config above, the app boots in non-public mode and creates this local admin user on first boot:
 
 - username: `admin`
 - password: `change-me-now`
+
+Bootstrap user passwords must be at least 12 characters long. If you shorten the sample password,
+the bootstrap user will not be created and login will be rejected.
 
 Then sign in at [http://localhost:4000/users/log-in](http://localhost:4000/users/log-in) to test login and admin flows.
 

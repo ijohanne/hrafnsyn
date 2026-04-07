@@ -108,15 +108,18 @@ The repository includes a safe local example at `.env.example`:
 
 ```sh
 cp .env.example .env.local
-set -a; source .env.local; set +a
+direnv reload
 ```
 
-Hrafnsyn reads these values directly from the shell environment and does not auto-load `.env` files.
+The repo `.envrc` loads `.env` and `.env.local` through `direnv`, which exports those values into the dev shell.
 
 The example config boots a local admin user with username/password auth:
 
 - username: `admin`
 - password: `change-me-now`
+
+Bootstrap user passwords must be at least 12 characters long. If you use a shorter password, the
+bootstrap user will not be created and login will fail.
 
 Run the app after sourcing the file:
 
