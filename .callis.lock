@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "name": "frontend-design",
+      "source": "github:anthropics/skills@frontend-design",
+      "version": "98669c11ca63",
+      "agents": [
+        "codex-cli",
+        "claude",
+        "opencode"
+      ],
+      "global": false,
+      "installed_at": "2026-04-07T13:41:03.869664+00:00",
+      "updated_at": "2026-04-07T13:41:03.869664+00:00"
+    },
+    {
+      "name": "git-commit",
+      "source": "marketplace:github/git-commit",
+      "version": "ba2ade031270",
+      "agents": [
+        "codex-cli",
+        "claude",
+        "opencode"
+      ],
+      "global": false,
+      "installed_at": "2026-04-07T13:41:11.222784+00:00",
+      "updated_at": "2026-04-07T13:41:11.222784+00:00"
+    },
+    {
+      "name": "elixir-antipatterns",
+      "source": "github:gentleman-programming/gentleman-skills@elixir-antipatterns",
+      "version": "c8036a378936",
+      "agents": [
+        "codex-cli",
+        "claude",
+        "opencode"
+      ],
+      "global": false,
+      "installed_at": "2026-04-07T13:41:12.194739+00:00",
+      "updated_at": "2026-04-07T13:41:12.194739+00:00"
+    }
+  ]
+}

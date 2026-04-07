@@ -56,7 +56,7 @@ defmodule HrafnsynWeb.Layouts do
         </nav>
       </div>
 
-      <div class="page-frame">
+      <div id="page-frame" class="page-frame" phx-hook="PreserveScroll">
         {render_slot(@inner_block)}
       </div>
     </header>

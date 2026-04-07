@@ -1,6 +1,11 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.services.hrafnsyn;
+  nginxEnabled = cfg.nginxHelper.enable;
+  grafanaDashboardPath = pkgs.runCommand "hrafnsyn-grafana-dashboards" { } ''
+    mkdir -p "$out"
+    cp ${../grafana/dashboards/hrafnsyn-overview.json} "$out/hrafnsyn-overview.json"
+  '';
 in
 {
   options.services.hrafnsyn = {
@@ -26,9 +31,34 @@ in
       default = 4000;
     };
 
+    metricsPort = lib.mkOption {
+      type = lib.types.nullOr lib.types.port;
+      default = null;
+    };
+
+    listenAddress = lib.mkOption {
+      type = lib.types.str;
+      default = "127.0.0.1";
+    };
+
     host = lib.mkOption {
       type = lib.types.str;
       default = "127.0.0.1";
+    };
+
+    externalPort = lib.mkOption {
+      type = lib.types.port;
+      default = 443;
+    };
+
+    scheme = lib.mkOption {
+      type = lib.types.enum [ "http" "https" ];
+      default = "https";
+    };
+
+    trustedProxies = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ "127.0.0.1/8" "::1/128" ];
     };
 
     databaseUrl = lib.mkOption {
@@ -78,6 +108,84 @@ in
       default = false;
     };
 
+    prometheus = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+      };
+
+      scrapeInterval = lib.mkOption {
+        type = lib.types.str;
+        default = "15s";
+      };
+    };
+
+    grafana = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+      };
+
+      datasourceName = lib.mkOption {
+        type = lib.types.str;
+        default = "Hrafnsyn";
+      };
+
+      datasourceUid = lib.mkOption {
+        type = lib.types.str;
+        default = "hrafnsyn-prometheus";
+      };
+
+      prometheusUrl = lib.mkOption {
+        type = lib.types.str;
+        default = "http://127.0.0.1:9090";
+      };
+
+      dashboardProviderName = lib.mkOption {
+        type = lib.types.str;
+        default = "hrafnsyn";
+      };
+    };
+
+    grpc = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+      };
+
+      listenAddress = lib.mkOption {
+        type = lib.types.str;
+        default = "127.0.0.1";
+      };
+
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 50051;
+      };
+    };
+
+    nginxHelper = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+      };
+
+      domain = lib.mkOption {
+        type = lib.types.str;
+        default = cfg.host;
+      };
+
+      enableACME = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+      };
+
+      acmeServer = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+      };
+    };
+
     extraEnv = lib.mkOption {
       type = lib.types.attrsOf lib.types.str;
       default = {};
@@ -109,11 +217,22 @@ in
         {
           PHX_SERVER = "true";
           PORT = builtins.toString cfg.port;
+          LISTEN_ADDRESS = cfg.listenAddress;
           PHX_HOST = cfg.host;
+          HRAFNSYN_SCHEME = cfg.scheme;
+          HRAFNSYN_EXTERNAL_PORT = builtins.toString cfg.externalPort;
+          HRAFNSYN_TRUSTED_PROXIES = builtins.concatStringsSep "," cfg.trustedProxies;
           HRAFNSYN_MAP_STYLE_URL = cfg.mapStyleUrl;
           HRAFNSYN_PUBLIC_READONLY = if cfg.publicReadonly then "true" else "false";
         }
         // lib.optionalAttrs (cfg.databaseUrl != null) { DATABASE_URL = cfg.databaseUrl; }
+        // lib.optionalAttrs (cfg.metricsPort != null) {
+          METRICS_PORT = builtins.toString cfg.metricsPort;
+        }
+        // lib.optionalAttrs cfg.grpc.enable {
+          GRPC_PORT = builtins.toString cfg.grpc.port;
+          GRPC_LISTEN_ADDRESS = cfg.grpc.listenAddress;
+        }
         // lib.optionalAttrs (cfg.bootstrapAdminEmail != null) {
           BOOTSTRAP_ADMIN_EMAIL = cfg.bootstrapAdminEmail;
         }
@@ -157,6 +276,80 @@ in
 
         exec ${cfg.package}/bin/hrafnsyn start
       '';
+    };
+
+    services.nginx = lib.mkIf nginxEnabled {
+      enable = true;
+      virtualHosts.${cfg.nginxHelper.domain} =
+        {
+          forceSSL = cfg.nginxHelper.enableACME;
+          enableACME = cfg.nginxHelper.enableACME;
+          locations."~ ^/" = {
+            proxyPass = "http://${cfg.listenAddress}:${builtins.toString cfg.port}";
+            proxyWebsockets = true;
+            extraConfig =
+              ''
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+              ''
+              + lib.optionalString cfg.grpc.enable ''
+                grpc_read_timeout 1h;
+                grpc_send_timeout 1h;
+                grpc_set_header X-Real-IP $remote_addr;
+                grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+                if ($http_content_type ~* "application/grpc") {
+                  grpc_pass grpc://${cfg.grpc.listenAddress}:${builtins.toString cfg.grpc.port};
+                }
+              '';
+          };
+        }
+        // lib.optionalAttrs (cfg.nginxHelper.acmeServer != null) {
+          acmeServer = cfg.nginxHelper.acmeServer;
+        };
+    };
+
+    services.prometheus.scrapeConfigs = lib.mkIf cfg.prometheus.enable [
+      {
+        job_name = "hrafnsyn";
+        scrape_interval = cfg.prometheus.scrapeInterval;
+        metrics_path = "/metrics";
+        static_configs = [
+          {
+            targets = [
+              "${cfg.listenAddress}:${builtins.toString (if cfg.metricsPort != null then cfg.metricsPort else cfg.port)}"
+            ];
+            labels = { instance = cfg.host; };
+          }
+        ];
+      }
+    ];
+
+    services.grafana = lib.mkIf cfg.grafana.enable {
+      enable = true;
+      provision.enable = true;
+      provision.datasources.settings = {
+        apiVersion = 1;
+        datasources = [
+          {
+            name = cfg.grafana.datasourceName;
+            uid = cfg.grafana.datasourceUid;
+            type = "prometheus";
+            access = "proxy";
+            url = cfg.grafana.prometheusUrl;
+            editable = false;
+            isDefault = true;
+          }
+        ];
+      };
+      provision.dashboards.settings.providers = [
+        {
+          name = cfg.grafana.dashboardProviderName;
+          options.path = grafanaDashboardPath;
+        }
+      ];
     };
   };
 }

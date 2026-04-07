@@ -13,7 +13,11 @@ defmodule Hrafnsyn.Collectors.Supervisor do
 
   @impl true
   def init(_opts) do
-    children = Enum.map(Config.list_sources(), &{Worker, &1})
+    children =
+      Enum.map(Config.list_sources(), fn source ->
+        Supervisor.child_spec({Worker, source}, id: {Worker, source.id})
+      end)
+
     Supervisor.init(children, strategy: :one_for_one)
   end
 end

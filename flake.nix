@@ -12,6 +12,7 @@
         esbuild = pkgs.esbuild;
         tailwindcss = pkgs.tailwindcss_4;
         beamPackages = pkgs.beam.packages.erlang_27;
+        postgres = pkgs.postgresql_18.withPackages (ps: [ ps.postgis ]);
 
         heroiconsSrc = pkgs.fetchFromGitHub {
           owner = "tailwindlabs";
@@ -23,7 +24,7 @@
         pg-dev-core = pkgs.writeShellScriptBin "pg-dev-core" ''
           set -euo pipefail
 
-          PGBIN="${pkgs.postgresql_18}/bin"
+          PGBIN="${postgres}/bin"
           BASE_DIR="''${PGDEV_DIR:-$PWD/.pgdev}"
           DATA_DIR="$BASE_DIR/data"
           RUN_DIR="$BASE_DIR/run"
@@ -138,7 +139,7 @@
           cmd_reset() {
             cmd_stop || true
             rm -rf "$BASE_DIR"
-            cmd_start
+            echo "Removed $BASE_DIR"
           }
 
           cmd_isready() {
@@ -206,12 +207,20 @@ EOF
         pg-isready = pkgs.writeShellScriptBin "pg-isready" ''exec pg-dev-core isready "$@"'';
         pg-status = pkgs.writeShellScriptBin "pg-status" ''exec pg-dev-core status "$@"'';
         pg-env = pkgs.writeShellScriptBin "pg-env" ''exec pg-dev-core env "$@"'';
+        app = pkgs.writeShellScriptBin "app" ''
+          set -euo pipefail
+          pg-reset
+          pg-start
+          eval "$(pg-env)"
+          mix ecto.setup
+          exec mix phx.server
+        '';
 
         mixFodDeps = beamPackages.fetchMixDeps {
           pname = "hrafnsyn-mix-deps";
           version = "0.1.0";
           src = ./.;
-          sha256 = "sha256-oQVBBvd6mP2ljEUKBWU4kSrLMMwdwBkeRXOoCS6ya20=";
+          sha256 = "sha256-87BEqgrD8cKzhBsGj0U9UwgObnUu7gGNGmcfA8szAng=";
         };
       in
       {
@@ -245,7 +254,7 @@ EOF
           buildInputs = with pkgs; [
             beamPackages.elixir
             beamPackages.erlang
-            postgresql_18
+            postgres
             nodejs_22
             esbuild
             tailwindcss
@@ -261,6 +270,7 @@ EOF
             pg-isready
             pg-status
             pg-env
+            app
           ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
             inotify-tools
           ];
@@ -279,8 +289,8 @@ EOF
             printf '\n'
             printf '  \033[1;34mhrafnsyn\033[0m dev shell\n'
             printf '  \033[2m─────────────────────────────────\033[0m\n'
-            printf '  \033[33mdb\033[0m   pg-start, pg-stop, pg-status\n'
-            printf '  \033[33mapp\033[0m  eval "$(pg-env)" && mix ecto.setup && mix phx.server\n'
+            printf '  \033[33mdb\033[0m   pg-start, pg-stop, pg-reset, pg-status\n'
+            printf '  \033[33mapp\033[0m  pg-reset && pg-start && eval "$(pg-env)" && mix ecto.setup && mix phx.server\n'
             printf '\n'
           '';
         };

@@ -9,6 +9,7 @@ defmodule Hrafnsyn.Application do
   def start(_type, _args) do
     children = [
       HrafnsynWeb.Telemetry,
+      Hrafnsyn.PromEx,
       Hrafnsyn.Repo,
       {DNSCluster, query: Application.get_env(:hrafnsyn, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Hrafnsyn.PubSub},

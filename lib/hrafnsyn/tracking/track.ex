@@ -1,6 +1,7 @@
 defmodule Hrafnsyn.Tracking.Track do
   use Ecto.Schema
   import Ecto.Changeset
+  alias Geo.Point
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -17,8 +18,9 @@ defmodule Hrafnsyn.Tracking.Track do
     field :category, :string
     field :status, :string
     field :destination, :string
-    field :latitude, :float
-    field :longitude, :float
+    field :location, Hrafnsyn.GeometryType
+    field :latitude, :float, virtual: true
+    field :longitude, :float, virtual: true
     field :speed, :float
     field :heading, :float
     field :altitude, :integer
@@ -34,7 +36,10 @@ defmodule Hrafnsyn.Tracking.Track do
   def derive_search_text(attrs), do: build_search_text(attrs)
 
   def changeset(track, attrs) do
-    attrs = Map.put(attrs, :search_text, build_search_text(attrs))
+    attrs =
+      attrs
+      |> put_location()
+      |> Map.put(:search_text, build_search_text(attrs))
 
     track
     |> cast(attrs, [
@@ -49,6 +54,7 @@ defmodule Hrafnsyn.Tracking.Track do
       :category,
       :status,
       :destination,
+      :location,
       :latitude,
       :longitude,
       :speed,
@@ -66,6 +72,19 @@ defmodule Hrafnsyn.Tracking.Track do
       :observed_at
     ])
     |> unique_constraint([:vehicle_type, :identity])
+  end
+
+  defp put_location(attrs) do
+    latitude = Map.get(attrs, :latitude)
+    longitude = Map.get(attrs, :longitude)
+
+    case {latitude, longitude} do
+      {lat, lon} when is_number(lat) and is_number(lon) ->
+        Map.put(attrs, :location, %Point{coordinates: {lon * 1.0, lat * 1.0}, srid: 4326})
+
+      _other ->
+        attrs
+    end
   end
 
   defp build_search_text(attrs) do

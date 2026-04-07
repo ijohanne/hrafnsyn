@@ -20,6 +20,14 @@ if System.get_env("PHX_SERVER") do
   config :hrafnsyn, HrafnsynWeb.Endpoint, server: true
 end
 
+listen_address = System.get_env("LISTEN_ADDRESS", "127.0.0.1")
+
+listen_ip =
+  case :inet.parse_address(String.to_charlist(listen_address)) do
+    {:ok, ip} -> ip
+    _ -> {127, 0, 0, 1}
+  end
+
 if sources_json = System.get_env("HRAFNSYN_SOURCES_JSON") do
   sources =
     sources_json
@@ -38,12 +46,20 @@ if map_style_url = System.get_env("HRAFNSYN_MAP_STYLE_URL") do
   config :hrafnsyn, :map_style_url, map_style_url
 end
 
+if metrics_port = System.get_env("METRICS_PORT") do
+  config :hrafnsyn, Hrafnsyn.PromEx,
+    metrics_server: [
+      port: String.to_integer(metrics_port),
+      path: "/metrics"
+    ]
+end
+
 if public_readonly = System.get_env("HRAFNSYN_PUBLIC_READONLY") do
   config :hrafnsyn, :public_readonly?, public_readonly in ~w(true 1 yes on)
 end
 
 config :hrafnsyn, HrafnsynWeb.Endpoint,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+  http: [ip: listen_ip, port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
   database_url =
@@ -76,19 +92,38 @@ if config_env() == :prod do
       """
 
   host = System.get_env("PHX_HOST") || "example.com"
+  scheme = System.get_env("HRAFNSYN_SCHEME", "https")
+  external_port = String.to_integer(System.get_env("HRAFNSYN_EXTERNAL_PORT", "443"))
 
   config :hrafnsyn, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :hrafnsyn, HrafnsynWeb.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
+    url: [host: host, port: external_port, scheme: scheme],
     http: [
-      # Enable IPv6 and bind on all interfaces.
-      # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
-      # See the documentation on https://hexdocs.pm/bandit/Bandit.html#t:options/0
-      # for details about using IPv6 vs IPv4 and loopback vs public addresses.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0}
+      ip: listen_ip
     ],
     secret_key_base: secret_key_base
+
+  trusted_proxies =
+    case System.get_env("HRAFNSYN_TRUSTED_PROXIES") do
+      nil -> []
+      proxies -> String.split(proxies, ",", trim: true) |> Enum.map(&String.trim/1)
+    end
+
+  rewrite_on =
+    if trusted_proxies != [],
+      do: [:x_forwarded_proto, :x_forwarded_host, :x_forwarded_port],
+      else: [:x_forwarded_proto]
+
+  config :hrafnsyn, HrafnsynWeb.Endpoint,
+    force_ssl: [
+      rewrite_on: rewrite_on,
+      host: host,
+      exclude: [
+        paths: ["/metrics"],
+        hosts: ["localhost", "127.0.0.1"]
+      ]
+    ]
 
   # ## SSL Support
   #

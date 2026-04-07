@@ -20,6 +20,8 @@
 - [Runtime Model](#runtime-model)
 - [Authentication Model](#authentication-model)
 - [Source Configuration](#source-configuration)
+- [Reverse Proxy](#reverse-proxy)
+- [Observability](#observability)
 - [Documentation](#documentation)
 - [Roadmap Hooks](#roadmap-hooks)
 
@@ -29,10 +31,11 @@ Hrafnsyn merges aircraft and vessel tracking into one responsive map:
 
 - Phoenix 1.8 + LiveView with PubSub-backed realtime updates
 - one long-lived GenServer collector per configured upstream source
-- PostgreSQL-backed history, search, and route replay
+- PostgreSQL + PostGIS-backed history, search, and route replay
 - merged identities across multiple sources of the same vehicle type
 - readonly public mode by default, with lightweight admin-managed users when enabled
 - MapLibre frontend with an OpenFreeMap base style
+- Prometheus metrics via PromEx, with optional scrape/dashboard provisioning on NixOS
 
 The default greenfield source profile is wired for the two SDR-backed interfaces observed on `2026-04-07`:
 
@@ -155,6 +158,28 @@ The collector layer currently understands:
 
 - `dump1090` via `/data/aircraft.json`
 - `ais_catcher` via `/api/ships_array.json`
+
+## Reverse Proxy
+
+For NixOS deployments, the bundled module includes an opt-in `nginxHelper` modeled after the `vardrun` setup:
+
+- websocket-aware HTTP proxying for Phoenix LiveView
+- optional ACME-managed TLS
+- optional content-type based gRPC passthrough for a future gRPC listener
+
+Manual nginx examples for non-NixOS deployments live in [docs/deploy-generic-linux.md](docs/deploy-generic-linux.md).
+
+## Observability
+
+Hrafnsyn exposes Prometheus metrics at `/metrics` on the main endpoint, and can optionally run a separate metrics server when `METRICS_PORT` is set.
+
+The bundled NixOS module supports:
+
+- `metricsPort` for a dedicated scrape port
+- `prometheus.enable` for automatic `services.prometheus.scrapeConfigs`
+- `grafana.enable` for datasource + dashboard provisioning of the included Hrafnsyn overview dashboard
+
+Spatial storage uses PostGIS geography points, which lets the detail panel and future APIs answer real distance questions without approximate float math.
 
 ## Documentation
 
