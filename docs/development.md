@@ -111,10 +111,15 @@ MapLibre is vendored into `priv/static/vendor/` so builds do not depend on CDN f
 
 ## Proto Contract
 
-The future streaming contract lives at:
+The current gRPC contract lives at:
 
 ```text
 proto/hrafnsyn/v1/tracking.proto
 ```
 
-The current app does not generate stubs yet, but the shape is committed so app or gRPC work can start without rethinking the ingest model.
+The Elixir protobuf/service modules are checked into `lib/hrafnsyn/grpc/v1/` so the app can compile without `protoc` in the dev shell. Runtime gRPC settings are controlled by:
+
+- `GRPC_PORT` and `GRPC_LISTEN_ADDRESS`
+- `HRAFNSYN_JWT_ACCESS_TTL_SECONDS`
+- `HRAFNSYN_JWT_REFRESH_TTL_SECONDS`
+- `HRAFNSYN_JWT_SIGNING_SECRET` (defaults to `SECRET_KEY_BASE` when unset)

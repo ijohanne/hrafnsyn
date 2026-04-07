@@ -99,7 +99,7 @@ The module now has an optional nginx helper that mirrors the `vardrun` approach:
 - plain HTTP proxying to the Phoenix endpoint
 - websocket forwarding for LiveView
 - optional ACME certificate handling
-- optional content-type based gRPC passthrough for a future gRPC listener
+- optional content-type based gRPC passthrough for the gRPC listener
 
 Example with built-in nginx + ACME:
 
@@ -126,7 +126,7 @@ Example with built-in nginx + ACME:
 
 If you want nginx provisioning but not automatic certificate management, leave `enableACME = false`.
 
-If you want to prepare nginx for future gRPC ingress too:
+If you want to expose the gRPC API too:
 
 ```nix
 {
@@ -139,6 +139,8 @@ If you want to prepare nginx for future gRPC ingress too:
 ```
 
 When `grpc.enable = true`, the helper adds conditional `grpc_pass` routing for requests whose `Content-Type` matches `application/grpc`.
+
+JWT signing for the gRPC API defaults to the same secret material as `SECRET_KEY_BASE`. If you need a separate signing secret, set `HRAFNSYN_JWT_SIGNING_SECRET` through `extraEnv` or a wrapped systemd credential/env file.
 
 ## Metrics, Scraping, and Dashboards
 

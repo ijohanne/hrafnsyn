@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package hrafnsyn.v1;
 
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_multiple_files = true;
@@ -87,6 +88,173 @@ message StreamObservationsResponse {
   }
 }
 
+message UserProfile {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  bool is_admin = 4;
+}
+
+message SessionInfo {
+  string id = 1;
+  bool current = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp last_used_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp revoked_at = 6;
+}
+
+message AuthStatus {
+  bool auth_required = 1;
+  bool authenticated = 2;
+  int32 access_token_ttl_seconds = 3;
+  int32 refresh_token_ttl_seconds = 4;
+  UserProfile current_user = 5;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message RefreshRequest {
+  string refresh_token = 1;
+}
+
+message TokenPair {
+  string access_token = 1;
+  string refresh_token = 2;
+  google.protobuf.Timestamp access_token_expires_at = 3;
+  google.protobuf.Timestamp refresh_token_expires_at = 4;
+  SessionInfo session = 5;
+  UserProfile user = 6;
+}
+
+message ListSessionsResponse {
+  repeated SessionInfo sessions = 1;
+}
+
+message RevokeSessionRequest {
+  string session_id = 1;
+}
+
+message RevocationResponse {
+  string scope = 1;
+  string session_id = 2;
+  google.protobuf.Timestamp revoked_at = 3;
+}
+
+message ActiveCounts {
+  int32 total = 1;
+  int32 planes = 2;
+  int32 vessels = 3;
+}
+
+message SystemInfo {
+  repeated SourceDescriptor sources = 1;
+  ActiveCounts counts = 2;
+}
+
+message TrackSummary {
+  string id = 1;
+  VehicleType vehicle_type = 2;
+  string identity = 3;
+  string latest_source_id = 4;
+  string latest_source_name = 5;
+  string display_name = 6;
+  string callsign = 7;
+  string registration = 8;
+  string country = 9;
+  string category = 10;
+  string status = 11;
+  string destination = 12;
+  double latitude = 13;
+  double longitude = 14;
+  double speed_knots = 15;
+  double heading_degrees = 16;
+  int32 altitude_feet = 17;
+  google.protobuf.Timestamp observed_at = 18;
+}
+
+message ListActiveTracksRequest {
+  int32 limit = 1;
+  int32 active_window_minutes = 2;
+}
+
+message ListActiveTracksResponse {
+  repeated TrackSummary tracks = 1;
+  ActiveCounts counts = 2;
+}
+
+message SearchTracksRequest {
+  string query = 1;
+  int32 limit = 2;
+  int32 active_window_minutes = 3;
+}
+
+message SearchTracksResponse {
+  repeated TrackSummary tracks = 1;
+}
+
+message TrackPoint {
+  string id = 1;
+  string track_id = 2;
+  string source_id = 3;
+  string source_name = 4;
+  VehicleType vehicle_type = 5;
+  double latitude = 6;
+  double longitude = 7;
+  double speed_knots = 8;
+  double heading_degrees = 9;
+  int32 altitude_feet = 10;
+  google.protobuf.Timestamp observed_at = 11;
+}
+
+message RouteStats {
+  double distance_meters = 1;
+  int32 observed_seconds = 2;
+}
+
+message GetTrackRequest {
+  string track_id = 1;
+  int32 history_hours = 2;
+  int32 log_limit = 3;
+}
+
+message GetTrackResponse {
+  TrackSummary track = 1;
+  repeated TrackPoint route_points = 2;
+  RouteStats route_stats = 3;
+  repeated TrackPoint log_entries = 4;
+}
+
+message StreamTrackUpdatesRequest {
+  int32 active_window_minutes = 1;
+}
+
+message TrackUpdate {
+  repeated string track_ids = 1;
+  ActiveCounts counts = 2;
+  google.protobuf.Timestamp sent_at = 3;
+}
+
 service TrackingIngress {
   rpc StreamObservations(stream StreamObservationsRequest) returns (stream StreamObservationsResponse);
+}
+
+service TrackingService {
+  rpc GetSystemInfo(google.protobuf.Empty) returns (SystemInfo);
+  rpc ListActiveTracks(ListActiveTracksRequest) returns (ListActiveTracksResponse);
+  rpc SearchTracks(SearchTracksRequest) returns (SearchTracksResponse);
+  rpc GetTrack(GetTrackRequest) returns (GetTrackResponse);
+  rpc StreamTrackUpdates(StreamTrackUpdatesRequest) returns (stream TrackUpdate);
+}
+
+service AuthService {
+  rpc GetAuthStatus(google.protobuf.Empty) returns (AuthStatus);
+  rpc Login(LoginRequest) returns (TokenPair);
+  rpc Refresh(RefreshRequest) returns (TokenPair);
+  rpc ListSessions(google.protobuf.Empty) returns (ListSessionsResponse);
+  rpc RevokeSession(RevokeSessionRequest) returns (RevocationResponse);
+  rpc RevokeAllSessions(google.protobuf.Empty) returns (RevocationResponse);
 }

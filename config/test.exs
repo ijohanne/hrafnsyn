@@ -58,3 +58,12 @@ config :phoenix,
   sort_verified_routes_query_params: true
 
 config :hrafnsyn, Hrafnsyn.Collectors, sources: []
+config :hrafnsyn, :enable_prom_ex?, false
+
+config :hrafnsyn, Hrafnsyn.GRPC,
+  enabled: false,
+  listen_ip: {127, 0, 0, 1},
+  port: 50_051,
+  access_token_ttl_seconds: 900,
+  refresh_token_ttl_seconds: 2_592_000,
+  jwt_secret: "test-grpc-secret"

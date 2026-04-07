@@ -33,6 +33,7 @@ Hrafnsyn merges aircraft and vessel tracking into one responsive map:
 - one long-lived GenServer collector per configured upstream source
 - PostgreSQL + PostGIS-backed history, search, and route replay
 - merged identities across multiple sources of the same vehicle type
+- gRPC API for auth, track reads, live update streaming, and ingress
 - readonly public mode by default, with lightweight admin-managed users when enabled
 - MapLibre frontend with an OpenFreeMap base style
 - Prometheus metrics via PromEx, with optional scrape/dashboard provisioning on NixOS
@@ -49,7 +50,7 @@ The default greenfield source profile is wired for the two SDR-backed interfaces
 - `Hrafnsyn.Ingest` is the stable ingest boundary for current collectors and future transports.
 - `Hrafnsyn.Tracking` persists current merged tracks and append-only track points in Postgres.
 - `Phoenix.PubSub` fans updates into LiveView so the map and detail panels refresh live.
-- `proto/hrafnsyn/v1/tracking.proto` sketches the future bidirectional gRPC ingest contract.
+- `proto/hrafnsyn/v1/tracking.proto` defines the current auth, tracking, and ingress gRPC contract.
 
 More detail lives in [docs/architecture.md](docs/architecture.md).
 
@@ -118,10 +119,14 @@ Track merging is deliberate:
 - anonymous users can view the live map in readonly mode when `public_readonly?` is enabled
 - anonymous users are redirected to `/users/log-in` when `public_readonly?` is disabled
 - login uses username + password, not email delivery
+- the gRPC API issues JWT access tokens plus rotating refresh tokens
+- users can revoke their own gRPC sessions and admins can revoke all gRPC sessions globally
 - authenticated non-admin users are still readonly
 - admins can create users from `/admin/users`
 - logged-in users get a profile menu with password change and logout actions
 - public signup is intentionally disabled
+
+The future account/profile page is also where self-service token management should live in the web UI. The gRPC session APIs are already shaped to support that.
 
 ## Source Configuration
 
@@ -163,7 +168,7 @@ For NixOS deployments, the bundled module includes an opt-in `nginxHelper` model
 
 - websocket-aware HTTP proxying for Phoenix LiveView
 - optional ACME-managed TLS
-- optional content-type based gRPC passthrough for a future gRPC listener
+- optional content-type based gRPC passthrough for the gRPC listener when `grpc.enable = true`
 
 Manual nginx examples for non-NixOS deployments live in [docs/deploy-generic-linux.md](docs/deploy-generic-linux.md).
 
@@ -188,6 +193,6 @@ Spatial storage uses PostGIS geography points, which lets the detail panel and f
 
 ## Roadmap Hooks
 
-- `proto/hrafnsyn/v1/tracking.proto` is committed now so a mobile app or remote ingest client can align with the intended stream shape early.
-- `Hrafnsyn.Ingest` exists as the internal seam for collector workers today and future gRPC stream handlers later.
+- `Hrafnsyn.Ingest` remains the stable ingest seam for collectors and gRPC stream handlers alike.
+- The gRPC auth/session API is designed so a future profile page can expose token self-management without reworking the backend contract.
 - Track history is already durable enough to support richer playback, alerting, or export features without redesigning the storage model.

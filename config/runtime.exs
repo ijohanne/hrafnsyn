@@ -28,6 +28,14 @@ listen_ip =
     _ -> {127, 0, 0, 1}
   end
 
+grpc_listen_address = System.get_env("GRPC_LISTEN_ADDRESS", "127.0.0.1")
+
+grpc_listen_ip =
+  case :inet.parse_address(String.to_charlist(grpc_listen_address)) do
+    {:ok, ip} -> ip
+    _ -> {127, 0, 0, 1}
+  end
+
 if sources_json = System.get_env("HRAFNSYN_SOURCES_JSON") do
   sources =
     sources_json
@@ -74,6 +82,19 @@ if bootstrap_users_json = System.get_env("HRAFNSYN_BOOTSTRAP_USERS_JSON") do
 
   config :hrafnsyn, :bootstrap_users, bootstrap_users
 end
+
+config :hrafnsyn, Hrafnsyn.GRPC,
+  enabled: System.get_env("GRPC_PORT") not in [nil, ""],
+  listen_ip: grpc_listen_ip,
+  port: String.to_integer(System.get_env("GRPC_PORT", "50051")),
+  access_token_ttl_seconds:
+    String.to_integer(System.get_env("HRAFNSYN_JWT_ACCESS_TTL_SECONDS", "900")),
+  refresh_token_ttl_seconds:
+    String.to_integer(System.get_env("HRAFNSYN_JWT_REFRESH_TTL_SECONDS", "2592000")),
+  jwt_secret:
+    System.get_env("HRAFNSYN_JWT_SIGNING_SECRET") ||
+      System.get_env("SECRET_KEY_BASE") ||
+      "dev-grpc-secret"
 
 config :hrafnsyn, HrafnsynWeb.Endpoint,
   http: [ip: listen_ip, port: String.to_integer(System.get_env("PORT", "4000"))]

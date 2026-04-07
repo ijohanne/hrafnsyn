@@ -93,12 +93,18 @@ Auth is intentionally lightweight:
 
 This keeps public display use-cases simple while still allowing controlled access for ops users later.
 
-## Future gRPC Shape
+## gRPC Shape
 
-`proto/hrafnsyn/v1/tracking.proto` is included now as a planning contract for future bidirectional ingest. The code path is expected to be:
+The gRPC layer is now split into three services:
+
+- `AuthService` for username/password login, refresh, auth status, and token revocation
+- `TrackingService` for system info, active tracks, search, detail/history reads, and live update streaming
+- `TrackingIngress` for bidirectional observation ingestion through `Hrafnsyn.Ingest`
+
+The ingest path still follows the original boundary:
 
 - gRPC stream handler receives observation envelopes
 - handler calls `Hrafnsyn.Ingest.ingest_batch/2`
 - tracking persistence and LiveView fan-out stay unchanged
 
-That keeps the transport replaceable without rewriting the domain layer.
+JWT access tokens are short-lived, refresh tokens rotate, and revocation is enforced server-side through persisted session state plus a global revocation timestamp. In public/readonly mode the tracking gRPC API can be used without a login first, while authenticated deployments require JWTs for tracking calls.

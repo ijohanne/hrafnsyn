@@ -61,6 +61,12 @@ HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"adm
 HRAFNSYN_PUBLIC_READONLY=false
 HRAFNSYN_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 HRAFNSYN_SOURCES_JSON=[{"id":"planes-main","name":"Airplane SDR","vehicle_type":"plane","adapter":"dump1090","base_url":"http://10.255.101.202","poll_interval_ms":1000,"enabled":true},{"id":"boats-main","name":"Boat SDR","vehicle_type":"vessel","adapter":"ais_catcher","base_url":"http://10.255.101.202:8100","poll_interval_ms":2500,"enabled":true}]
+GRPC_PORT=50051
+GRPC_LISTEN_ADDRESS=127.0.0.1
+HRAFNSYN_JWT_ACCESS_TTL_SECONDS=900
+HRAFNSYN_JWT_REFRESH_TTL_SECONDS=2592000
+# Optional; defaults to SECRET_KEY_BASE if unset
+# HRAFNSYN_JWT_SIGNING_SECRET=replace-with-separate-jwt-secret
 ```
 
 Generate a secret key with:
@@ -69,7 +75,7 @@ Generate a secret key with:
 mix phx.gen.secret
 ```
 
-Bootstrap passwords are hashed on first start and skipped if the named user already exists.
+Bootstrap passwords are hashed on first start and skipped if the named user already exists. When the gRPC listener is enabled, JWT signing will use `HRAFNSYN_JWT_SIGNING_SECRET` when set or fall back to `SECRET_KEY_BASE`.
 
 ## Migrate
 
@@ -138,7 +144,13 @@ server {
 }
 ```
 
-If you are not exposing a gRPC listener yet, remove the `grpc_*` lines and the conditional `grpc_pass` block.
+If you are not exposing the gRPC listener, remove the `grpc_*` lines and the conditional `grpc_pass` block.
+
+The gRPC API now includes:
+
+- `AuthService` for login, refresh, auth status, self revocation, and admin global revocation
+- `TrackingService` for active track reads, detail/history queries, and live updates
+- `TrackingIngress` for bidirectional observation ingestion
 
 For ACME-managed TLS, pair the server block with your preferred certbot/acme.sh/lego flow, or use distro-native nginx ACME integration where available. The app-side environment contract above already supports running behind HTTPS on an external `443` while binding Phoenix locally.
 

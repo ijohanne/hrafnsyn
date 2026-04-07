@@ -51,6 +51,14 @@ config :hrafnsyn,
   map_glyph_color: "#d9f0ff",
   public_readonly?: true
 
+config :hrafnsyn, Hrafnsyn.GRPC,
+  enabled: false,
+  listen_ip: {127, 0, 0, 1},
+  port: 50_051,
+  access_token_ttl_seconds: 15 * 60,
+  refresh_token_ttl_seconds: 30 * 24 * 60 * 60,
+  jwt_secret: "dev-grpc-secret"
+
 # Configure the endpoint
 config :hrafnsyn, HrafnsynWeb.Endpoint,
   url: [host: "localhost"],
