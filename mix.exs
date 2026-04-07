@@ -55,6 +55,7 @@ defmodule Hrafnsyn.MixProject do
       {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:prom_ex, "~> 1.11"},
+      {:plug_cowboy, "~> 2.7"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.16"},
