@@ -219,6 +219,15 @@ in
       '';
     };
 
+    aircraftDbPackage = lib.mkOption {
+      type = lib.types.nullOr lib.types.package;
+      default = null;
+      description = ''
+        Optional package that provides the generated aircraft metadata artifact
+        at `share/hrafnsyn/aircraft-db.ndjson`.
+      '';
+    };
+
     sources = lib.mkOption {
       type = lib.types.listOf sourceType;
       default = [ ];
@@ -384,6 +393,10 @@ in
         assertion = !(cfg.sources != [ ] && cfg.sourcesJsonFile != null);
         message = "services.hrafnsyn.sources and sourcesJsonFile cannot both be configured at the same time.";
       }
+      {
+        assertion = !(cfg.aircraftDbPath != null && cfg.aircraftDbPackage != null);
+        message = "services.hrafnsyn.aircraftDbPath and aircraftDbPackage are mutually exclusive.";
+      }
     ];
 
     users.users.${cfg.user} = {
@@ -418,6 +431,10 @@ in
           RELEASE_NODE = cfg.user;
           RELEASE_TMP = releaseTmp;
           LANG = "en_US.UTF-8";
+        }
+        // lib.optionalAttrs (cfg.aircraftDbPackage != null) {
+          HRAFNSYN_AIRCRAFT_DB_PATH =
+            "${cfg.aircraftDbPackage}/share/hrafnsyn/aircraft-db.ndjson";
         }
         // lib.optionalAttrs (cfg.aircraftDbPath != null) {
           HRAFNSYN_AIRCRAFT_DB_PATH = builtins.toString cfg.aircraftDbPath;

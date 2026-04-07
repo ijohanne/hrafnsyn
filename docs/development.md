@@ -105,19 +105,27 @@ Static aircraft enrichment is optional. When `HRAFNSYN_AIRCRAFT_DB_PATH` points 
 NDJSON file, Hrafnsyn will load registration overrides plus aircraft type, type description, and
 WTC metadata keyed by ICAO hex.
 
-To build the pinned dump1090-derived artifact with Nix:
+For local testing, start from `.env.example`:
 
 ```sh
-nix build .#aircraft-db
-export HRAFNSYN_AIRCRAFT_DB_PATH="$PWD/result/share/hrafnsyn/aircraft-db.ndjson"
+cp .env.example .env.local
 ```
 
-To regenerate the artifact without Nix from a local `dump1090` checkout:
+Then generate a DB file from a local `dump1090` checkout with the helper script:
 
 ```sh
 python scripts/build_aircraft_db.py /path/to/dump1090 /tmp/aircraft-db.ndjson \
   --metadata-output /tmp/aircraft-db-metadata.json
 export HRAFNSYN_AIRCRAFT_DB_PATH=/tmp/aircraft-db.ndjson
+direnv reload
+```
+
+If you want the pinned dump1090-derived artifact instead, build it with Nix:
+
+```sh
+nix build .#aircraft-db
+export HRAFNSYN_AIRCRAFT_DB_PATH="$PWD/result/share/hrafnsyn/aircraft-db.ndjson"
+direnv reload
 ```
 
 Metadata precedence for aircraft is:
