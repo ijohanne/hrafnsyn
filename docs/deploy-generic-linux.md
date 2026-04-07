@@ -75,6 +75,8 @@ HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"adm
 
 HRAFNSYN_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 HRAFNSYN_SOURCES_JSON=[{"id":"planes-main","name":"Airplane SDR","vehicle_type":"plane","adapter":"dump1090","base_url":"http://10.255.101.202","poll_interval_ms":1000,"enabled":true},{"id":"boats-main","name":"Boat SDR","vehicle_type":"vessel","adapter":"ais_catcher","base_url":"http://10.255.101.202:8100","poll_interval_ms":2500,"enabled":true}]
+# Optional static aircraft enrichment artifact
+# HRAFNSYN_AIRCRAFT_DB_PATH=/opt/hrafnsyn/share/aircraft-db.ndjson
 
 METRICS_PORT=9568
 
@@ -107,6 +109,7 @@ mix phx.gen.secret
 - `HRAFNSYN_PUBLIC_READONLY` controls whether anonymous access is allowed
 - `HRAFNSYN_BOOTSTRAP_USERS_JSON` is the preferred first-user bootstrap path
 - `HRAFNSYN_SOURCES_JSON` defines the live collectors
+- `HRAFNSYN_AIRCRAFT_DB_PATH` optionally enables static aircraft enrichment
 - `METRICS_PORT` is optional; omit it to keep metrics on the main web port
 
 Legacy single-user bootstrap environment variables are still supported for compatibility:
@@ -134,6 +137,13 @@ New deployments should prefer `HRAFNSYN_BOOTSTRAP_USERS_JSON`.
 Authenticated non-admin users remain readonly in the web app and gRPC auth model.
 
 Bootstrap passwords are hashed on first start and skipped for users that already exist.
+
+If you want the static aircraft DB on a generic Linux deployment, generate it ahead of time with:
+
+```sh
+nix build .#aircraft-db
+install -Dm0644 result/share/hrafnsyn/aircraft-db.ndjson /opt/hrafnsyn/share/aircraft-db.ndjson
+```
 
 ## Migrate
 

@@ -51,6 +51,8 @@ config :hrafnsyn,
   map_glyph_color: "#d9f0ff",
   public_readonly?: true
 
+config :hrafnsyn, Hrafnsyn.Aircraft.StaticDB, path: nil
+
 config :hrafnsyn, Hrafnsyn.GRPC,
   enabled: false,
   listen_ip: {127, 0, 0, 1},

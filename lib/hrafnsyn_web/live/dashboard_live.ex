@@ -1,6 +1,7 @@
 defmodule HrafnsynWeb.DashboardLive do
   use HrafnsynWeb, :live_view
 
+  alias Hrafnsyn.Aircraft.TypeDescription
   alias Hrafnsyn.Collectors.Config, as: CollectorConfig
   alias Hrafnsyn.CountryFlags
   alias Hrafnsyn.Tracking
@@ -623,6 +624,9 @@ defmodule HrafnsynWeb.DashboardLive do
       altitude: track.altitude,
       callsign: track.callsign,
       registration: track.registration,
+      aircraft_type: track.aircraft_type,
+      type_description: format_type_description(track.type_description),
+      wake_turbulence_category: track.wake_turbulence_category,
       destination: track.destination,
       country: track.country,
       country_display: CountryFlags.format(track.country),
@@ -697,6 +701,9 @@ defmodule HrafnsynWeb.DashboardLive do
       {"Altitude", format_altitude(track.altitude)},
       {"Callsign", track.callsign || "-"},
       {"Registration", track.registration || "-"},
+      {"ICAO type", track.aircraft_type || "-"},
+      {"Type description", format_type_description(track.type_description)},
+      {"Wake turbulence", format_wake_turbulence(track.wake_turbulence_category)},
       {"Category", track.category || "-"}
     ]
   end
@@ -724,6 +731,33 @@ defmodule HrafnsynWeb.DashboardLive do
   defp format_altitude(nil), do: "-"
   defp format_altitude(0), do: "surface"
   defp format_altitude(altitude), do: "#{altitude} ft"
+  defp format_type_description(nil), do: "-"
+
+  defp format_type_description(value) do
+    expanded = TypeDescription.expand(value) || value
+
+    case Regex.run(~r/^(.*)\(([A-Z0-9]+)\)$/, expanded) do
+      [_, description, code] ->
+        description =
+          description
+          |> String.trim()
+          |> String.downcase()
+          |> String.split(", ", trim: true)
+          |> Enum.map_join(", ", &String.capitalize/1)
+
+        "#{description} (#{code})"
+
+      _other ->
+        expanded
+    end
+  end
+
+  defp format_wake_turbulence(nil), do: "-"
+  defp format_wake_turbulence("H"), do: "Heavy (H)"
+  defp format_wake_turbulence("J"), do: "Super (J)"
+  defp format_wake_turbulence("L"), do: "Light (L)"
+  defp format_wake_turbulence("M"), do: "Medium (M)"
+  defp format_wake_turbulence(value), do: value
   defp format_age(nil), do: "-"
 
   defp format_age(observed_at),

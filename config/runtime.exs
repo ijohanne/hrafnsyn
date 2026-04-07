@@ -54,6 +54,10 @@ if map_style_url = System.get_env("HRAFNSYN_MAP_STYLE_URL") do
   config :hrafnsyn, :map_style_url, map_style_url
 end
 
+if aircraft_db_path = System.get_env("HRAFNSYN_AIRCRAFT_DB_PATH") do
+  config :hrafnsyn, Hrafnsyn.Aircraft.StaticDB, path: aircraft_db_path
+end
+
 if metrics_port = System.get_env("METRICS_PORT") do
   config :hrafnsyn, Hrafnsyn.PromEx,
     metrics_server: [
@@ -146,6 +150,7 @@ if config_env() == :prod do
   scheme = System.get_env("HRAFNSYN_SCHEME", "https")
   external_port = String.to_integer(System.get_env("HRAFNSYN_EXTERNAL_PORT", "443"))
   force_ssl? = System.get_env("HRAFNSYN_FORCE_SSL", "true") in ~w(true 1 yes on)
+
   trusted_proxies =
     case System.get_env("HRAFNSYN_TRUSTED_PROXIES") do
       nil -> []

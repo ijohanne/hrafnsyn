@@ -14,6 +14,9 @@ defmodule Hrafnsyn.Tracking.Track do
     field :display_name, :string
     field :callsign, :string
     field :registration, :string
+    field :aircraft_type, :string
+    field :type_description, :string
+    field :wake_turbulence_category, :string
     field :country, :string
     field :category, :string
     field :status, :string
@@ -50,6 +53,9 @@ defmodule Hrafnsyn.Tracking.Track do
       :display_name,
       :callsign,
       :registration,
+      :aircraft_type,
+      :type_description,
+      :wake_turbulence_category,
       :country,
       :category,
       :status,
@@ -89,7 +95,17 @@ defmodule Hrafnsyn.Tracking.Track do
 
   defp build_search_text(attrs) do
     attrs
-    |> Map.take([:identity, :display_name, :callsign, :registration, :destination, :country])
+    |> Map.take([
+      :identity,
+      :display_name,
+      :callsign,
+      :registration,
+      :aircraft_type,
+      :type_description,
+      :wake_turbulence_category,
+      :destination,
+      :country
+    ])
     |> Map.values()
     |> Enum.reject(&is_nil/1)
     |> Enum.join(" ")

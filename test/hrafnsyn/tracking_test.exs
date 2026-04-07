@@ -44,7 +44,7 @@ defmodule Hrafnsyn.TrackingTest do
       assert Enum.map(log_entries, & &1.source_name) == ["AIS West", "AIS East"]
     end
 
-    test "search matches plane identifiers, callsigns, and registrations" do
+    test "search matches plane identifiers, callsigns, registrations, and aircraft metadata" do
       plane_feed = %Source{
         id: "dump1090-main",
         name: "SkyAware Main",
@@ -61,6 +61,9 @@ defmodule Hrafnsyn.TrackingTest do
         display_name: "RYR7FH",
         callsign: "RYR7FH",
         registration: "EI-DWH",
+        aircraft_type: "B738",
+        type_description: "Landplane, 2 jet engines (L2J)",
+        wake_turbulence_category: "M",
         destination: "AGP",
         latitude: 36.105,
         longitude: -6.148,
@@ -76,6 +79,8 @@ defmodule Hrafnsyn.TrackingTest do
       assert [%{identity: "4CADE2"}] = Tracking.list_active_tracks(query: "4cade2")
       assert [%{identity: "4CADE2"}] = Tracking.list_active_tracks(query: "ryr7fh")
       assert [%{identity: "4CADE2"}] = Tracking.list_active_tracks(query: "ei-dwh")
+      assert [%{identity: "4CADE2"}] = Tracking.list_active_tracks(query: "b738")
+      assert [%{identity: "4CADE2"}] = Tracking.list_active_tracks(query: "landplane")
     end
 
     test "resolve_active_track prefers exact matches and rejects ambiguous ones" do

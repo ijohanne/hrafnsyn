@@ -40,7 +40,9 @@ defmodule HrafnsynWeb.PageControllerTest do
       Application.put_env(:hrafnsyn, Endpoint, original_config)
     end)
 
-    Application.put_env(:hrafnsyn, Endpoint,
+    Application.put_env(
+      :hrafnsyn,
+      Endpoint,
       Keyword.put(original_config, :url,
         scheme: "https",
         host: "tracks.example.com",

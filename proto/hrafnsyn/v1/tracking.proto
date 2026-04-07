@@ -38,6 +38,9 @@ message Observation {
   int32 altitude_feet = 14;
   google.protobuf.Timestamp observed_at = 15;
   bytes raw_payload_json = 16;
+  string aircraft_type = 17;
+  string type_description = 18;
+  string wake_turbulence_category = 19;
 }
 
 message ObservationEnvelope {
@@ -174,6 +177,9 @@ message TrackSummary {
   double heading_degrees = 16;
   int32 altitude_feet = 17;
   google.protobuf.Timestamp observed_at = 18;
+  string aircraft_type = 19;
+  string type_description = 20;
+  string wake_turbulence_category = 21;
 }
 
 message ListActiveTracksRequest {

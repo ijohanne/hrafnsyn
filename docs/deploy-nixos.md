@@ -67,6 +67,7 @@ Add the repository as a flake input and import the module:
     ];
 
     publicReadonly = false;
+    aircraftDbPath = "${hrafnsyn.packages.${pkgs.system}.aircraftDb}/share/hrafnsyn/aircraft-db.ndjson";
 
     users.admin = {
       password = "change-me-now";
@@ -90,6 +91,7 @@ This sets:
 - `HRAFNSYN_SCHEME`, `HRAFNSYN_EXTERNAL_PORT`, `HRAFNSYN_TRUSTED_PROXIES`
 - `HRAFNSYN_PUBLIC_READONLY`
 - `HRAFNSYN_SOURCES_JSON` generated from `services.hrafnsyn.sources`
+- optional `HRAFNSYN_AIRCRAFT_DB_PATH` from `services.hrafnsyn.aircraftDbPath`
 - `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER`, and `SECRET_KEY_BASE`
 
 ## Auth and Operator Modes
@@ -152,6 +154,19 @@ runtime environment variable expected by the release.
 
 `services.hrafnsyn.sourcesJsonFile` still works as a compatibility escape hatch,
 but it is deprecated for normal use.
+
+## Static Aircraft DB
+
+If you want dump1090-derived aircraft enrichment on NixOS, point the module at the flake-built
+artifact:
+
+```nix
+services.hrafnsyn.aircraftDbPath =
+  "${hrafnsyn.packages.${pkgs.system}.aircraftDb}/share/hrafnsyn/aircraft-db.ndjson";
+```
+
+This enables optional registration overrides plus aircraft type, type description, and WTC
+enrichment keyed by ICAO hex.
 
 ## Secret File Format
 

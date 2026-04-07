@@ -252,6 +252,32 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     assert render(view) =~ "🇺🇸 US"
   end
 
+  test "selected aircraft render enriched type and wake turbulence details", %{conn: conn} do
+    observed_at = DateTime.utc_now(:second)
+
+    assert {:ok, [_track_id]} =
+             Ingest.ingest_batch(plane_source_fixture(), [
+               plane_observation(observed_at, "406ABC", "AFR69ZJ", "F-GZNE", 36.101, -6.141, %{
+                 aircraft_type: "A320",
+                 type_description: "L2J",
+                 wake_turbulence_category: "M"
+               })
+             ])
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view
+    |> element("#track-grid .track-row")
+    |> render_click()
+
+    assert render(view) =~ "ICAO type"
+    assert render(view) =~ "A320"
+    assert render(view) =~ "Type description"
+    assert render(view) =~ "Landplane, 2 jet engines (L2J)"
+    assert render(view) =~ "Wake turbulence"
+    assert render(view) =~ "Medium (M)"
+  end
+
   defp plane_source_fixture do
     %Source{
       id: "dump1090-main",
@@ -262,22 +288,33 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     }
   end
 
-  defp plane_observation(observed_at, identity, callsign, registration, latitude, longitude) do
-    %{
-      vehicle_type: "plane",
-      identity: identity,
-      display_name: callsign,
-      callsign: callsign,
-      registration: registration,
-      destination: "AGP",
-      latitude: latitude,
-      longitude: longitude,
-      speed: 387,
-      heading: 236,
-      altitude: 37_000,
-      observed_at: observed_at,
-      last_payload: %{"source" => "test"}
-    }
+  defp plane_observation(
+         observed_at,
+         identity,
+         callsign,
+         registration,
+         latitude,
+         longitude,
+         extra_attrs \\ %{}
+       ) do
+    Map.merge(
+      %{
+        vehicle_type: "plane",
+        identity: identity,
+        display_name: callsign,
+        callsign: callsign,
+        registration: registration,
+        destination: "AGP",
+        latitude: latitude,
+        longitude: longitude,
+        speed: 387,
+        heading: 236,
+        altitude: 37_000,
+        observed_at: observed_at,
+        last_payload: %{"source" => "test"}
+      },
+      extra_attrs
+    )
   end
 
   defp vessel_source_fixture do

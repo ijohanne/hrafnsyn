@@ -210,6 +210,15 @@ in
       default = "https://tiles.openfreemap.org/styles/liberty";
     };
 
+    aircraftDbPath = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        Optional path to a generated aircraft metadata NDJSON file used for
+        aircraft registration overrides and static type enrichment.
+      '';
+    };
+
     sources = lib.mkOption {
       type = lib.types.listOf sourceType;
       default = [ ];
@@ -409,6 +418,9 @@ in
           RELEASE_NODE = cfg.user;
           RELEASE_TMP = releaseTmp;
           LANG = "en_US.UTF-8";
+        }
+        // lib.optionalAttrs (cfg.aircraftDbPath != null) {
+          HRAFNSYN_AIRCRAFT_DB_PATH = builtins.toString cfg.aircraftDbPath;
         }
         // lib.optionalAttrs (cfg.sourcesJsonFile == null) {
           HRAFNSYN_SOURCES_JSON = sourcesJson;

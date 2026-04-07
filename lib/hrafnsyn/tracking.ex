@@ -204,6 +204,9 @@ defmodule Hrafnsyn.Tracking do
           display_name: Map.get(attrs, :display_name),
           callsign: Map.get(attrs, :callsign),
           registration: Map.get(attrs, :registration),
+          aircraft_type: Map.get(attrs, :aircraft_type),
+          type_description: Map.get(attrs, :type_description),
+          wake_turbulence_category: Map.get(attrs, :wake_turbulence_category),
           country: Map.get(attrs, :country),
           category: Map.get(attrs, :category),
           status: Map.get(attrs, :status),
@@ -305,6 +308,9 @@ defmodule Hrafnsyn.Tracking do
       track.display_name,
       track.callsign,
       track.registration,
+      track.aircraft_type,
+      track.type_description,
+      track.wake_turbulence_category,
       track.destination,
       track.country
     ]

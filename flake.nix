@@ -21,6 +21,14 @@
           hash = "sha256-Jcxr1fSbmXO9bZKeg39Z/zVN0YJp17TX3LH5Us4lsZU=";
         };
 
+        dump1090Rev = "4f47d12a18db24238ab2d91c8637dae25937fd98";
+        dump1090Src = pkgs.fetchFromGitHub {
+          owner = "flightaware";
+          repo = "dump1090";
+          rev = dump1090Rev;
+          hash = "sha256-kTJ8FMugBRJaxWas/jEj4E5TmVnNpNdhq4r2YFFwgTU=";
+        };
+
         pg-dev-core = pkgs.writeShellScriptBin "pg-dev-core" ''
           set -euo pipefail
 
@@ -222,6 +230,18 @@ EOF
           src = ./.;
           sha256 = "sha256-qKfurSeVugPPOZEJ+etARrUcx8XcNXy4LJxQECU1VSc=";
         };
+
+        aircraftDb = pkgs.runCommand "hrafnsyn-aircraft-db" {
+          nativeBuildInputs = [ pkgs.python3 ];
+        } ''
+          mkdir -p "$out/share/hrafnsyn"
+
+          python ${./scripts/build_aircraft_db.py} \
+            ${dump1090Src} \
+            "$out/share/hrafnsyn/aircraft-db.ndjson" \
+            --metadata-output "$out/share/hrafnsyn/aircraft-db-metadata.json" \
+            --source-revision ${dump1090Rev}
+        '';
       in
       {
         packages.default = beamPackages.mixRelease {
@@ -249,6 +269,8 @@ EOF
         };
 
         packages.hrafnsyn = self.packages.${system}.default;
+        packages."aircraft-db" = aircraftDb;
+        packages.aircraftDb = aircraftDb;
 
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [

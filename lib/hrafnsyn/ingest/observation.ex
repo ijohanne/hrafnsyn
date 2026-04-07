@@ -4,6 +4,8 @@ defmodule Hrafnsyn.Ingest.Observation do
   """
 
   alias Hrafnsyn.Aircraft.Metadata
+  alias Hrafnsyn.Aircraft.StaticDB
+  alias Hrafnsyn.Aircraft.TypeDescription
 
   @enforce_keys [:vehicle_type, :identity, :observed_at]
   defstruct [
@@ -12,6 +14,9 @@ defmodule Hrafnsyn.Ingest.Observation do
     :display_name,
     :callsign,
     :registration,
+    :aircraft_type,
+    :type_description,
+    :wake_turbulence_category,
     :country,
     :category,
     :status,
@@ -31,6 +36,9 @@ defmodule Hrafnsyn.Ingest.Observation do
     :display_name,
     :callsign,
     :registration,
+    :aircraft_type,
+    :type_description,
+    :wake_turbulence_category,
     :country,
     :category,
     :status,
@@ -51,6 +59,9 @@ defmodule Hrafnsyn.Ingest.Observation do
           display_name: String.t() | nil,
           callsign: String.t() | nil,
           registration: String.t() | nil,
+          aircraft_type: String.t() | nil,
+          type_description: String.t() | nil,
+          wake_turbulence_category: String.t() | nil,
           country: String.t() | nil,
           category: String.t() | nil,
           status: String.t() | nil,
@@ -100,6 +111,9 @@ defmodule Hrafnsyn.Ingest.Observation do
       :display_name,
       :callsign,
       :registration,
+      :aircraft_type,
+      :type_description,
+      :wake_turbulence_category,
       :country,
       :category,
       :status,
@@ -134,6 +148,9 @@ defmodule Hrafnsyn.Ingest.Observation do
       :display_name,
       :callsign,
       :registration,
+      :aircraft_type,
+      :type_description,
+      :wake_turbulence_category,
       :destination,
       :country
     ])
@@ -147,6 +164,9 @@ defmodule Hrafnsyn.Ingest.Observation do
         display_name: normalize_text(observation.display_name),
         callsign: normalize_text(observation.callsign),
         registration: normalize_text(observation.registration),
+        aircraft_type: normalize_upper_text(observation.aircraft_type),
+        type_description: normalize_type_description(observation.type_description),
+        wake_turbulence_category: normalize_upper_text(observation.wake_turbulence_category),
         country: normalize_text(observation.country),
         category: normalize_text(observation.category),
         status: normalize_text(observation.status),
@@ -165,10 +185,16 @@ defmodule Hrafnsyn.Ingest.Observation do
 
   defp enrich_plane_metadata(%__MODULE__{vehicle_type: "plane"} = observation) do
     derived = Metadata.derive(observation.identity)
+    static = StaticDB.lookup(observation.identity)
 
     %__MODULE__{
       observation
-      | registration: observation.registration || derived.registration,
+      | registration: observation.registration || static.registration || derived.registration,
+        aircraft_type: observation.aircraft_type || static.aircraft_type,
+        type_description:
+          observation.type_description || normalize_type_description(static.type_description),
+        wake_turbulence_category:
+          observation.wake_turbulence_category || static.wake_turbulence_category,
         country: observation.country || derived.country
     }
   end
@@ -209,6 +235,21 @@ defmodule Hrafnsyn.Ingest.Observation do
   end
 
   defp normalize_text(_value), do: nil
+
+  defp normalize_type_description(value) do
+    value
+    |> normalize_text()
+    |> TypeDescription.expand()
+  end
+
+  defp normalize_upper_text(value) do
+    value
+    |> normalize_text()
+    |> case do
+      nil -> nil
+      normalized -> String.upcase(normalized)
+    end
+  end
 
   defp normalize_float(value) when is_float(value), do: value
   defp normalize_float(value) when is_integer(value), do: value / 1

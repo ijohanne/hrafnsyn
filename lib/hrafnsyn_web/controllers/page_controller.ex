@@ -18,7 +18,8 @@ defmodule HrafnsynWeb.PageController do
       grpc_contract: Contract.document(),
       grpc_summary: Contract.summary(),
       grpc_auth: Contract.auth_guidance(),
-      grpc_quickstart_commands: quickstart_commands(grpc_base_url, grpc_authority, grpc_uri.scheme)
+      grpc_quickstart_commands:
+        quickstart_commands(grpc_base_url, grpc_authority, grpc_uri.scheme)
     )
   end
 

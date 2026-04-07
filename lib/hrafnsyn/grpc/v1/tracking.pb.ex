@@ -36,6 +36,9 @@ defmodule Hrafnsyn.V1.Observation do
   field :altitude_feet, 14, type: :int32, json_name: "altitudeFeet"
   field :observed_at, 15, type: Google.Protobuf.Timestamp, json_name: "observedAt"
   field :raw_payload_json, 16, type: :bytes, json_name: "rawPayloadJson"
+  field :aircraft_type, 17, type: :string, json_name: "aircraftType"
+  field :type_description, 18, type: :string, json_name: "typeDescription"
+  field :wake_turbulence_category, 19, type: :string, json_name: "wakeTurbulenceCategory"
 end
 
 defmodule Hrafnsyn.V1.ObservationEnvelope do
@@ -219,6 +222,9 @@ defmodule Hrafnsyn.V1.TrackSummary do
   field :heading_degrees, 16, type: :double, json_name: "headingDegrees"
   field :altitude_feet, 17, type: :int32, json_name: "altitudeFeet"
   field :observed_at, 18, type: Google.Protobuf.Timestamp, json_name: "observedAt"
+  field :aircraft_type, 19, type: :string, json_name: "aircraftType"
+  field :type_description, 20, type: :string, json_name: "typeDescription"
+  field :wake_turbulence_category, 21, type: :string, json_name: "wakeTurbulenceCategory"
 end
 
 defmodule Hrafnsyn.V1.ListActiveTracksRequest do

@@ -15,6 +15,7 @@ defmodule Hrafnsyn.Application do
         {DNSCluster, query: Application.get_env(:hrafnsyn, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Hrafnsyn.PubSub},
         Hrafnsyn.Accounts.AdminBootstrap,
+        Hrafnsyn.Aircraft.StaticDB,
         Hrafnsyn.Collectors.Supervisor,
         HrafnsynWeb.Endpoint
       ] ++ prom_ex_children() ++ grpc_children()
