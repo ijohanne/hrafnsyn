@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package hrafnsyn.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "io.hrafnsyn.v1";
+
+enum VehicleType {
+  VEHICLE_TYPE_UNSPECIFIED = 0;
+  VEHICLE_TYPE_PLANE = 1;
+  VEHICLE_TYPE_VESSEL = 2;
+}
+
+message SourceDescriptor {
+  string id = 1;
+  string name = 2;
+  VehicleType vehicle_type = 3;
+  string adapter = 4;
+}
+
+message Observation {
+  VehicleType vehicle_type = 1;
+  string identity = 2;
+  string display_name = 3;
+  string callsign = 4;
+  string registration = 5;
+  string country = 6;
+  string category = 7;
+  string status = 8;
+  string destination = 9;
+  double latitude = 10;
+  double longitude = 11;
+  double speed_knots = 12;
+  double heading_degrees = 13;
+  int32 altitude_feet = 14;
+  google.protobuf.Timestamp observed_at = 15;
+  bytes raw_payload_json = 16;
+}
+
+message ObservationEnvelope {
+  SourceDescriptor source = 1;
+  Observation observation = 2;
+}
+
+message ClientHello {
+  string client_name = 1;
+  string client_version = 2;
+  repeated string requested_source_ids = 3;
+}
+
+message Heartbeat {
+  google.protobuf.Timestamp sent_at = 1;
+}
+
+message StreamObservationsRequest {
+  oneof message {
+    ClientHello hello = 1;
+    ObservationEnvelope observation = 2;
+    Heartbeat heartbeat = 3;
+  }
+}
+
+message StreamAccepted {
+  repeated string active_source_ids = 1;
+  string server_version = 2;
+}
+
+message ObservationAck {
+  string source_id = 1;
+  string identity = 2;
+  string track_id = 3;
+  google.protobuf.Timestamp observed_at = 4;
+}
+
+message StreamNotice {
+  string code = 1;
+  string message = 2;
+}
+
+message StreamObservationsResponse {
+  oneof message {
+    StreamAccepted accepted = 1;
+    ObservationAck ack = 2;
+    StreamNotice notice = 3;
+  }
+}
+
+service TrackingIngress {
+  rpc StreamObservations(stream StreamObservationsRequest) returns (stream StreamObservationsResponse);
+}

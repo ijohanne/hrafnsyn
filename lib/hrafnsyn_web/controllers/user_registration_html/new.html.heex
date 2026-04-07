@@ -1,0 +1,16 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="mx-auto max-w-sm">
+    <div class="text-center">
+      <.header>
+        Registration disabled
+        <:subtitle>
+          User accounts are provisioned by an administrator.
+          <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
+            Log in
+          </.link>
+          with an existing account.
+        </:subtitle>
+      </.header>
+    </div>
+  </div>
+</Layouts.app>
