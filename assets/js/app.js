@@ -73,9 +73,13 @@ const TrackingMap = {
     this.pendingPayload = null
     this.lastSelectedTrackId = null
     this.activePopupTrackId = null
+    this.activePopupCoordinates = null
     this.popupPinned = false
     this.hoveredTrackId = null
     this.usesSymbolIcons = false
+    this.popupMargin = 12
+    this.popupOffset = 16
+    this.popupRepositionFrame = null
 
     this.map = new window.maplibregl.Map({
       container: this.el,
@@ -91,12 +95,13 @@ const TrackingMap = {
     this.popup = new window.maplibregl.Popup({
       closeButton: true,
       closeOnClick: false,
-      offset: 18,
+      offset: this.popupOffsets(this.popupOffset),
       className: "track-popup",
-      maxWidth: "22rem",
+      maxWidth: "20rem",
     })
     this.popup.on("close", () => {
       this.activePopupTrackId = null
+      this.activePopupCoordinates = null
       this.popupPinned = false
     })
 
@@ -266,6 +271,9 @@ const TrackingMap = {
         this.map.getCanvas().style.cursor = ""
       })
 
+      this.map.on("move", () => this.schedulePopupReposition())
+      this.map.on("resize", () => this.schedulePopupReposition())
+
       if (this.pendingPayload) {
         this.sync(this.pendingPayload)
       }
@@ -275,6 +283,7 @@ const TrackingMap = {
   },
 
   destroyed() {
+    if (this.popupRepositionFrame) window.cancelAnimationFrame(this.popupRepositionFrame)
     if (this.map) this.map.remove()
   },
 
@@ -438,16 +447,109 @@ const TrackingMap = {
     return ""
   },
 
+  popupOffsets(distance) {
+    return {
+      top: [0, distance],
+      "top-left": [distance, distance],
+      "top-right": [-distance, distance],
+      bottom: [0, -distance],
+      "bottom-left": [distance, -distance],
+      "bottom-right": [-distance, -distance],
+      left: [distance, 0],
+      right: [-distance, 0],
+    }
+  },
+
+  popupAnchorOrder(point, width, height) {
+    const vertical = point.y < height / 2 ? "top" : "bottom"
+    const oppositeVertical = vertical === "top" ? "bottom" : "top"
+    const horizontal = point.x < width / 2 ? "left" : "right"
+    const oppositeHorizontal = horizontal === "left" ? "right" : "left"
+
+    return [
+      `${vertical}-${horizontal}`,
+      vertical,
+      `${vertical}-${oppositeHorizontal}`,
+      horizontal,
+      oppositeHorizontal,
+      `${oppositeVertical}-${horizontal}`,
+      oppositeVertical,
+      `${oppositeVertical}-${oppositeHorizontal}`,
+    ]
+  },
+
+  popupOverflow(rect, containerRect, margin) {
+    return (
+      Math.max(0, containerRect.left + margin - rect.left) +
+      Math.max(0, rect.right - (containerRect.right - margin)) +
+      Math.max(0, containerRect.top + margin - rect.top) +
+      Math.max(0, rect.bottom - (containerRect.bottom - margin))
+    )
+  },
+
+  schedulePopupReposition() {
+    if (!this.popup?.isOpen?.()) return
+    if (this.popupRepositionFrame) window.cancelAnimationFrame(this.popupRepositionFrame)
+
+    this.popupRepositionFrame = window.requestAnimationFrame(() => {
+      this.popupRepositionFrame = null
+      this.repositionPopup()
+    })
+  },
+
+  repositionPopup() {
+    if (!this.popup?.isOpen?.() || !this.activePopupCoordinates || !this.map) return
+
+    const popupElement = this.popup.getElement()
+    const mapElement = this.map.getContainer()
+    if (!popupElement || !mapElement) return
+
+    const containerRect = mapElement.getBoundingClientRect()
+    const maxWidth = Math.max(12 * 16, Math.min(20 * 16, containerRect.width - this.popupMargin * 2))
+    const maxHeight = Math.max(10 * 16, containerRect.height - this.popupMargin * 2)
+
+    this.popup.setMaxWidth(`${Math.round(maxWidth)}px`)
+    popupElement.style.setProperty("--track-popup-max-height", `${Math.round(maxHeight)}px`)
+
+    const point = this.map.project(this.activePopupCoordinates)
+    const anchors = this.popupAnchorOrder(point, mapElement.clientWidth, mapElement.clientHeight)
+    let bestAnchor = anchors[0]
+    let bestOverflow = Number.POSITIVE_INFINITY
+
+    for (const anchor of anchors) {
+      this.popup.options.anchor = anchor
+      this.popup.setOffset(this.popupOffsets(this.popupOffset))
+
+      const overflow = this.popupOverflow(
+        popupElement.getBoundingClientRect(),
+        containerRect,
+        this.popupMargin,
+      )
+
+      if (overflow === 0) return
+      if (overflow < bestOverflow) {
+        bestOverflow = overflow
+        bestAnchor = anchor
+      }
+    }
+
+    this.popup.options.anchor = bestAnchor
+    this.popup.setOffset(this.popupOffsets(this.popupOffset))
+  },
+
   openPopup(feature, pinned) {
     const coordinates = feature.geometry?.coordinates
     if (!Array.isArray(coordinates)) return
 
     this.activePopupTrackId = feature.properties.id
+    this.activePopupCoordinates = coordinates
     this.popupPinned = pinned
     this.popup
       .setLngLat(coordinates)
       .setHTML(this.popupMarkup(feature.properties))
       .addTo(this.map)
+
+    this.schedulePopupReposition()
   },
 
   pinPopup(feature) {
