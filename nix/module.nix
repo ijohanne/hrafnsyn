@@ -269,6 +269,15 @@ in
       default = true;
     };
 
+    trackPointRetentionDays = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 7;
+      description = ''
+        Number of days of full-resolution track point history to keep.
+        Older points are compacted to one last-seen point per track.
+      '';
+    };
+
     autoMigrate = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -428,6 +437,7 @@ in
           HRAFNSYN_TRUSTED_PROXIES = builtins.concatStringsSep "," cfg.trustedProxies;
           HRAFNSYN_MAP_STYLE_URL = cfg.mapStyleUrl;
           HRAFNSYN_PUBLIC_READONLY = if cfg.publicReadonly then "true" else "false";
+          HRAFNSYN_TRACK_POINT_RETENTION_DAYS = builtins.toString cfg.trackPointRetentionDays;
           RELEASE_NODE = cfg.user;
           RELEASE_TMP = releaseTmp;
           LANG = "en_US.UTF-8";

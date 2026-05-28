@@ -53,6 +53,12 @@ config :hrafnsyn,
 
 config :hrafnsyn, Hrafnsyn.Aircraft.StaticDB, path: nil
 
+config :hrafnsyn, Hrafnsyn.Tracking.Pruner,
+  enabled: true,
+  retention_days: 7,
+  initial_delay_ms: :timer.minutes(1),
+  interval_ms: :timer.hours(6)
+
 config :hrafnsyn, Hrafnsyn.GRPC,
   enabled: false,
   listen_ip: {127, 0, 0, 1},

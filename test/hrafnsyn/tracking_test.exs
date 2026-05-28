@@ -4,6 +4,7 @@ defmodule Hrafnsyn.TrackingTest do
   alias Hrafnsyn.Collectors.Source
   alias Hrafnsyn.Ingest
   alias Hrafnsyn.Tracking
+  alias Hrafnsyn.Tracking.TrackPoint
 
   describe "ingest pipeline" do
     test "merges identical vessels from multiple sources into one live track" do
@@ -131,6 +132,45 @@ defmodule Hrafnsyn.TrackingTest do
       assert {:ok, %{identity: "406ABC"}} = Tracking.resolve_active_track("afr69zj")
       assert {:error, :ambiguous} = Tracking.resolve_active_track("afr")
       assert {:error, :not_found} = Tracking.resolve_active_track("unknown")
+    end
+
+    test "prune_stale_points keeps one last-seen point per track before the cutoff" do
+      source = source_fixture("ais-main", "AIS Main")
+      now = DateTime.utc_now(:second)
+      cutoff = DateTime.add(now, -7 * 24 * 60 * 60, :second)
+
+      old_observed_at = DateTime.add(cutoff, -3_600, :second)
+      last_seen_before_cutoff = DateTime.add(cutoff, -30, :second)
+      recent_observed_at = DateTime.add(cutoff, 30, :second)
+
+      assert {:ok, [track_id]} =
+               Ingest.ingest_batch(source, [
+                 vessel_observation(
+                   DateTime.add(cutoff, -7_200, :second),
+                   "OLD FERRY",
+                   36.1,
+                   -5.3
+                 ),
+                 vessel_observation(old_observed_at, "OLD FERRY", 36.2, -5.4),
+                 vessel_observation(last_seen_before_cutoff, "OLD FERRY", 36.3, -5.5),
+                 vessel_observation(recent_observed_at, "OLD FERRY", 36.4, -5.6)
+               ])
+
+      assert {:ok, 2} = Tracking.prune_stale_points(cutoff)
+
+      points =
+        TrackPoint
+        |> where([point], point.track_id == ^track_id)
+        |> order_by([point], asc: point.observed_at)
+        |> Repo.all()
+
+      assert Enum.map(points, & &1.observed_at) == [
+               last_seen_before_cutoff,
+               recent_observed_at
+             ]
+
+      assert [%{latitude: 36.3, longitude: -5.5}, %{latitude: 36.4, longitude: -5.6}] =
+               Tracking.recent_points(track_id, 24 * 8)
     end
   end
 

@@ -59,6 +59,7 @@ config :phoenix,
 
 config :hrafnsyn, Hrafnsyn.Collectors, sources: []
 config :hrafnsyn, :enable_prom_ex?, false
+config :hrafnsyn, Hrafnsyn.Tracking.Pruner, enabled: false
 
 config :hrafnsyn, Hrafnsyn.GRPC,
   enabled: false,

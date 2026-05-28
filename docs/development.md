@@ -99,6 +99,17 @@ export HRAFNSYN_SOURCES_JSON='[
 ]'
 ```
 
+## Track Point Retention
+
+Hrafnsyn keeps full-resolution track points for 7 days by default. Older history is compacted to
+one last-seen point per track so stale routes keep a historical anchor without unbounded growth.
+
+Override the window locally with:
+
+```sh
+export HRAFNSYN_TRACK_POINT_RETENTION_DAYS=14
+```
+
 ## Static Aircraft DB
 
 Static aircraft enrichment is optional. When `HRAFNSYN_AIRCRAFT_DB_PATH` points at a generated

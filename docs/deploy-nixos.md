@@ -67,6 +67,7 @@ Add the repository as a flake input and import the module:
     ];
 
     publicReadonly = false;
+    trackPointRetentionDays = 7;
     aircraftDbPackage = hrafnsyn.packages.${pkgs.system}.aircraftDb;
 
     users.admin = {
@@ -90,6 +91,7 @@ This sets:
 - `PORT`, `LISTEN_ADDRESS`, `PHX_HOST`
 - `HRAFNSYN_SCHEME`, `HRAFNSYN_EXTERNAL_PORT`, `HRAFNSYN_TRUSTED_PROXIES`
 - `HRAFNSYN_PUBLIC_READONLY`
+- `HRAFNSYN_TRACK_POINT_RETENTION_DAYS` from `services.hrafnsyn.trackPointRetentionDays`
 - `HRAFNSYN_SOURCES_JSON` generated from `services.hrafnsyn.sources`
 - optional `HRAFNSYN_AIRCRAFT_DB_PATH` from `services.hrafnsyn.aircraftDbPackage`
 - `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_USER`, and `SECRET_KEY_BASE`

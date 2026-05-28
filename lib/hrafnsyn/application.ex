@@ -18,7 +18,7 @@ defmodule Hrafnsyn.Application do
         Hrafnsyn.Aircraft.StaticDB,
         Hrafnsyn.Collectors.Supervisor,
         HrafnsynWeb.Endpoint
-      ] ++ prom_ex_children() ++ grpc_children()
+      ] ++ tracking_pruner_children() ++ prom_ex_children() ++ grpc_children()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -43,6 +43,16 @@ defmodule Hrafnsyn.Application do
   defp prom_ex_children do
     if Application.get_env(:hrafnsyn, :enable_prom_ex?, true) do
       [Hrafnsyn.PromEx]
+    else
+      []
+    end
+  end
+
+  defp tracking_pruner_children do
+    config = Application.get_env(:hrafnsyn, Hrafnsyn.Tracking.Pruner, [])
+
+    if Keyword.get(config, :enabled, true) do
+      [Hrafnsyn.Tracking.Pruner]
     else
       []
     end

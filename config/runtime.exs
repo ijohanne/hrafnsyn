@@ -58,6 +58,10 @@ if aircraft_db_path = System.get_env("HRAFNSYN_AIRCRAFT_DB_PATH") do
   config :hrafnsyn, Hrafnsyn.Aircraft.StaticDB, path: aircraft_db_path
 end
 
+if retention_days = System.get_env("HRAFNSYN_TRACK_POINT_RETENTION_DAYS") do
+  config :hrafnsyn, Hrafnsyn.Tracking.Pruner, retention_days: String.to_integer(retention_days)
+end
+
 if metrics_port = System.get_env("METRICS_PORT") do
   config :hrafnsyn, Hrafnsyn.PromEx,
     metrics_server: [

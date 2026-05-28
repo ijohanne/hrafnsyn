@@ -147,6 +147,35 @@ defmodule Hrafnsyn.Tracking do
     end
   end
 
+  @spec prune_stale_points(DateTime.t() | NaiveDateTime.t()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def prune_stale_points(cutoff) do
+    cutoff = to_naive_second(cutoff)
+
+    sql = """
+    DELETE FROM track_points
+    WHERE id IN (
+      SELECT id
+      FROM (
+        SELECT
+          id,
+          row_number() OVER (
+            PARTITION BY track_id
+            ORDER BY observed_at DESC, inserted_at DESC, id DESC
+          ) AS stale_rank
+        FROM track_points
+        WHERE observed_at < $1::timestamp
+      ) stale_points
+      WHERE stale_rank > 1
+    )
+    """
+
+    case SQL.query(Repo, sql, [cutoff]) do
+      {:ok, %{num_rows: deleted_count}} -> {:ok, deleted_count}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   def ingest_batch(source, observations) do
     touched_ids =
       observations
@@ -331,4 +360,12 @@ defmodule Hrafnsyn.Tracking do
     last = List.last(rest, first)
     NaiveDateTime.diff(last, first, :second)
   end
+
+  defp to_naive_second(%DateTime{} = datetime) do
+    datetime
+    |> DateTime.to_naive()
+    |> NaiveDateTime.truncate(:second)
+  end
+
+  defp to_naive_second(%NaiveDateTime{} = datetime), do: NaiveDateTime.truncate(datetime, :second)
 end
