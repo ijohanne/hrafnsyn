@@ -147,32 +147,68 @@ defmodule Hrafnsyn.Tracking do
     end
   end
 
-  @spec prune_stale_points(DateTime.t() | NaiveDateTime.t()) ::
-          {:ok, non_neg_integer()} | {:error, term()}
-  def prune_stale_points(cutoff) do
+  @spec prune_stale_points(DateTime.t() | NaiveDateTime.t(), keyword()) ::
+          {:ok, %{deleted_count: non_neg_integer(), complete?: boolean()}} | {:error, term()}
+  def prune_stale_points(cutoff, opts \\ []) do
     cutoff = to_naive_second(cutoff)
+    batch_size = Keyword.get(opts, :batch_size, 1_000)
+    max_batches = Keyword.get(opts, :max_batches, 10)
+    query_timeout_ms = Keyword.get(opts, :timeout, 60_000)
 
+    prune_stale_points(cutoff, batch_size, max_batches, query_timeout_ms, 0)
+  end
+
+  defp prune_stale_points(_cutoff, _batch_size, 0, _query_timeout_ms, deleted_count) do
+    {:ok, %{deleted_count: deleted_count, complete?: false}}
+  end
+
+  defp prune_stale_points(cutoff, batch_size, batches_remaining, query_timeout_ms, deleted_count) do
     sql = """
-    DELETE FROM track_points
-    WHERE id IN (
-      SELECT id
-      FROM (
-        SELECT
-          id,
-          row_number() OVER (
-            PARTITION BY track_id
-            ORDER BY observed_at DESC, inserted_at DESC, id DESC
-          ) AS stale_rank
-        FROM track_points
-        WHERE observed_at < $1::timestamp
-      ) stale_points
-      WHERE stale_rank > 1
+    WITH delete_candidates AS (
+      SELECT point.id
+      FROM track_points AS point
+      WHERE point.observed_at < $1::timestamp
+        AND EXISTS (
+          SELECT 1
+          FROM track_points AS newer
+          WHERE newer.track_id = point.track_id
+            AND newer.observed_at < $1::timestamp
+            AND (
+              newer.observed_at > point.observed_at
+              OR (
+                newer.observed_at = point.observed_at
+                AND newer.inserted_at > point.inserted_at
+              )
+              OR (
+                newer.observed_at = point.observed_at
+                AND newer.inserted_at = point.inserted_at
+                AND newer.id > point.id
+              )
+            )
+        )
+      ORDER BY point.observed_at ASC, point.inserted_at ASC, point.id ASC
+      LIMIT $2
     )
+    DELETE FROM track_points AS point
+    USING delete_candidates
+    WHERE point.id = delete_candidates.id
     """
 
-    case SQL.query(Repo, sql, [cutoff]) do
-      {:ok, %{num_rows: deleted_count}} -> {:ok, deleted_count}
-      {:error, reason} -> {:error, reason}
+    case SQL.query(Repo, sql, [cutoff, batch_size], timeout: query_timeout_ms) do
+      {:ok, %{num_rows: deleted_in_batch}} when deleted_in_batch == batch_size ->
+        prune_stale_points(
+          cutoff,
+          batch_size,
+          batches_remaining - 1,
+          query_timeout_ms,
+          deleted_count + deleted_in_batch
+        )
+
+      {:ok, %{num_rows: deleted_in_batch}} ->
+        {:ok, %{deleted_count: deleted_count + deleted_in_batch, complete?: true}}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

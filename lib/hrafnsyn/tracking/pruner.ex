@@ -16,11 +16,19 @@ defmodule Hrafnsyn.Tracking.Pruner do
   @default_retention_days 7
   @default_initial_delay_ms :timer.minutes(1)
   @default_interval_ms :timer.hours(6)
+  @default_catch_up_interval_ms :timer.seconds(10)
+  @default_batch_size 1_000
+  @default_max_batches_per_run 10
+  @default_query_timeout_ms 60_000
   @seconds_per_day 86_400
 
   @type state :: %{
           retention_days: pos_integer(),
-          interval_ms: pos_integer()
+          interval_ms: pos_integer(),
+          catch_up_interval_ms: pos_integer(),
+          batch_size: pos_integer(),
+          max_batches_per_run: pos_integer(),
+          query_timeout_ms: pos_integer()
         }
 
   def start_link(opts \\ []) do
@@ -35,7 +43,11 @@ defmodule Hrafnsyn.Tracking.Pruner do
     {:ok,
      %{
        retention_days: config.retention_days,
-       interval_ms: config.interval_ms
+       interval_ms: config.interval_ms,
+       catch_up_interval_ms: config.catch_up_interval_ms,
+       batch_size: config.batch_size,
+       max_batches_per_run: config.max_batches_per_run,
+       query_timeout_ms: config.query_timeout_ms
      }}
   end
 
@@ -43,24 +55,49 @@ defmodule Hrafnsyn.Tracking.Pruner do
   def handle_info(:prune, state) do
     cutoff = retention_cutoff(state.retention_days)
 
-    case Tracking.prune_stale_points(cutoff) do
-      {:ok, deleted_count} ->
-        :telemetry.execute(
-          [:hrafnsyn, :track_points, :prune],
-          %{deleted_points: deleted_count},
-          %{retention_days: state.retention_days}
+    next_delay_ms =
+      case Tracking.prune_stale_points(cutoff,
+             batch_size: state.batch_size,
+             max_batches: state.max_batches_per_run,
+             timeout: state.query_timeout_ms
+           ) do
+        {:ok, %{deleted_count: deleted_count, complete?: complete?}} ->
+          handle_prune_success(deleted_count, complete?, state)
+
+        {:error, reason} ->
+          Logger.error("Failed to prune stale track points: #{inspect(reason)}")
+          state.interval_ms
+      end
+
+    schedule_prune(next_delay_ms)
+    {:noreply, state}
+  end
+
+  defp handle_prune_success(deleted_count, complete?, state) do
+    :telemetry.execute(
+      [:hrafnsyn, :track_points, :prune],
+      %{
+        deleted_points: deleted_count,
+        complete: if(complete?, do: 1, else: 0)
+      },
+      %{retention_days: state.retention_days}
+    )
+
+    cond do
+      deleted_count > 0 and complete? ->
+        Logger.info("Pruned #{deleted_count} stale track points")
+        state.interval_ms
+
+      deleted_count > 0 ->
+        Logger.info(
+          "Pruned #{deleted_count} stale track points; more stale points remain, continuing soon"
         )
 
-        if deleted_count > 0 do
-          Logger.info("Pruned #{deleted_count} stale track points")
-        end
+        state.catch_up_interval_ms
 
-      {:error, reason} ->
-        Logger.error("Failed to prune stale track points: #{inspect(reason)}")
+      true ->
+        state.interval_ms
     end
-
-    schedule_prune(state.interval_ms)
-    {:noreply, state}
   end
 
   defp retention_cutoff(retention_days) do
@@ -78,7 +115,19 @@ defmodule Hrafnsyn.Tracking.Pruner do
         positive_integer(opts, app_config, :retention_days, @default_retention_days),
       initial_delay_ms:
         positive_integer(opts, app_config, :initial_delay_ms, @default_initial_delay_ms),
-      interval_ms: positive_integer(opts, app_config, :interval_ms, @default_interval_ms)
+      interval_ms: positive_integer(opts, app_config, :interval_ms, @default_interval_ms),
+      catch_up_interval_ms:
+        positive_integer(
+          opts,
+          app_config,
+          :catch_up_interval_ms,
+          @default_catch_up_interval_ms
+        ),
+      batch_size: positive_integer(opts, app_config, :batch_size, @default_batch_size),
+      max_batches_per_run:
+        positive_integer(opts, app_config, :max_batches_per_run, @default_max_batches_per_run),
+      query_timeout_ms:
+        positive_integer(opts, app_config, :query_timeout_ms, @default_query_timeout_ms)
     }
   end
 

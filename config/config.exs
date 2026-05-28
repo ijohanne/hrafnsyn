@@ -57,7 +57,11 @@ config :hrafnsyn, Hrafnsyn.Tracking.Pruner,
   enabled: true,
   retention_days: 7,
   initial_delay_ms: :timer.minutes(1),
-  interval_ms: :timer.hours(6)
+  interval_ms: :timer.hours(6),
+  catch_up_interval_ms: :timer.seconds(10),
+  batch_size: 1_000,
+  max_batches_per_run: 10,
+  query_timeout_ms: 60_000
 
 config :hrafnsyn, Hrafnsyn.GRPC,
   enabled: false,
