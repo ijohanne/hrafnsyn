@@ -8,7 +8,6 @@ defmodule Hrafnsyn.PromEx.HrafnsynPlugin do
   alias Hrafnsyn.Collectors.Config, as: CollectorConfig
   alias Hrafnsyn.Repo
   alias Hrafnsyn.Tracking
-  alias Hrafnsyn.Tracking.TrackPoint
   alias PromEx.MetricTypes.{Event, Polling}
 
   @impl true
@@ -120,7 +119,7 @@ defmodule Hrafnsyn.PromEx.HrafnsynPlugin do
           active_vessels: counts.vessels,
           configured_sources: length(sources),
           enabled_sources: Enum.count(sources, & &1.enabled),
-          track_points: Repo.aggregate(TrackPoint, :count, :id)
+          track_points: estimated_track_points()
         }
       else
         zero_state_metrics(sources)
@@ -131,6 +130,19 @@ defmodule Hrafnsyn.PromEx.HrafnsynPlugin do
     _error ->
       sources = CollectorConfig.list_sources()
       :telemetry.execute([:prom_ex, :plugin, :hrafnsyn, :state], zero_state_metrics(sources), %{})
+  end
+
+  defp estimated_track_points do
+    sql = """
+    SELECT GREATEST(reltuples, 0)::bigint
+    FROM pg_class
+    WHERE oid = 'track_points'::regclass
+    """
+
+    case Repo.query(sql, [], timeout: 1_000) do
+      {:ok, %{rows: [[count]]}} -> count
+      _other -> 0
+    end
   end
 
   defp zero_state_metrics(sources) do
