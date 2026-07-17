@@ -11,7 +11,9 @@
 
         esbuild = pkgs.esbuild;
         tailwindcss = pkgs.tailwindcss_4;
-        beamPackages = pkgs.beam.packages.erlang_27;
+        beamPackages = pkgs.beam.packages.erlang_29.extend (final: _: {
+          elixir = final.elixir_1_20;
+        });
         postgres = pkgs.postgresql_18.withPackages (ps: [ ps.postgis ]);
 
         heroiconsSrc = pkgs.fetchFromGitHub {
@@ -228,7 +230,7 @@ EOF
           pname = "hrafnsyn-mix-deps";
           version = "0.1.0";
           src = ./.;
-          sha256 = "sha256-qKfurSeVugPPOZEJ+etARrUcx8XcNXy4LJxQECU1VSc=";
+          sha256 = "sha256-fG1oWnFCkUT1yHmgE+p4knEbclLb40ZsoiYAuxWQaPw=";
         };
 
         aircraftDb = pkgs.runCommand "hrafnsyn-aircraft-db" {

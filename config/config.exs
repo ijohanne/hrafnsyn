@@ -93,7 +93,7 @@ config :hrafnsyn, Hrafnsyn.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
 config :esbuild,
-  version: "0.25.4",
+  version: "0.27.2",
   path: System.get_env("MIX_ESBUILD_PATH"),
   hrafnsyn: [
     args:
@@ -104,7 +104,7 @@ config :esbuild,
 
 # Configure tailwind (the version is required)
 config :tailwind,
-  version: "4.1.12",
+  version: "4.3.2",
   path: System.get_env("MIX_TAILWIND_PATH"),
   hrafnsyn: [
     args: ~w(

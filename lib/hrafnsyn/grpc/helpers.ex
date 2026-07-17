@@ -53,15 +53,6 @@ defmodule Hrafnsyn.GRPC.Helpers do
     %Hrafnsyn.V1.UserProfile{id: id, username: username, email: email || "", is_admin: is_admin}
   end
 
-  def user_profile(user) do
-    %Hrafnsyn.V1.UserProfile{
-      id: user.id,
-      username: user.username,
-      email: user.email || "",
-      is_admin: user.is_admin
-    }
-  end
-
   def session_info(%{
         id: id,
         current: current,

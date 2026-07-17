@@ -100,7 +100,7 @@ defmodule HrafnsynWeb.UserTokensLiveTest do
   end
 
   defp admin_user_fixture do
-    {:ok, admin} =
+    {:ok, %User{} = admin} =
       %{
         username: unique_user_username(),
         email: unique_user_email(),

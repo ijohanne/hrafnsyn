@@ -156,7 +156,7 @@ defmodule Hrafnsyn.Ingest.Observation do
     ])
   end
 
-  defp normalize(observation) do
+  defp normalize(%__MODULE__{} = observation) do
     %__MODULE__{
       observation
       | vehicle_type: observation.vehicle_type |> to_string() |> String.trim(),

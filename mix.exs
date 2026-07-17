@@ -5,7 +5,7 @@ defmodule Hrafnsyn.MixProject do
     [
       app: :hrafnsyn,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.20",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       releases: [hrafnsyn: [validate_compile_env: false]],
@@ -64,9 +64,11 @@ defmodule Hrafnsyn.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
-      {:grpc, "~> 0.11.5"},
+      {:grpc, "~> 1.0.2"},
+      {:grpc_server, "~> 1.0.2"},
+      {:gun, "~> 2.4"},
       {:joken, "~> 2.6"},
-      {:protobuf, "~> 0.16.0"},
+      {:protobuf, "~> 0.17.0"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"}
     ]

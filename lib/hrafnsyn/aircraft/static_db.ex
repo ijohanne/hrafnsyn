@@ -13,7 +13,7 @@ defmodule Hrafnsyn.Aircraft.StaticDB do
     wake_turbulence_category: nil
   }
 
-  @type record :: %{
+  @type aircraft_record :: %{
           registration: String.t() | nil,
           aircraft_type: String.t() | nil,
           type_description: String.t() | nil,
@@ -25,7 +25,7 @@ defmodule Hrafnsyn.Aircraft.StaticDB do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @spec lookup(String.t() | nil) :: record()
+  @spec lookup(String.t() | nil) :: aircraft_record()
   def lookup(identity) when is_binary(identity) do
     case :ets.whereis(@table) do
       :undefined ->
@@ -107,7 +107,7 @@ defmodule Hrafnsyn.Aircraft.StaticDB do
   defp load_file(path) do
     if File.exists?(path) do
       path
-      |> File.stream!([], :line)
+      |> File.stream!(:line, [])
       |> Enum.reduce_while({:ok, 0}, &count_records(&1, &2, path))
       |> case do
         {:ok, count} ->
