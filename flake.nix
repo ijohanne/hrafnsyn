@@ -285,7 +285,13 @@ EOF
             git
             gcc
             gnumake
+            jq
+            osv-scanner
+            perl
             pkg-config
+            python3
+            semgrep
+            yara
             pg-dev-core
             pg-init
             pg-start

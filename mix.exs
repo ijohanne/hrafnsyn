@@ -43,6 +43,7 @@ defmodule Hrafnsyn.MixProject do
     [
       {:bcrypt_elixir, "~> 3.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:geo, "~> 3.6"},
       {:phoenix, "~> 1.8.5"},
       {:phoenix_ecto, "~> 4.5"},
