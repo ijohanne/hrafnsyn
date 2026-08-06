@@ -120,5 +120,6 @@ Both guides cover:
 
 - [Architecture](docs/architecture.md)
 - [Development Guide](docs/development.md)
+- [Dependency Security Review](docs/dependency-security.md)
 - [Deploy on NixOS](docs/deploy-nixos.md)
 - [Deploy on Generic Linux](docs/deploy-generic-linux.md)
