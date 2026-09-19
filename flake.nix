@@ -230,7 +230,7 @@ EOF
           pname = "hrafnsyn-mix-deps";
           version = "0.1.0";
           src = ./.;
-          sha256 = "sha256-fG1oWnFCkUT1yHmgE+p4knEbclLb40ZsoiYAuxWQaPw=";
+          sha256 = "sha256-C1TS5r0stLrLu4LMNcZWYfq3iqQhgaYS+iz11Nf6s/c=";
         };
 
         aircraftDb = pkgs.runCommand "hrafnsyn-aircraft-db" {
