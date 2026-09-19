@@ -67,7 +67,8 @@ defmodule Hrafnsyn.MixProject do
       {:jason, "~> 1.2"},
       {:grpc, "~> 1.0.2"},
       {:grpc_server, "~> 1.0.2"},
-      {:gun, "~> 2.4"},
+      # grpc 1.0.x still restricts its optional transport to Gun 2.4.x.
+      {:gun, "~> 2.6", override: true},
       {:joken, "~> 2.6"},
       {:protobuf, "~> 0.17.0"},
       {:dns_cluster, "~> 0.2.0"},

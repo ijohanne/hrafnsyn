@@ -4,6 +4,20 @@ This note records the August 2026 review (`hrafnsyn-r3t`) and September 2026 fol
 
 ## September 2026 follow-up
 
+### Follow-up on remaining findings
+
+Gun was subsequently upgraded from 2.4.1 to the latest Hex release, 2.6.0, together with `grpc`, `grpc_core`, and `grpc_server` from 1.0.2 to 1.0.5. Even gRPC 1.0.5 declares `~> 2.4.0` for its optional Gun transport, so the application explicitly overrides that constraint. The full 142-test suite, including the gRPC authentication tests, passes with this combination. The Nix dependency hash was regenerated again.
+
+The three remaining scanner records persist at these latest versions. A direct runtime check confirmed that Cowlib 2.20.0 still emits CRLF from a structured-field string and accepts `; admin=1` inside a cookie value, while Gun 2.6.0 rejects the resulting CRLF request header with `invalid_request_header` before sending it. These behaviors were checked without making a network request.
+
+- **CVE-2026-43966:** upstream closed [Cowlib PR 163](https://github.com/ninenines/cowlib/pull/163) and [PR 166](https://github.com/ninenines/cowlib/pull/166), explaining that Cowboy and Gun reject invalid header characters downstream. There is no published Cowlib encoder fix to upgrade to.
+- **CVE-2026-43969:** the CNA references a [preliminary patch in the EEF fork](https://github.com/erlef/cowlib/commit/177953d). It is not in the current Cowlib release. Adopting it would require carrying a patch or fork, not an ordinary Hex update.
+- **GHSA-w4f7-4cxr-rv3c:** the GitHub record lists a Gun fixed version of 2.16.0, inconsistent with the [CNA's Gun 2.4.0 mitigation](https://cna.erlef.org/cves/CVE-2026-43966.html). Upgrading Gun to 2.6.0 therefore does not clear that scanner record, although the runtime rejection is confirmed.
+
+Mint's earlier publisher-change flag is a supply-chain review signal, not a vulnerability or a missing security update. The supporting owner/tag evidence remains below; it has not been silently vetted or suppressed. The current Mode B scan covers the four follow-up package changes, and retains the previous Mint finding as historical review context.
+
+### Initial update
+
 The September 20 review compared the working lockfile with HEAD (Mode B), scanned old and new Hex tarballs with all eight native audit rules, and ran Semgrep, YARA, `mix hex.audit`, `mix deps.audit`, and OSV-Scanner. Seven OSV advisory records disappeared after these updates:
 
 | Package | Previous | Updated | Resolved advisories |
@@ -35,7 +49,7 @@ These are remotely triggerable resource-exhaustion issues, so the version upgrad
 
 Hrafnsyn uses Bandit for the Phoenix endpoint. Cowboy is used by two optional listeners: the gRPC listener and PromEx's standalone metrics listener when `METRICS_PORT` is set. The gRPC child passes only the listen IP in `adapter_opts`; the PromEx configuration passes only `port` and `path` and does not set `cowboy_opts`. Neither path sets Cowboy's `invalid_response_headers` option, so Cowboy 2.19.0 retains its default `error_terminate` behavior, which rejects response header values containing carriage returns or line feeds before they are sent.
 
-Hrafnsyn has no production call sites for Gun or generated gRPC stubs. Gun is present as the transport used by the gRPC client library; the only repository call site creates a loopback client in `test/hrafnsyn/grpc/auth_server_test.exs`. Neither application nor test configuration sets Gun's `invalid_request_headers` request option, so Gun 2.4.1 retains its default `raise` behavior for request header values containing carriage returns or line feeds.
+Hrafnsyn has no production call sites for Gun or generated gRPC stubs. Gun is present as the transport used by the gRPC client library; the only repository call site creates a loopback client in `test/hrafnsyn/grpc/auth_server_test.exs`. Neither application nor test configuration sets Gun's `invalid_request_headers` request option, so Gun 2.6.0 retains its default `raise` behavior for request header values containing carriage returns or line feeds.
 
 Do not change either default to `ignore`. Any future Cowboy protocol options or Gun request options must preserve these validation modes.
 
@@ -43,7 +57,7 @@ Do not change either default to `ignore`. Any future Cowboy protocol options or 
 
 ### CVE-2026-43966 and GHSA-w4f7-4cxr-rv3c
 
-[CVE-2026-43966](https://cna.erlef.org/cves/CVE-2026-43966.html) concerns attacker-controlled strings passed to Cowlib's structured-header encoder. There are no calls to `cow_http_struct_hd` in `lib/`, `config/`, or `test/`. Hrafnsyn does not build structured HTTP fields from request data, and the Cowboy/Gun transport validation described above remains enabled. Gun 2.4.1 is therefore covered by the upstream default mitigation referenced by the related GHSA record.
+[CVE-2026-43966](https://cna.erlef.org/cves/CVE-2026-43966.html) concerns attacker-controlled strings passed to Cowlib's structured-header encoder. There are no calls to `cow_http_struct_hd` in `lib/`, `config/`, or `test/`. Hrafnsyn does not build structured HTTP fields from request data, and the Cowboy/Gun transport validation described above remains enabled. Gun 2.6.0 is therefore covered by the upstream default mitigation referenced by the related GHSA record.
 
 ### CVE-2026-43969
 
