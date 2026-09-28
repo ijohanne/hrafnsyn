@@ -1,0 +1,14 @@
+# Hrafnsyn review owner: Ian Johannesen. Tracking: vardrun hrafnsyn-fhv.
+# Revalidate by 2026-10-14 or immediately when Cowboy, Cowlib, or Gun changes.
+# These findings and the application-specific reachability assessment are in
+# docs/dependency-security.md. No other advisories are ignored.
+
+[[IgnoredVulns]]
+id = "EEF-CVE-2026-43966"
+ignoreUntil = 2026-10-14
+reason = "Hrafnsyn does not call Cowlib's structured-header encoder; Cowboy 2.19.0 and Gun 2.6.0 retain CRLF-rejecting defaults. Owner Ian Johannesen; vardrun hrafnsyn-fhv."
+
+[[IgnoredVulns]]
+id = "EEF-CVE-2026-43969"
+ignoreUntil = 2026-10-14
+reason = "Hrafnsyn does not pass external cookies to cow_cookie:cookie/1; the only Gun client is a loopback gRPC test client. Owner Ian Johannesen; vardrun hrafnsyn-fhv."

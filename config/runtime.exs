@@ -91,6 +91,14 @@ if bootstrap_users_json = System.get_env("HRAFNSYN_BOOTSTRAP_USERS_JSON") do
   config :hrafnsyn, :bootstrap_users, bootstrap_users
 end
 
+grpc_jwt_secret =
+  System.get_env("HRAFNSYN_JWT_SIGNING_SECRET") ||
+    System.get_env("SECRET_KEY_BASE") ||
+    if(config_env() == :prod,
+      do: raise("HRAFNSYN_JWT_SIGNING_SECRET or SECRET_KEY_BASE is required in production"),
+      else: Base.encode64(:crypto.strong_rand_bytes(32))
+    )
+
 config :hrafnsyn, Hrafnsyn.GRPC,
   enabled: System.get_env("GRPC_PORT") not in [nil, ""],
   listen_ip: grpc_listen_ip,
@@ -99,10 +107,7 @@ config :hrafnsyn, Hrafnsyn.GRPC,
     String.to_integer(System.get_env("HRAFNSYN_JWT_ACCESS_TTL_SECONDS", "900")),
   refresh_token_ttl_seconds:
     String.to_integer(System.get_env("HRAFNSYN_JWT_REFRESH_TTL_SECONDS", "2592000")),
-  jwt_secret:
-    System.get_env("HRAFNSYN_JWT_SIGNING_SECRET") ||
-      System.get_env("SECRET_KEY_BASE") ||
-      "dev-grpc-secret"
+  jwt_secret: grpc_jwt_secret
 
 config :hrafnsyn, HrafnsynWeb.Endpoint,
   http: [ip: listen_ip, port: String.to_integer(System.get_env("PORT", "4000"))]
@@ -210,13 +215,8 @@ if config_env() == :prod do
   # "priv/ssl/server.key". For all supported SSL configuration
   # options, see https://hexdocs.pm/plug/Plug.SSL.html#configure/1
   #
-  # We also recommend setting `force_ssl` in your config/prod.exs,
-  # ensuring no data is ever sent via http, always redirecting to https:
-  #
-  #     config :hrafnsyn, HrafnsynWeb.Endpoint,
-  #       force_ssl: [hsts: true]
-  #
-  # Check `Plug.SSL` for all available options in `force_ssl`.
+  # HrafnsynWeb.Plugs.ProxySSL handles trusted forwarded headers and HTTPS
+  # redirects. Do not add Endpoint `force_ssl` ahead of that proxy validation.
 
   # ## Configuring the mailer
   #

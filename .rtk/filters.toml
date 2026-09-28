@@ -1,0 +1,212 @@
+schema_version = 1
+
+# Hrafnsyn's Mix output filters remove routine progress only. Scanner reports
+# from `mix security` and the full `mix precommit` gate remain unfiltered.
+
+[filters.mix-test]
+description = "Compact ExUnit progress while retaining results, warnings, errors, and stack frames"
+match_command = "^(?:[A-Z_][A-Z0-9_]*=\\S+\\s+)*mix\\s+test(\\s|$)"
+strip_ansi = true
+filter_stderr = true
+strip_lines_matching = [
+  "^\\.+$",
+  "^Compiling \\d+ files? ",
+  "^Generated \\w+ app$",
+  "^==> \\w+$",
+]
+on_empty = "mix test: no output"
+
+[[tests.mix-test]]
+name = "successful Hrafnsyn test summary remains visible"
+input = """
+Running ExUnit with seed: 798266, max_cases: 28
+..................................................................
+Finished in 1.1 seconds (0.3s async, 0.8s sync)
+Result: 142 passed
+"""
+expected = """Running ExUnit with seed: 798266, max_cases: 28
+Finished in 1.1 seconds (0.3s async, 0.8s sync)
+Result: 142 passed"""
+
+[[tests.mix-test]]
+name = "failure, warning, and application stack frame remain visible"
+input = """
+Compiling 2 files (.ex)
+warning: example is unused
+F
+  1) test rejects invalid token (Hrafnsyn.AuthTest)
+     ** (RuntimeError) invalid token
+     (hrafnsyn 0.1.0) lib/hrafnsyn/accounts/api_jwt.ex:70: Hrafnsyn.Accounts.ApiJwt.verify/1
+Result: 1 failed
+"""
+expected = """warning: example is unused
+F
+  1) test rejects invalid token (Hrafnsyn.AuthTest)
+     ** (RuntimeError) invalid token
+     (hrafnsyn 0.1.0) lib/hrafnsyn/accounts/api_jwt.ex:70: Hrafnsyn.Accounts.ApiJwt.verify/1
+Result: 1 failed"""
+
+[filters.mix-compile]
+description = "Remove successful compiler progress; retain every warning and error"
+match_command = "^(?:[A-Z_][A-Z0-9_]*=\\S+\\s+)*mix\\s+compile(\\s|$)"
+strip_ansi = true
+filter_stderr = true
+replace = [{ pattern = "^\\d+> ", replacement = "" }]
+strip_lines_matching = [
+  "^Compiling \\d+ files? ",
+  "^Generated \\w+ app$",
+  "^==> \\w+$",
+]
+on_empty = "mix compile: ok"
+
+[[tests.mix-compile]]
+name = "warnings keep source context"
+input = """
+2> ==> phoenix
+2> Compiling 3 files (.ex)
+2> warning: unsafe value
+2>   lib/hrafnsyn/tracking.ex:42
+2> Generated phoenix app
+"""
+expected = """warning: unsafe value
+  lib/hrafnsyn/tracking.ex:42"""
+
+[[tests.mix-compile]]
+name = "compiler errors stay visible"
+input = """
+Compiling 1 file (.ex)
+    error: undefined function missing/0
+    └─ lib/hrafnsyn/tracking.ex:42
+== Compilation error in file lib/hrafnsyn/tracking.ex ==
+"""
+expected = """    error: undefined function missing/0
+    └─ lib/hrafnsyn/tracking.ex:42
+== Compilation error in file lib/hrafnsyn/tracking.ex =="""
+
+[filters.mix-credo]
+description = "Remove Credo progress; retain findings and the final count"
+match_command = "^(?:[A-Z_][A-Z0-9_]*=\\S+\\s+)*mix\\s+credo(\\s|$)"
+strip_ansi = true
+filter_stderr = true
+strip_lines_matching = [
+  "^Checking \\d+ source files",
+  "^Please report incorrect results:",
+  "^Analysis took \\d",
+  "^Use `mix credo explain`",
+]
+on_empty = "mix credo: no output"
+
+[[tests.mix-credo]]
+name = "clean Credo summary remains visible"
+input = """
+Checking 89 source files (this might take a while) ...
+Analysis took 0.1 seconds
+847 mods/funs, found no issues.
+Use `mix credo explain` to explain issues.
+"""
+expected = "847 mods/funs, found no issues."
+
+[[tests.mix-credo]]
+name = "Credo finding and location remain visible"
+input = """
+Checking 89 source files (this might take a while) ...
+┃ [R] ↘ Line is too long.
+┃       lib/hrafnsyn/tracking.ex:42:1 #()
+847 mods/funs, found 1 issue.
+"""
+expected = """┃ [R] ↘ Line is too long.
+┃       lib/hrafnsyn/tracking.ex:42:1 #()
+847 mods/funs, found 1 issue."""
+
+[filters.mix-dialyzer]
+description = "Remove PLT progress while retaining warnings, locations, and totals"
+match_command = "^(?:[A-Z_][A-Z0-9_]*=\\S+\\s+)*mix\\s+dialyzer(\\s|$)"
+strip_ansi = true
+filter_stderr = true
+strip_lines_matching = [
+  "^Finding suitable PLTs",
+  "^Checking PLT\\.\\.\\.$",
+  "^Looking up modules in ",
+  "^Checking \\d+ modules in ",
+  "^Adding \\d+ modules to ",
+  "^done in \\d",
+  "^Starting Dialyzer$",
+]
+on_empty = "mix dialyzer: no output"
+
+[[tests.mix-dialyzer]]
+name = "Dialyzer warning and total remain visible"
+input = """
+Finding suitable PLTs
+Checking PLT...
+lib/hrafnsyn/tracking.ex:42:unknown_function
+Function Foo.bar/1 does not exist.
+Total errors: 1, Skipped: 0
+done (warnings were emitted)
+"""
+expected = """lib/hrafnsyn/tracking.ex:42:unknown_function
+Function Foo.bar/1 does not exist.
+Total errors: 1, Skipped: 0
+done (warnings were emitted)"""
+
+[filters.mix-deps-get]
+description = "Remove Hex resolution timing; keep package changes and errors"
+match_command = "^(?:[A-Z_][A-Z0-9_]*=\\S+\\s+)*mix\\s+deps\\.get(\\s|$)"
+strip_ansi = true
+filter_stderr = true
+strip_lines_matching = [
+  "^Resolving Hex dependencies\\.\\.\\.$",
+  "^Resolution completed in ",
+]
+on_empty = "mix deps.get: no output"
+
+[[tests.mix-deps-get]]
+name = "changed package remains visible"
+input = """
+Resolving Hex dependencies...
+Resolution completed in 0.2s
+Upgraded:
+  phoenix 1.8.14 => 1.8.15
+"""
+expected = """Upgraded:
+  phoenix 1.8.14 => 1.8.15"""
+
+[[tests.mix-deps-get]]
+name = "dependency resolution error remains visible"
+input = """
+Resolving Hex dependencies...
+** (Mix) No matching version for sobelow
+"""
+expected = "** (Mix) No matching version for sobelow"
+
+[filters.mix-ecto]
+description = "Remove compile chatter from local Ecto commands; retain database actions and errors"
+match_command = "^(?:[A-Z_][A-Z0-9_]*=\\S+\\s+)*mix\\s+ecto\\.(create|migrate|rollback|drop)(\\s|$)"
+strip_ansi = true
+filter_stderr = true
+strip_lines_matching = [
+  "^Compiling \\d+ files? ",
+  "^Generated \\w+ app$",
+  "^==> \\w+$",
+]
+on_empty = "mix ecto: no output"
+
+[[tests.mix-ecto]]
+name = "migration summary remains visible"
+input = """
+Compiling 2 files (.ex)
+15:18:57.123 [info] == Running 20260928000000 Hrafnsyn.Repo.Migrations.AddTrackIndex.change/0 forward
+15:18:57.200 [info] == Migrated 20260928000000 in 0.1s
+"""
+expected = """15:18:57.123 [info] == Running 20260928000000 Hrafnsyn.Repo.Migrations.AddTrackIndex.change/0 forward
+15:18:57.200 [info] == Migrated 20260928000000 in 0.1s"""
+
+[[tests.mix-ecto]]
+name = "database error remains visible"
+input = """
+Compiling 2 files (.ex)
+** (Postgrex.Error) ERROR 42P01 (undefined_table) relation "tracks" does not exist
+    (ecto_sql 3.14.0) lib/ecto/adapters/sql.ex:123: Ecto.Adapters.SQL.query!/4
+"""
+expected = """** (Postgrex.Error) ERROR 42P01 (undefined_table) relation "tracks" does not exist
+    (ecto_sql 3.14.0) lib/ecto/adapters/sql.ex:123: Ecto.Adapters.SQL.query!/4"""

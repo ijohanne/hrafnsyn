@@ -28,7 +28,7 @@ defmodule Hrafnsyn.MixProject do
 
   def cli do
     [
-      preferred_envs: [precommit: :test]
+      preferred_envs: [precommit: :test, security: :test]
     ]
   end
 
@@ -44,6 +44,7 @@ defmodule Hrafnsyn.MixProject do
       {:bcrypt_elixir, "~> 3.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.15.0", only: [:dev, :test], runtime: false},
       {:geo, "~> 3.6"},
       {:phoenix, "~> 1.8.5"},
       {:phoenix_ecto, "~> 4.5"},
@@ -98,8 +99,9 @@ defmodule Hrafnsyn.MixProject do
       precommit: [
         "compile --warnings-as-errors",
         "deps.unlock --unused",
-        "format",
+        "format --check-formatted",
         "credo --strict",
+        "security",
         "test"
       ]
     ]

@@ -1,6 +1,6 @@
 # Dependency Security Review
 
-This note records the August 2026 review (`hrafnsyn-r3t`) and September 2026 follow-up (`hrafnsyn-4dg`). It is an application-level reachability assessment, not a suppression list: scanners should continue to report applicable advisory records.
+This note records the August 2026 review (`hrafnsyn-r3t`) and September 2026 follow-up (`hrafnsyn-4dg`). The application-level reachability assessment below supports the narrow, temporary local gate exceptions described at the end.
 
 ## September 2026 follow-up
 
@@ -72,4 +72,51 @@ After any HTTP-stack lockfile change:
 1. Run the full Mode B Hex dependency audit from the Nix development shell.
 2. Confirm `.claude/deps-audit/last-run.json` was regenerated for the current `mix.lock` hash.
 3. Require `summary.blocks_total` to be zero.
-4. Keep mitigated or reachability-dependent advisory records visible with their rationale; do not silently suppress them.
+4. Review the exact advisory records, their owner and tracking issue, and the expiration of any local gate exception.
+
+## Local security gate
+
+`mix security` runs `mix hex.audit`, `mix deps.audit --format json`,
+`osv-scanner scan source --lockfile=mix.lock --format=json`, and Sobelow with
+`--private --format json --threshold low --exit medium --skip`. It saves their output
+under ignored `tmp/security/`; `mix precommit` runs this gate before tests.
+Semgrep and YARA remain optional investigation tools in the Nix shell.
+
+The current lockfile has three scanner records that cannot be cleared by an
+available dependency update. Hrafnsyn's reviewed exceptions cover only the
+following advisory IDs; all other scanner findings remain blocking:
+
+| Advisory | Locked package | Reason |
+| --- | --- | --- |
+| `GHSA-w4f7-4cxr-rv3c` | Gun 2.6.0 | The advisory's Gun range conflicts with the CNA's Gun 2.4.0 mitigation, and the installed version rejects CRLF headers. |
+| `EEF-CVE-2026-43966` | Cowlib 2.20.0 | No direct structured-header encoder call exists here; Cowboy 2.19.0 and Gun 2.6.0 retain CRLF-rejecting defaults. |
+| `EEF-CVE-2026-43969` | Cowlib 2.20.0 | The application does not pass external cookies to the affected encoder; its only Gun client is in the loopback gRPC test. |
+
+Owner: Ian Johannesen. Tracking: vardrun `hrafnsyn-fhv`. Expiration:
+**2026-10-14**. The OSV exceptions are the two Cowlib IDs in
+`osv-scanner.toml`; OSV also recognizes the Gun GHSA as an alias of the first
+ID. MixAudit ignores only that GHSA. The task checks the expiration, exact
+Cowboy/Cowlib/Gun versions, and exception IDs before running any scanner.
+Reassess sooner if an HTTP dependency, listener option, Gun client, or
+cookie-handling path changes.
+
+Sobelow's `Config.HTTPS` check reads only `config/prod.exs`. Hrafnsyn instead
+uses `HrafnsynWeb.Plugs.ProxySSL` before routing: it accepts forwarded scheme
+headers only from configured trusted proxies, and applies `Plug.SSL` to direct
+requests when `HRAFNSYN_FORCE_SSL` is enabled (the production default). The
+Nix nginx helper handles HTTPS itself and disables the app redirect. Adding
+Phoenix's compile-time `force_ssl` would run before this trusted-proxy logic.
+The only Sobelow fingerprint skip is `Config.HTTPS` in `config/prod.exs`, in
+`.sobelow-skips`; the task checks its exact fingerprint and the same owner,
+tracking issue, and expiration above. Any additional skip fails the gate.
+ProxySSL's redirect, proxy trust, and HSTS behavior have dedicated tests.
+
+The former Sobelow hardcoded JWT secret and missing CSP findings were fixed.
+Development/test JWT signing keys are generated per runtime start when no
+environment key is configured; production requires a configured key. Browser
+pages now send a CSP, and the theme script is a local static file. The policy
+allows Google Fonts and HTTPS map tile/style requests; `unsafe-inline` styles
+remain necessary for MapLibre's generated element styles. Sobelow's remaining
+low-confidence findings concern an operator-configured aircraft database path
+and literal, parameterized SQL queries; they remain visible in the report and
+are not suppressed.

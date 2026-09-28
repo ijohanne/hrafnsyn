@@ -275,6 +275,8 @@ EOF
         packages.aircraftDb = aircraftDb;
 
         devShells.default = pkgs.mkShell {
+          RTK_TELEMETRY_DISABLED = "1";
+
           buildInputs = with pkgs; [
             beamPackages.elixir
             beamPackages.erlang
@@ -290,6 +292,7 @@ EOF
             perl
             pkg-config
             python3
+            rtk
             semgrep
             yara
             pg-dev-core

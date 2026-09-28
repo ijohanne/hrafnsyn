@@ -3,13 +3,21 @@ defmodule HrafnsynWeb.Router do
 
   import HrafnsynWeb.UserAuth
 
+  @browser_headers %{
+    "content-security-policy" =>
+      "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " <>
+        "script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " <>
+        "font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; " <>
+        "connect-src 'self' https: ws: wss:; worker-src 'self' blob:; form-action 'self'"
+  }
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {HrafnsynWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_secure_browser_headers, @browser_headers
     plug :fetch_current_scope_for_user
   end
 

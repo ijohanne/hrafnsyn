@@ -66,11 +66,41 @@ Unified aircraft + vessel tracking built with Phoenix LiveView, Elixir, and Post
 ## If You Change Things
 
 - Keep `mix compile`, `mix test`, and `mix credo --strict` green
+- Run the local `mix precommit` gate before committing; it includes `mix security`
 - Prefer adding new ingestion methods through `Hrafnsyn.Ingest`
   instead of bypassing it
 - Preserve multi-source support
   no logic should assume only one plane feed or one vessel feed
 - Keep deployment/docs updates in sync with runtime env changes
+
+## Local Security Gate
+
+Use the Nix developer shell. `mix security` runs Hex retirement checks,
+MixAudit, OSV-Scanner, and Sobelow, and writes their reports to ignored
+`tmp/security/`. The project-specific, expiring advisory reviews are documented
+in `docs/dependency-security.md`; do not broaden them to whole packages or
+scanner rules. Semgrep and YARA are available for focused investigations but
+are not part of the blocking precommit gate. No hosted CI is used.
+
+For the full gate in fish, start this flake's database and set the test URL:
+
+```fish
+pg-start
+set -l db_port (cat .pgdev/port)
+set -l db_user (whoami)
+set -gx TEST_DATABASE_URL "ecto://$db_user@localhost:$db_port/hrafnsyn_test?socket_dir=$PWD/.pgdev/run"
+mix precommit
+```
+
+## Mix Output Filtering
+
+The Nix developer shell provides `rtk` with telemetry disabled. Use it
+explicitly for noisy routine commands, for example `rtk mix test`,
+`rtk mix compile`, `rtk mix credo`, `rtk mix deps.get`, and `rtk mix ecto.migrate`.
+Run `mix security` and `mix precommit` directly so their complete gate status
+remains visible. Review `.rtk/filters.toml` before `rtk trust`; trust is tied to
+the file contents. Run `rtk verify` after changing the filters. Do not install
+rtk globally or add an automatic shell hook.
 
 ## Issue Tracking
 

@@ -23,6 +23,16 @@ defmodule HrafnsynWeb.PageControllerTest do
     assert response =~ "VehicleType"
   end
 
+  test "browser pages set a CSP and load the theme script from a local file", %{conn: conn} do
+    conn = get(conn, ~p"/grpc")
+    [policy] = get_resp_header(conn, "content-security-policy")
+
+    assert policy =~ "default-src 'self'"
+    assert policy =~ "script-src 'self'"
+    refute policy =~ "script-src 'self' 'unsafe-inline'"
+    assert html_response(conn, 200) =~ ~s(src="/vendor/theme.js")
+  end
+
   test "GET /grpc renders deployment-aware quick start commands", %{conn: conn} do
     conn = %{conn | host: "devbox.local", scheme: :http, port: 4000}
     conn = get(conn, ~p"/grpc")
