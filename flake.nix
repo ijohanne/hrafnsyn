@@ -11,7 +11,7 @@
 
         esbuild = pkgs.esbuild;
         tailwindcss = pkgs.tailwindcss_4;
-        beamPackages = pkgs.beam.packages.erlang_29.extend (final: _: {
+        beamPackages = pkgs.beam.packages.erlang_29.overrideScope (final: _: {
           elixir = final.elixir_1_20;
         });
         postgres = pkgs.postgresql_18.withPackages (ps: [ ps.postgis ]);
@@ -262,7 +262,19 @@ EOF
           '';
 
           postBuild = ''
-            mix assets.deploy --no-deps-check
+            ${tailwindcss}/bin/tailwindcss \
+              --input=assets/css/app.css \
+              --output=priv/static/assets/css/app.css \
+              --minify
+            (
+              cd assets
+              NODE_PATH="$PWD/../deps:$PWD/../_build/prod" ${esbuild}/bin/esbuild \
+                js/app.js --bundle --target=es2022 \
+                --outdir=../priv/static/assets/js \
+                --external:/fonts/* --external:/images/* --external:/vendor/* \
+                --alias:@=. --minify
+            )
+            mix phx.digest
           '';
 
           fixupPhase = ''
