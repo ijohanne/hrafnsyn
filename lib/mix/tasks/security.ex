@@ -12,12 +12,12 @@ defmodule Mix.Tasks.Security do
   """
 
   @requirements ["loadpaths"]
-  @expires_on ~D[2026-10-14]
+  @expires_on ~D[2026-11-16]
   @owner "Ian Johannesen"
   @tracking_issue "hrafnsyn-fhv"
-  @reviewed_ids ~w(EEF-CVE-2026-43966 EEF-CVE-2026-43969)
+  @reviewed_ids ~w(EEF-CVE-2026-43966)
   @mix_audit_exception "GHSA-w4f7-4cxr-rv3c"
-  @reviewed_versions %{cowboy: "2.19.0", cowlib: "2.20.0", gun: "2.6.0"}
+  @reviewed_versions %{cowboy: "2.20.0", cowlib: "2.21.0", gun: "2.7.0"}
   @sobelow_skip "Config.HTTPS: HTTPS Not Enabled,config/prod.exs:0,2B5C077\n"
 
   @impl Mix.Task

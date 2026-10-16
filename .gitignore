@@ -14,6 +14,7 @@
 .env.local
 .env.*.local
 .claude/deps-audit/last-run.json
+.claude/deps-update/
 
 # Where 3rd-party dependencies like ExDoc output generated docs.
 /doc/

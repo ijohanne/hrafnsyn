@@ -1,6 +1,86 @@
 # Dependency Security Review
 
-This note records the August 2026 review (`hrafnsyn-r3t`) and September 2026 follow-up (`hrafnsyn-4dg`). The application-level reachability assessment below supports the narrow, temporary local gate exceptions described at the end.
+This note records the August review (`hrafnsyn-r3t`), September follow-up (`hrafnsyn-4dg`), and October update (`hrafnsyn-h5e`). The application-level reachability assessment below supports the narrow, temporary local gate exceptions described at the end.
+
+## October 16, 2026 review
+
+Updated 18 Hex packages, including Geo 4 and Peep 5, after saving the old
+changelogs and inspecting the release diffs. LiveView 1.2 required declaring
+the shared button component's existing `type` attribute. No database migration
+is required. Frontend Phoenix modules are imported directly from `deps/`;
+there is no npm manifest to synchronize.
+
+| Package | Version change | Native audit risk |
+| --- | --- | --- |
+| bandit | 1.12.5 → 1.13.1 | clean |
+| cowboy | 2.19.0 → 2.20.0 | clean |
+| cowlib | 2.20.0 → 2.21.0 | clean |
+| decimal | 3.1.1 → 3.2.0 | clean |
+| dns_cluster | 0.2.0 → 0.3.1 | low (vetted) |
+| finch | 0.23.0 → 0.24.0 | clean |
+| geo | 3.6.0 → 4.1.0 | low (vetted) |
+| googleapis | 0.1.0 → 0.2.0 | clean |
+| gun | 2.6.0 → 2.7.0 | clean |
+| peep | 4.4.0 → 5.0.1 | clean |
+| phoenix_live_dashboard | 0.8.7 → 0.9.1 | clean |
+| phoenix_live_view | 1.1.33 → 1.2.12 | clean |
+| phoenix_pubsub | 2.3.0 → 2.4.1 | low (vetted) |
+| protobuf | 0.17.0 → 0.17.1 | clean |
+| req | 0.7.4 → 0.7.5 | clean |
+| sobelow | 0.15.0 → 0.16.0 | clean |
+| swoosh | 1.28.1 → 1.29.0 | clean |
+| thousand_island | 1.5.0 → 1.6.0 | clean |
+
+The raw OSV comparison clears five advisory records: Bandit's
+`EEF-CVE-2026-105659` and `EEF-CVE-2026-105660`, Decimal's
+`EEF-CVE-2026-97853`, Protobuf's `EEF-CVE-2026-104635`, and Cowlib's
+`EEF-CVE-2026-43969`. No advisory was introduced. The cookie exception is
+removed because [Cowlib 2.21.0 fixes that advisory](https://cna.erlef.org/cves/CVE-2026-43969.html).
+
+Two raw scanner records remain: Cowlib `EEF-CVE-2026-43966` and Gun
+`GHSA-w4f7-4cxr-rv3c`. Cowlib 2.21.0 still permits CRLF in its
+structured-field encoder. The [CNA documents the Cowboy/Gun validation
+mitigation](https://cna.erlef.org/cves/CVE-2026-43966.html); the new source
+retains `error_terminate` and `raise` respectively. Repository searches still
+find no structured-field encoder call or production Gun client. The sole
+remaining OSV exception and exact-version guard were reviewed for Cowboy
+2.20.0, Cowlib 2.21.0, and Gun 2.7.0, with a new deadline of **2026-11-16**.
+The same review retains the exact Sobelow HTTPS fingerprint: ProxySSL still
+performs trusted-proxy rewriting before the production HTTPS redirect.
+No new advisory or scanner-rule suppression was added.
+
+All eight native supply-chain rules ran on old/new package tarballs. Rules
+1–5, 7, and 8 produced no findings. Rule 6 retains three publisher changes:
+
+| Package | Publisher change | Corroborating evidence |
+| --- | --- | --- |
+| DNSCluster 0.3.1 | chrismccord → josevalim | Both are current Hex owners; the upstream v0.3.1 tag points to a release commit by josevalim. |
+| Geo 4.1.0 | tylerayoung → axelson | Hex lists the Felt organization as owner; the upstream v4.1.0 release is authored by axelson. |
+| Phoenix PubSub 2.4.1 | josevalim → steffend | Both are current Hex owners; the upstream v2.4.1 tag points to a commit by SteffenDE. |
+
+These are review signals, not proof of compromise or proof of historical
+ownership. Ian explicitly accepted all three exact versions as safe to deploy
+on October 16. Their entries in `hex_vet.exs` downgrade these findings from
+BLOCK to INFO, retaining the original findings and review evidence. The
+final native audit has zero BLOCKs and three INFOs. The detailed local report
+is `.claude/deps-audit/last-run.json`.
+
+The Google APIs override is required by grpc_core 1.0.5's old `~> 0.1.0`
+constraint; its status-details interface is checked by a round-trip test.
+PromEx 1.12 still requires Peep 3/4; its `child_spec`, metric collection,
+and Prometheus export interface remains compatible with Peep 5 and is
+covered by a real telemetry-event/export test. The existing Gun override
+remains necessary because gRPC 1.0.5 still declares `~> 2.4.0`.
+
+The Nix dependency fixed-output hash has been regenerated. Both its derivation
+and the full Nix release built successfully on aarch64-darwin. Review evidence
+and changelog snapshots remain local.
+`mix precommit` passed compilation with warnings as errors, formatting,
+strict Credo, the four security checks with the reviewed exceptions, and
+all 149 tests. LiveView's new test diagnostics warn about the existing
+search form lacking an ID; the tests pass, but that form has no automatic
+recovery after reconnect. The final Hex inventory reports every dependency
+at its latest release.
 
 ## September 2026 follow-up
 
@@ -82,23 +162,18 @@ After any HTTP-stack lockfile change:
 under ignored `tmp/security/`; `mix precommit` runs this gate before tests.
 Semgrep and YARA remain optional investigation tools in the Nix shell.
 
-The current lockfile has three scanner records that cannot be cleared by an
-available dependency update. Hrafnsyn's reviewed exceptions cover only the
-following advisory IDs; all other scanner findings remain blocking:
-
-| Advisory | Locked package | Reason |
-| --- | --- | --- |
-| `GHSA-w4f7-4cxr-rv3c` | Gun 2.6.0 | The advisory's Gun range conflicts with the CNA's Gun 2.4.0 mitigation, and the installed version rejects CRLF headers. |
-| `EEF-CVE-2026-43966` | Cowlib 2.20.0 | No direct structured-header encoder call exists here; Cowboy 2.19.0 and Gun 2.6.0 retain CRLF-rejecting defaults. |
-| `EEF-CVE-2026-43969` | Cowlib 2.20.0 | The application does not pass external cookies to the affected encoder; its only Gun client is in the loopback gRPC test. |
+The current lockfile retains two scanner records for the structured-header
+advisory: `EEF-CVE-2026-43966` (Cowlib 2.21.0) and its Gun alias
+`GHSA-w4f7-4cxr-rv3c` (Gun 2.7.0). The October review above documents why
+the narrow application-specific exception remains. The resolved cookie
+advisory is no longer ignored.
 
 Owner: Ian Johannesen. Tracking: vardrun `hrafnsyn-fhv`. Expiration:
-**2026-10-14**. The OSV exceptions are the two Cowlib IDs in
-`osv-scanner.toml`; OSV also recognizes the Gun GHSA as an alias of the first
-ID. MixAudit ignores only that GHSA. The task checks the expiration, exact
-Cowboy/Cowlib/Gun versions, and exception IDs before running any scanner.
-Reassess sooner if an HTTP dependency, listener option, Gun client, or
-cookie-handling path changes.
+**2026-11-16**. OSV ignores only `EEF-CVE-2026-43966` and its aliases;
+MixAudit ignores only `GHSA-w4f7-4cxr-rv3c`. The task checks the expiration,
+exact Cowboy/Cowlib/Gun versions, and exception IDs before running any
+scanner. Reassess sooner if an HTTP dependency, listener option, Gun client,
+or cookie-handling path changes.
 
 Sobelow's `Config.HTTPS` check reads only `config/prod.exs`. Hrafnsyn instead
 uses `HrafnsynWeb.Plugs.ProxySSL` before routing: it accepts forwarded scheme

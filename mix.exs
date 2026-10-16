@@ -44,8 +44,8 @@ defmodule Hrafnsyn.MixProject do
       {:bcrypt_elixir, "~> 3.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
-      {:sobelow, "~> 0.15.0", only: [:dev, :test], runtime: false},
-      {:geo, "~> 3.6"},
+      {:sobelow, "~> 0.16.0", only: [:dev, :test], runtime: false},
+      {:geo, "~> 4.1"},
       {:phoenix, "~> 1.8.5"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
@@ -53,10 +53,12 @@ defmodule Hrafnsyn.MixProject do
       {:geo_postgis, "~> 3.7"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 1.1.0"},
+      {:phoenix_live_view, "~> 1.2.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:phoenix_live_dashboard, "~> 0.9.0"},
       {:prom_ex, "~> 1.11"},
+      # PromEx 1.12 still restricts Peep to 3.x/4.x; its storage API is unchanged.
+      {:peep, "~> 5.0", override: true},
       {:plug_cowboy, "~> 2.7"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
@@ -68,11 +70,13 @@ defmodule Hrafnsyn.MixProject do
       {:jason, "~> 1.2"},
       {:grpc, "~> 1.0.2"},
       {:grpc_server, "~> 1.0.2"},
+      # grpc_core 1.0.5 pins the previous generated Google API definitions.
+      {:googleapis, "~> 0.2.0", override: true},
       # grpc 1.0.x still restricts its optional transport to Gun 2.4.x.
-      {:gun, "~> 2.6", override: true},
+      {:gun, "~> 2.7", override: true},
       {:joken, "~> 2.6"},
       {:protobuf, "~> 0.17.0"},
-      {:dns_cluster, "~> 0.2.0"},
+      {:dns_cluster, "~> 0.3.0"},
       {:bandit, "~> 1.5"}
     ]
   end
