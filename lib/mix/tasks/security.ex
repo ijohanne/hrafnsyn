@@ -7,17 +7,21 @@ defmodule Mix.Tasks.Security do
   @moduledoc """
   Runs the blocking local scanners and writes their reports to `tmp/security/`.
 
-  The reviewed exceptions are specific to Hrafnsyn's current HTTP stack and
-  HTTPS plug. See `docs/dependency-security.md` and vardrun `hrafnsyn-fhv`.
+  Raw scanner reports are retained. The known Gun catalog alias is classified
+  as source-fixed only after validating the pinned Cowlib source and encoder.
+  The separate HTTPS review still expires; see `docs/dependency-security.md`.
   """
 
   @requirements ["loadpaths"]
   @expires_on ~D[2026-11-16]
   @owner "Ian Johannesen"
   @tracking_issue "hrafnsyn-fhv"
-  @reviewed_ids ~w(EEF-CVE-2026-43966)
-  @mix_audit_exception "GHSA-w4f7-4cxr-rv3c"
-  @reviewed_versions %{cowboy: "2.20.0", cowlib: "2.21.0", gun: "2.7.0"}
+  @reviewed_ids []
+  @reviewed_versions %{cowboy: "2.20.0", gun: "2.7.0"}
+  @fixed_cowlib_repo "https://github.com/ninenines/cowlib.git"
+  @fixed_cowlib_ref "4401b858f2229abb3ea115c60924f6c77e5f8aa3"
+  @fixed_encoder_sha256 "69a5d5b3c41a562489532bfb7385801fcefa6e47cbc0a6a9675cdc4105686ab7"
+  @catalog_aliases ~w(EEF-CVE-2026-43966 GHSA-w4f7-4cxr-rv3c CVE-2026-43966)
   @sobelow_skip "Config.HTTPS: HTTPS Not Enabled,config/prod.exs:0,2B5C077\n"
 
   @impl Mix.Task
@@ -30,9 +34,7 @@ defmodule Mix.Tasks.Security do
 
     checks = [
       {"Hex retirement", "mix", ["hex.audit"], "hex-audit.log"},
-      {"MixAudit", "mix",
-       ["deps.audit", "--format", "json", "--ignore-advisory-ids", @mix_audit_exception],
-       "mix-audit.json"},
+      {"MixAudit", "mix", ["deps.audit", "--format", "json"], "mix-audit.json"},
       {"OSV-Scanner", "osv-scanner",
        ["scan", "source", "--lockfile=mix.lock", "--format=json", "--config", "osv-scanner.toml"],
        "osv-scanner.json"},
@@ -77,12 +79,48 @@ defmodule Mix.Tasks.Security do
 
     File.write!(report, output)
 
-    if status == 0 do
-      Mix.shell().info("#{name}: passed (#{Path.relative_to_cwd(report)})")
-      []
-    else
-      Mix.shell().error("#{name}: exit #{status} (#{Path.relative_to_cwd(report)})")
-      [name]
+    cond do
+      status == 0 ->
+        Mix.shell().info("#{name}: passed (#{Path.relative_to_cwd(report)})")
+        []
+
+      status == 1 and source_fixed_catalog_only?(name, output) ->
+        Mix.shell().info(
+          "#{name}: source-fixed Cowlib alias retained in raw report " <>
+            "(#{Path.relative_to_cwd(report)})"
+        )
+
+        []
+
+      true ->
+        Mix.shell().error("#{name}: exit #{status} (#{Path.relative_to_cwd(report)})")
+        [name]
+    end
+  end
+
+  @doc false
+  def source_fixed_catalog_only?(name, output) do
+    case Jason.decode(output) do
+      {:ok, %{"vulnerabilities" => vulnerabilities}} when name == "MixAudit" ->
+        vulnerabilities != [] and
+          Enum.all?(vulnerabilities, fn finding ->
+            finding["dependency"]["package"] == "gun" and
+              finding["dependency"]["version"] == "2.7.0" and
+              finding["advisory"]["id"] == "GHSA-w4f7-4cxr-rv3c"
+          end)
+
+      {:ok, %{"results" => results}} when name == "OSV-Scanner" ->
+        packages = Enum.flat_map(results, &Map.get(&1, "packages", []))
+        findings = Enum.filter(packages, &(Map.get(&1, "vulnerabilities", []) != []))
+
+        findings != [] and
+          Enum.all?(findings, fn finding ->
+            finding["package"]["name"] in ~w(gun cowlib) and
+              Enum.all?(finding["vulnerabilities"], &(&1["id"] in @catalog_aliases))
+          end)
+
+      _ ->
+        false
     end
   end
 
@@ -99,7 +137,36 @@ defmodule Mix.Tasks.Security do
       end
     end)
 
+    ensure_fixed_cowlib!(lock)
     ensure_osv_config!()
+  end
+
+  defp ensure_fixed_cowlib!(lock) do
+    case lock[:cowlib] do
+      {:git, @fixed_cowlib_repo, @fixed_cowlib_ref, _opts} -> :ok
+      _ -> Mix.raise("cowlib must resolve to the reviewed upstream encoder fix")
+    end
+
+    source_hash =
+      :sha256
+      |> :crypto.hash(File.read!("deps/cowlib/src/cow_http_struct_hd.erl"))
+      |> Base.encode16(case: :lower)
+
+    if source_hash != @fixed_encoder_sha256 do
+      Mix.raise("cowlib encoder source differs from the reviewed upstream fix")
+    end
+
+    Enum.each(Enum.to_list(0..31) ++ Enum.to_list(127..255), fn byte ->
+      rejects? =
+        try do
+          :cow_http_struct_hd.item({:item, {:string, <<"check", byte, "header">>}, []})
+          false
+        rescue
+          FunctionClauseError -> true
+        end
+
+      unless rejects?, do: Mix.raise("cowlib encoder accepts non-VCHAR byte #{byte}")
+    end)
   end
 
   defp ensure_osv_config! do

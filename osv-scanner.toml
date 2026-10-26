@@ -1,9 +1,3 @@
-# Hrafnsyn review owner: Ian Johannesen. Tracking: vardrun hrafnsyn-fhv.
-# Revalidate by 2026-11-16 or immediately when Cowboy, Cowlib, or Gun changes.
-# These findings and the application-specific reachability assessment are in
-# docs/dependency-security.md. No other advisories are ignored.
-
-[[IgnoredVulns]]
-id = "EEF-CVE-2026-43966"
-ignoreUntil = 2026-11-16
-reason = "Hrafnsyn does not call Cowlib's structured-header encoder; Cowboy 2.20.0 and Gun 2.7.0 retain CRLF-rejecting defaults. Owner Ian Johannesen; vardrun hrafnsyn-fhv."
+# No advisory ignores. Cowlib uses the immutable upstream encoder fix.
+# Raw scanner catalog aliases remain in reports; mix security validates the
+# exact source and encoder rejection before classifying that fixed dependency.

@@ -74,6 +74,11 @@ defmodule Hrafnsyn.MixProject do
       {:googleapis, "~> 0.2.0", override: true},
       # grpc 1.0.x still restricts its optional transport to Gun 2.4.x.
       {:gun, "~> 2.7", override: true},
+      # Exact upstream structured-header encoder fix for CVE-2026-43966.
+      {:cowlib,
+       git: "https://github.com/ninenines/cowlib.git",
+       ref: "4401b858f2229abb3ea115c60924f6c77e5f8aa3",
+       override: true},
       {:joken, "~> 2.6"},
       {:protobuf, "~> 0.17.0"},
       {:dns_cluster, "~> 0.3.0"},

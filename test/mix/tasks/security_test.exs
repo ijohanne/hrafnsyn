@@ -18,8 +18,35 @@ defmodule Mix.Tasks.SecurityTest do
     end
   end
 
-  test "the reviewed lock and narrowed exception remain valid through the deadline" do
+  test "the fixed source and separate HTTPS review remain valid through the deadline" do
     assert :ok = Security.ensure_reviewed_exceptions!(~D[2026-11-16])
-    refute File.read!("osv-scanner.toml") =~ "EEF-CVE-2026-43969"
+    refute File.read!("osv-scanner.toml") =~ "[[IgnoredVulns]]"
+  end
+
+  test "a different Cowlib source cannot reuse the fixed-source classification" do
+    lock = Map.update!(Lock.read(), :cowlib, &put_elem(&1, 2, String.duplicate("0", 40)))
+
+    assert_raise Mix.Error, ~r/cowlib must resolve to the reviewed upstream encoder fix/, fn ->
+      Security.ensure_reviewed_exceptions!(~D[2026-10-26], lock)
+    end
+  end
+
+  test "raw catalog classification rejects additional unrelated advisories" do
+    finding = %{
+      dependency: %{package: "gun", version: "2.7.0"},
+      advisory: %{id: "GHSA-w4f7-4cxr-rv3c"}
+    }
+
+    assert Security.source_fixed_catalog_only?(
+             "MixAudit",
+             Jason.encode!(%{vulnerabilities: [finding]})
+           )
+
+    unrelated = put_in(finding.advisory.id, "GHSA-unknown-new-risk")
+
+    refute Security.source_fixed_catalog_only?(
+             "MixAudit",
+             Jason.encode!(%{vulnerabilities: [finding, unrelated]})
+           )
   end
 end

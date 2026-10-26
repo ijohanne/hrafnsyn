@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>MapLibre security and rendering regression</title>
+    <link rel="stylesheet" href="/vendor/maplibre-gl.css">
+    <style>
+      body { font: 16px sans-serif; margin: 20px; }
+      #map { height: 420px; width: 640px; }
+      #results { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>MapLibre security and rendering regression</h1>
+    <p>This local fixture intentionally has no CSP. The positive control proves inline handlers can run.</p>
+    <div id="map"></div>
+    <pre id="results">RUNNING</pre>
+    <script type="module">
+      import * as maplibregl from "/vendor/maplibre-gl.mjs"
+
+      const output = document.querySelector("#results")
+      const checks = []
+      const check = (condition, message) => {
+        if (!condition) throw new Error(message)
+        checks.push(`PASS ${message}`)
+        output.textContent = checks.join("\n")
+      }
+      const frame = () => new Promise(resolve => requestAnimationFrame(resolve))
+
+      try {
+        const control = document.createElement("details")
+        control.setAttribute("ontoggle", "window.__positiveControlExecuted = true")
+        document.body.append(control)
+        control.open = true
+        await frame()
+        await frame()
+        check(window.__positiveControlExecuted === true, "inline handler positive control (no CSP masking)")
+        control.remove()
+
+        const payload = '<details open onload="1" ontoggle="window.__attributionInjected = true">unsafe attribution</details>'
+        const map = new maplibregl.Map({
+          container: "map",
+          style: {version: 8, sources: {}, layers: [{id: "background", type: "background", paint: {"background-color": "#cde"}}]},
+          center: [0, 0],
+          zoom: 5,
+          attributionControl: false,
+        })
+        map.addControl(new maplibregl.AttributionControl({customAttribution: payload}))
+        map.addControl(new maplibregl.NavigationControl())
+        map.addControl(new maplibregl.ScaleControl())
+        await new Promise(resolve => map.once("load", resolve))
+        await frame()
+        await frame()
+        check(map.getCanvas().getContext("webgl2") !== null, "WebGL2 canvas and real ESM worker render")
+        const attribution = document.querySelector(".maplibregl-ctrl-attrib")
+        check(attribution.querySelector("[onload], [ontoggle]") === null, "adjacent dangerous attribution attributes removed")
+        check(window.__attributionInjected !== true, "attribution payload did not execute")
+        check(document.querySelector(".maplibregl-ctrl-zoom-in") !== null, "navigation control renders")
+        check(document.querySelector(".maplibregl-ctrl-scale") !== null, "scale control renders")
+
+        const idle = new Promise(resolve => map.once("idle", resolve))
+        map.addSource("tracks", {type: "geojson", data: {type: "FeatureCollection", features: [{type: "Feature", properties: {id: "plane"}, geometry: {type: "Point", coordinates: [0, 0]}}]}})
+        map.addLayer({id: "tracks", type: "circle", source: "tracks", paint: {"circle-radius": 12}})
+        map.addSource("route", {type: "geojson", data: {type: "LineString", coordinates: [[0, 0], [1, 1]]}})
+        map.addLayer({id: "route", type: "line", source: "route"})
+        await idle
+        check(map.queryRenderedFeatures(map.project([0, 0]), {layers: ["tracks"]}).length === 1, "GeoJSON track renders and is selectable")
+        map.getSource("route").setData({type: "LineString", coordinates: [[0, 0], [2, 1]]})
+        map.setLayoutProperty("tracks", "visibility", "none")
+        check(map.getLayoutProperty("tracks", "visibility") === "none", "route data updates and visibility controls work")
+        const popup = new maplibregl.Popup().setText("Plane and vessel detail")
+        const marker = new maplibregl.Marker().setLngLat([0, 0]).setPopup(popup).addTo(map)
+        marker.togglePopup()
+        check(document.querySelector(".maplibregl-popup-content").textContent.includes("Plane and vessel detail"), "marker popup renders")
+        check(maplibregl.getVersion() === "6.4.1", "exact fixed MapLibre version")
+        output.textContent += "\nALL CHECKS PASSED"
+      } catch (error) {
+        output.textContent += `\nFAIL ${error.message}`
+        throw error
+      }
+    </script>
+  </body>
+</html>

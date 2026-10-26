@@ -2,6 +2,110 @@
 
 This note records the August review (`hrafnsyn-r3t`), September follow-up (`hrafnsyn-4dg`), and October update (`hrafnsyn-h5e`). The application-level reachability assessment below supports the narrow, temporary local gate exceptions described at the end.
 
+## October 26, 2026 local update
+
+Accepted dependency work (`hrafnsyn-dbi`) updates the following packages and
+includes the authorized source/security migrations:
+
+| Package | Version change |
+| --- | --- |
+| Bandit | 1.13.1 → 1.14.0 |
+| Plug.Crypto | 2.2.0 → 2.2.1 |
+| Phoenix | 1.8.15 → 1.8.16 |
+| Phoenix LiveView | 1.2.12 → 1.2.13 |
+| CAStore | 1.0.21 → 1.0.22 |
+| elixir_make | 0.10.0 → 0.10.1 |
+| esbuild wrapper | 0.10.0 → 0.10.1 |
+| Tailwind wrapper | 0.5.1 → 0.5.2 |
+| JOSE | 1.11.12 → 1.11.13 |
+| Cowlib | Hex 2.21.0 → exact upstream Git fix `4401b858f2229abb3ea115c60924f6c77e5f8aa3` |
+| MapLibre GL JS/CSS | 5.19.0 → 6.4.1 |
+
+[Bandit 1.14.0](https://github.com/mtrudel/bandit/releases/tag/1.14.0)
+fixes CVE-2026-108525, CVE-2026-108529, CVE-2026-109584,
+CVE-2026-110314, CVE-2026-110499, CVE-2026-111101,
+CVE-2026-111103, CVE-2026-113436, CVE-2026-114213,
+CVE-2026-114216, and CVE-2026-115269. The fixes bound HTTP/2
+resource use, enforce HTTP/1 chunk grammar, and harden WebSocket closing
+and fragmentation. [Plug.Crypto 2.2.1 fixes CVE-2026-105963](https://cna.erlef.org/cves/CVE-2026-105963.html),
+which could expose secrets in exception arguments after wrong-typed input.
+Fresh unfiltered OSV queries against the actual resolved lock clear these
+twelve records. Regression tests exercise malformed crypto input and a bare
+newline in an HTTP chunk extension through a loopback Bandit server.
+
+All eight native supply-chain rules ran on both versions of the nine changed
+Hex packages. There are zero BLOCK or WARN findings. Cowlib's six-commit
+upstream delta is reviewed separately because it now uses an immutable Git
+source rather than a Hex release. CAStore's new Hex release
+uses trusted publishing: its registry OIDC repository is `elixir-mint/castore`
+and its actor `ericmj` matches the previous publisher. This provenance change
+remains an INFO signal; no new vet entry or exception was added.
+
+Cowlib now resolves to [the exact CNA-identified upstream fix](https://github.com/ninenines/cowlib/commit/4401b858f2229abb3ea115c60924f6c77e5f8aa3)
+for CVE-2026-43966. This source still advertises version 2.21.0, so the
+immutable Git revision is essential. It is six commits after the Hex release:
+the reviewed changes update erlang.mk, HTTP/Host parsing and structured fields
+to RFC 9651, then restrict serialized strings to printable ASCII. Regression
+tests reject every byte outside `0x20..0x7e` directly at the encoder, and
+round-trip every allowed byte including escaped quotes/backslashes. This is
+the underlying encoder fix, independent of Cowboy/Gun transport validation.
+
+The old OSV vulnerability ignore and MixAudit ignore flag have been removed.
+Raw reports remain intact. Gun 2.7.0's catalog alias may still report
+`GHSA-w4f7-4cxr-rv3c` because its registry range assumes an affected Cowlib
+dependency and names an unavailable Gun 2.16.0 fix. Before classifying only
+this existing alias as source-fixed, `mix security` requires the exact
+Cowlib repository/ref, SHA-256 of `cow_http_struct_hd.erl`, and exhaustive
+runtime rejection of non-VCHAR bytes. Any other advisory fails the gate.
+Cowboy/Gun validation defaults remain enabled as defense in depth.
+The separate Sobelow HTTPS fingerprint and **2026-11-16** expiration remain.
+
+### MapLibre attribution fix and browser migration
+
+The original bundled version 5.19.0 was affected by
+[CVE-2026-85061 / GHSA-jrc7-96c5-q579](https://github.com/maplibre/maplibre-gl-js/security/advisories/GHSA-jrc7-96c5-q579):
+its attribution sanitizer could skip adjacent unsafe attributes. Upstream lists
+versions through 6.4.0 as affected and **6.4.1** as fixed. Hrafnsyn enables
+the attribution control and loads a third-party OpenFreeMap style, so
+malicious upstream attribution is a relevant input boundary. The browser
+CSP's `script-src 'self'` restricts inline event handlers, but is defense in
+depth and does not remove the vulnerable vendor code.
+
+The official 6.4.1 main/shared/worker ES modules and CSS are now vendored
+together, with registry integrity, SHA-256 checksums and license recorded in
+`priv/static/vendor/maplibre-manifest.json`. The app uses an ESM namespace
+import and serves workers from the same origin; no CSP relaxation or new
+external CDN is introduced. WebGL2/ES2022 are required by this major release;
+unavailable map contexts show an explanatory status instead of throwing from
+the LiveView hook.
+
+`scripts/check_maplibre.py` serves a local browser regression fixture with
+**no CSP**. Its positive control proves inline event handlers can execute,
+then the real attribution control must remove adjacent dangerous attributes
+and prevent payload execution. The same fixture exercises ESM/worker loading,
+WebGL2, controls, GeoJSON feature selection, route/visibility updates and a
+marker popup. `--baseline-ref c17d935` can demonstrate the original failure.
+No vendor advisory ignore was added.
+
+### JOSE security release
+
+[JOSE 1.11.13](https://github.com/potatosalad/erlang-jose/releases/tag/1.11.13)
+was published after the initial proposal. Its eight confirmed primary
+advisories are CVE-2026-65625, CVE-2026-65626, CVE-2026-65627,
+CVE-2026-65628, CVE-2026-65629, CVE-2026-65630,
+CVE-2026-65631 and CVE-2026-65632. The patch bounds JWE decompression and
+RSA work, hardens signature/tag/key validation and export parameters, and
+corrects the shipped variable-time crypto fallback default to false.
+Hrafnsyn's first-party signer uses HS256; regression tests verify signed-token
+round-trips, tamper rejection and native crypto with fallback disabled.
+Upstream records remain authoritative while advisory databases catch up.
+
+The asset wrapper updates preserve the Nix-selected esbuild and Tailwind
+binaries. Runtime/OS packages, deeper vendor dependencies and dump1090
+data/native inputs remain separate coverage layers. No database migration is
+added by this change. These are local
+changes; publication, downstream pins, and production activation remain pending.
+
 ## October 16, 2026 review
 
 Updated 18 Hex packages, including Geo 4 and Peep 5, after saving the old
@@ -162,18 +266,16 @@ After any HTTP-stack lockfile change:
 under ignored `tmp/security/`; `mix precommit` runs this gate before tests.
 Semgrep and YARA remain optional investigation tools in the Nix shell.
 
-The current lockfile retains two scanner records for the structured-header
-advisory: `EEF-CVE-2026-43966` (Cowlib 2.21.0) and its Gun alias
-`GHSA-w4f7-4cxr-rv3c` (Gun 2.7.0). The October review above documents why
-the narrow application-specific exception remains. The resolved cookie
-advisory is no longer ignored.
+The current lockfile uses the exact upstream Cowlib encoder fix. There are no
+OSV vulnerability ignores or MixAudit ignore flags. Raw Gun/Cowlib catalog
+aliases remain visible when the scanner cannot model that fixed source.
+The gate classifies only those exact records after validating the source/ref,
+encoder file hash and actual runtime byte rejection; unrelated findings fail.
+The earlier reachability-only exception is retired. Reassess any future
+HTTP dependency, source pin or transport-option change.
 
-Owner: Ian Johannesen. Tracking: vardrun `hrafnsyn-fhv`. Expiration:
-**2026-11-16**. OSV ignores only `EEF-CVE-2026-43966` and its aliases;
-MixAudit ignores only `GHSA-w4f7-4cxr-rv3c`. The task checks the expiration,
-exact Cowboy/Cowlib/Gun versions, and exception IDs before running any
-scanner. Reassess sooner if an HTTP dependency, listener option, Gun client,
-or cookie-handling path changes.
+Owner of the separate HTTPS review: Ian Johannesen. Tracking: vardrun
+`hrafnsyn-fhv`. Expiration: **2026-11-16**, unchanged by this security update.
 
 Sobelow's `Config.HTTPS` check reads only `config/prod.exs`. Hrafnsyn instead
 uses `HrafnsynWeb.Plugs.ProxySSL` before routing: it accepts forwarded scheme

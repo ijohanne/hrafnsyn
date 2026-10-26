@@ -24,6 +24,7 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/hrafnsyn"
 import topbar from "../vendor/topbar"
+import * as maplibregl from "/vendor/maplibre-gl.mjs"
 
 const PreserveScroll = {
   mounted() {
@@ -304,18 +305,34 @@ const TrackingMap = {
     this.el.__trackingMapHook = this
     this.syncLegendState()
 
-    this.map = new window.maplibregl.Map({
-      container: this.mapEl,
-      style: this.el.dataset.styleUrl,
-      center: [-5.3, 36.1],
-      zoom: 8.1,
-      pitch: 0,
-      attributionControl: true,
-    })
+    const showUnavailable = () => {
+      this.mapEl.textContent = "Map rendering is unavailable in this browser."
+      this.mapEl.setAttribute("role", "status")
+    }
+    const context = document.createElement("canvas").getContext("webgl2")
+    if (!context) {
+      showUnavailable()
+      return
+    }
+    context.getExtension("WEBGL_lose_context")?.loseContext()
 
-    this.map.addControl(new window.maplibregl.NavigationControl({visualizePitch: true}), "top-right")
-    this.map.addControl(new window.maplibregl.ScaleControl({unit: "metric"}), "bottom-right")
-    this.popup = new window.maplibregl.Popup({
+    try {
+      this.map = new maplibregl.Map({
+        container: this.mapEl,
+        style: this.el.dataset.styleUrl,
+        center: [-5.3, 36.1],
+        zoom: 8.1,
+        pitch: 0,
+        attributionControl: true,
+      })
+    } catch (_error) {
+      showUnavailable()
+      return
+    }
+
+    this.map.addControl(new maplibregl.NavigationControl({visualizePitch: true}), "top-right")
+    this.map.addControl(new maplibregl.ScaleControl({unit: "metric"}), "bottom-right")
+    this.popup = new maplibregl.Popup({
       closeButton: true,
       closeOnClick: false,
       offset: this.popupOffsets(this.popupOffset),
@@ -601,7 +618,7 @@ const TrackingMap = {
     const restoredSharedView = this.restoreSharedView(payload.shared_view)
 
     if (!restoredSharedView && payload.selected_track_id && payload.selected_track_id !== this.lastSelectedTrackId && routeFeatures.length > 0) {
-      const bounds = new window.maplibregl.LngLatBounds()
+      const bounds = new maplibregl.LngLatBounds()
       routeFeatures[0].geometry.coordinates.forEach(coord => bounds.extend(coord))
       this.map.fitBounds(bounds, {padding: 80, duration: 900, maxZoom: 12.5})
     } else if (!restoredSharedView && payload.selected_track_id && payload.selected_track_id !== this.lastSelectedTrackId) {

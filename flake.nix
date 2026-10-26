@@ -230,7 +230,7 @@ EOF
           pname = "hrafnsyn-mix-deps";
           version = "0.1.0";
           src = ./.;
-          sha256 = "sha256-EKibPQGqUd5chAFUVI20IcV9QdNuHEWWzk1BR8j5dZY=";
+          sha256 = "sha256-HWcUuuW2C6CeW89ogGnWMlgV1lmKygYlT2m9cotHJBU=";
         };
 
         aircraftDb = pkgs.runCommand "hrafnsyn-aircraft-db" {
@@ -269,12 +269,14 @@ EOF
             (
               cd assets
               NODE_PATH="$PWD/../deps:$PWD/../_build/prod" ${esbuild}/bin/esbuild \
-                js/app.js --bundle --target=es2022 \
+                js/app.js --bundle --format=esm --target=es2022 \
                 --outdir=../priv/static/assets/js \
-                --external:/fonts/* --external:/images/* --external:/vendor/* \
+                "--external:/fonts/*" "--external:/images/*" "--external:/vendor/*" \
                 --alias:@=. --minify
             )
-            mix phx.digest
+            # Nix already compiled these immutable dependencies; fetchMixDeps
+            # normalizes Git metadata, so digest must not re-check the checkout.
+            mix do deps.loadpaths --no-deps-check + phx.digest --no-compile
           '';
 
           fixupPhase = ''
