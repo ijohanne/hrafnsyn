@@ -5,9 +5,16 @@ struct TrackingView: View {
     @Bindable var model: AppModel
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var showSettings = false
-    @State private var showTraffic = false
-    @State private var showPhoneDetails = false
+    @State private var showPhonePanel = false
+    @State private var phonePanel: PhonePanel = .traffic
+    @State private var panelDismissing = false
+    @State private var detailDetent: PresentationDetent = .height(200)
+    @State private var pendingRouteFitID: String?
+    @State private var panelHeight: CGFloat = 0
+    @State private var mapBottomInset: CGFloat = 0
+    @State private var containerBottomInset: CGFloat = 0
     @State private var camera: MapCameraPosition = .automatic
     @State private var mapRect = MKMapRect.world
     @State private var mapSize = CGSize(width: 390, height: 800)
@@ -25,7 +32,7 @@ struct TrackingView: View {
                         .navigationTitle(model.selectedTrack?.name ?? "Live map")
                         .navigationBarTitleDisplayMode(.inline)
                         .inspector(isPresented: Binding(get: { model.selectedID != nil }, set: { if !$0 { Task { await model.select(nil) } } })) {
-                            TrackDetailView(model: model)
+                            TrackDetailView(model: model, fitRoute: { fitSelectedRoute() })
                                 .inspectorColumnWidth(min: 280, ideal: 320, max: 400)
                         }
                 }
@@ -36,36 +43,190 @@ struct TrackingView: View {
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .topBarLeading) {
-                                Button { showTraffic = true } label: { Label("Traffic", systemImage: "list.bullet") }
+                                Button {
+                                    phonePanel = .traffic
+                                    detailDetent = .medium
+                                    showPhonePanel = true
+                                } label: { Label("Traffic", systemImage: "list.bullet") }
                             }
                             settingsButton
                         }
-                        .sheet(isPresented: $showTraffic) {
-                            NavigationStack {
-                                trafficList.navigationTitle("Traffic")
-                                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showTraffic = false } } }
-                            }.presentationDetents([.medium, .large])
-                        }
-                        .sheet(isPresented: $showPhoneDetails, onDismiss: { model.dismissSelection() }) {
-                            NavigationStack {
-                                TrackDetailView(model: model)
-                                    .navigationTitle(model.selectedTrack?.name ?? "Track details")
-                                    .navigationBarTitleDisplayMode(.inline)
-                                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showPhoneDetails = false } } }
-                            }.presentationDetents([.medium, .large])
+                        .sheet(isPresented: Binding(get: { showPhonePanel }, set: {
+                            if !$0 && sizeClass != .regular { closePhonePanel() }
+                        }), onDismiss: {
+                            panelDismissing = false
+                            panelHeight = 0
+                            // A map tap during dismissal belongs to a new selection.
+                            if sizeClass != .regular && model.selectedID != nil {
+                                phonePanel = .details
+                                detailDetent = compactDetent
+                                showPhonePanel = true
+                            }
+                        }) {
+                            phonePanelContent
+                                .presentationDetents(phonePanel == .traffic ? [.medium, .large] : [compactDetent, .medium, .large], selection: $detailDetent)
+                                .presentationBackgroundInteraction(phonePanel == .details ? .enabled : .disabled)
+                                .presentationCompactAdaptation(.none)
+                                .presentationDragIndicator(.visible)
+                                .presentationContentInteraction(.resizes)
+                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { panelHeight = $0 }
                         }
                 }
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { containerBottomInset = $0 }
         .sheet(isPresented: $showSettings) { settings }
-        .onChange(of: model.selectedID) { _, id in
-            guard let id, let track = model.tracks.first(where: { $0.id == id }) else { return }
-            camera = .region(MKCoordinateRegion(center: track.coordinate, span: .init(latitudeDelta: 2, longitudeDelta: 2)))
-            if sizeClass != .regular {
-                showTraffic = false
-                // Let the traffic sheet finish its dismissal before presenting details.
-                Task { try? await Task.sleep(for: .milliseconds(350)); showPhoneDetails = model.selectedID == id }
+        .onChange(of: model.selectedID) { _, id in selectionChanged(id) }
+        .onChange(of: model.details?.track?.id) { _, id in
+            if let id, id == pendingRouteFitID, id == model.selectedID {
+                pendingRouteFitID = nil
+                fitSelectedRoute()
             }
+        }
+        .onChange(of: camera.positionedByUser) { _, movedByUser in
+            if movedByUser { pendingRouteFitID = nil }
+        }
+        .onChange(of: compactDetent) { oldValue, newValue in
+            if detailDetent == oldValue { detailDetent = newValue }
+        }
+        .onChange(of: sizeClass) { _, newValue in
+            if newValue == .regular {
+                showPhonePanel = false
+                panelDismissing = false
+                panelHeight = 0
+            } else if model.selectedID != nil {
+                phonePanel = .details
+                detailDetent = compactDetent
+                showPhonePanel = true
+            }
+        }
+    }
+
+    private enum PhonePanel { case traffic, details }
+
+    private var compactHeight: CGFloat {
+        if dynamicTypeSize.isAccessibilitySize { return verticalSizeClass == .compact ? 220 : 300 }
+        return verticalSizeClass == .compact ? 160 : 200
+    }
+    private var compactDetent: PresentationDetent { .height(compactHeight) }
+    private var showingCompactDetails: Bool { detailDetent == compactDetent }
+
+    @ViewBuilder private var phonePanelContent: some View {
+        if phonePanel == .traffic {
+            NavigationStack {
+                trafficList.navigationTitle("Traffic")
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Close", action: closePhonePanel) } }
+            }
+        } else if showingCompactDetails {
+            compactSummary
+        } else {
+            NavigationStack {
+                TrackDetailView(model: model, fitRoute: {
+                    detailDetent = compactDetent
+                    fitSelectedRoute(compact: true)
+                }, showsIdentityHeader: false)
+                    .navigationTitle(model.selectedTrack?.name ?? model.details?.track?.name ?? "Track details")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Map", systemImage: "map") { detailDetent = compactDetent }
+                        }
+                        ToolbarItem(placement: .confirmationAction) { Button("Close", action: closePhonePanel) }
+                    }
+            }
+        }
+    }
+
+    private var compactSummary: some View {
+        ScrollView {
+            if let track = model.selectedTrack ?? model.details?.track {
+                VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? 8 : 12) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label(track.name, systemImage: track.isAircraft ? "airplane" : "ferry")
+                                .font(.headline).foregroundStyle(.primary)
+                            Text("\(track.isAircraft ? "Aircraft" : "Vessel") · \(Int(track.speedKnots)) kn")
+                                .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Button(action: closePhonePanel) {
+                            Text("Close").frame(minWidth: 44, minHeight: 44)
+                        }
+                    }
+                    let actionsLayout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
+                    actionsLayout {
+                        Button { fitSelectedRoute(compact: true) } label: {
+                            Label("Fit route", systemImage: "arrow.up.left.and.arrow.down.right")
+                                .frame(minHeight: 44)
+                        }
+                        .disabled(model.details?.route.isEmpty != false)
+                        Button {
+                            detailDetent = verticalSizeClass == .compact ? .large : .medium
+                        } label: {
+                            Label("Details", systemImage: "chevron.up").frame(minHeight: 44)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    if model.loadingDetails {
+                        ProgressView("Loading route…").font(.footnote)
+                    } else if let details = model.details, details.route.isEmpty {
+                        Text("No recent route").font(.footnote).foregroundStyle(.secondary)
+                    } else if model.details == nil {
+                        Button("Retry route") { Task { await model.select(track.id) } }.frame(minHeight: 44)
+                    }
+                }.padding(.horizontal, 20)
+                    .padding(.bottom, verticalSizeClass == .compact ? 8 : 12)
+            }
+        }
+        // Reserve the grabber's space outside scrolling content, including when
+        // large text needs to scroll to the route and detail actions.
+        .padding(.top, verticalSizeClass == .compact ? 20 : 24)
+        .scrollBounceBehavior(.basedOnSize)
+    }
+
+    private func closePhonePanel() {
+        panelDismissing = true
+        showPhonePanel = false
+        pendingRouteFitID = nil
+        model.dismissSelection()
+    }
+
+    private func selectTrack(_ id: String) {
+        // Reopening the selected row must work too: selectedID need not change.
+        if model.selectedID == id { selectionChanged(id) }
+        Task { await model.select(id) }
+    }
+
+    private func selectionChanged(_ id: String?) {
+        guard let id else { pendingRouteFitID = nil; return }
+        pendingRouteFitID = id
+        if sizeClass != .regular {
+            phonePanel = .details
+            detailDetent = compactDetent
+            if !panelDismissing { showPhonePanel = true }
+        }
+        if model.details?.track?.id == id {
+            pendingRouteFitID = nil
+            fitSelectedRoute(compact: true)
+        } else if let track = model.selectedTrack {
+            fitCoordinates([track.coordinate], compact: true)
+        }
+    }
+
+    private func fitSelectedRoute() { fitSelectedRoute(compact: false) }
+
+    private func fitSelectedRoute(compact: Bool) {
+        guard let details = model.details, let track = details.track, track.id == model.selectedID, !details.route.isEmpty else { return }
+        pendingRouteFitID = nil
+        fitCoordinates(details.route.map { .init(latitude: $0.latitude, longitude: $0.longitude) } + [track.coordinate], compact: compact)
+    }
+
+    private func fitCoordinates(_ coordinates: [CLLocationCoordinate2D], compact: Bool) {
+        let sheetHeight = compact || showingCompactDetails ? compactHeight : panelHeight
+        let coveredHeight: CGFloat = sizeClass == .regular ? 0 : RouteCamera.coveredHeight(
+            sheetHeight: sheetHeight, containerBottomInset: containerBottomInset, mapBottomInset: mapBottomInset)
+        if let rect = RouteCamera.rect(coordinates: coordinates, viewport: mapSize, coveredBottom: coveredHeight) {
+            camera = .rect(rect)
         }
     }
 
@@ -74,7 +235,7 @@ struct TrackingView: View {
             ForEach(markerGroups) { group in
                 Annotation(group.tracks.count == 1 ? group.tracks[0].name : "", coordinate: group.coordinate) {
                     if group.tracks.count > 1 {
-                        Button { camera = .region(group.region) } label: {
+                        Button { pendingRouteFitID = nil; camera = .region(group.region) } label: {
                             if let selected = group.selectedTrack {
                                 ZStack {
                                     Image(systemName: selected.isAircraft ? "airplane" : "ferry.fill")
@@ -99,7 +260,7 @@ struct TrackingView: View {
                         .accessibilityLabel(group.selectedTrack.map { "Selected \($0.name). Zoom into \(group.tracks.count) tracks" } ?? "Zoom into \(group.tracks.count) tracks")
                     } else {
                     let track = group.tracks[0]
-                    Button { Task { await model.select(track.id) } } label: {
+                    Button { selectTrack(track.id) } label: {
                         Image(systemName: track.isAircraft ? "airplane" : "ferry.fill")
                             .font(.body.weight(.semibold))
                             .rotationEffect(.degrees(track.isAircraft ? track.headingDegrees - 90 : 0))
@@ -120,6 +281,7 @@ struct TrackingView: View {
         }
         .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll))
         .onGeometryChange(for: CGSize.self) { $0.size } action: { mapSize = $0 }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { mapBottomInset = $0 }
         .onMapCameraChange(frequency: .onEnd) { context in
             let rect = context.rect
             if abs(rect.width - mapRect.width) > max(mapRect.width / 100, 1)
@@ -127,8 +289,8 @@ struct TrackingView: View {
                 mapRect = rect
             }
         }
-        .onAppear { fitAllTracks() }
-        .onChange(of: model.tracks.isEmpty) { _, empty in if !empty { fitAllTracks() } }
+        .onAppear { if let id = model.selectedID { selectionChanged(id) } else { fitAllTracks() } }
+        .onChange(of: model.tracks.isEmpty) { _, empty in if !empty && model.selectedID == nil { fitAllTracks() } }
         .mapControls { MapCompass(); MapScaleView() }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
@@ -174,7 +336,7 @@ struct TrackingView: View {
             }
             Section {
                 ForEach(model.visibleTracks, id: \.id) { track in
-                    Button { Task { await model.select(track.id) } } label: {
+                    Button { selectTrack(track.id) } label: {
                         if dynamicTypeSize.isAccessibilitySize {
                             VStack(alignment: .leading, spacing: 8) {
                                 Label(track.name, systemImage: track.isAircraft ? "airplane" : "ferry")
@@ -236,6 +398,7 @@ struct TrackingView: View {
 
     private func fitAllTracks() {
         guard !model.visibleTracks.isEmpty else { return }
+        pendingRouteFitID = nil
         // Freeze an explicit region: automatic fitting plus changing clusters
         // creates a camera/layout feedback loop on wide iPad maps.
         camera = .region(MarkerGroup(id: "all", tracks: model.visibleTracks).region)
@@ -270,15 +433,17 @@ struct TrackingView: View {
 
 struct TrackDetailView: View {
     @Bindable var model: AppModel
+    var fitRoute: () -> Void
+    var showsIdentityHeader = true
     var body: some View {
         Group {
             if let track = model.selectedTrack ?? model.details?.track {
                 List {
-                    Section {
+                    if showsIdentityHeader { Section {
                         Label(track.name, systemImage: track.isAircraft ? "airplane" : "ferry")
                             .font(.title2.weight(.semibold)).foregroundStyle(track.vehicleColor)
                         Text(track.sourceName).font(.subheadline).foregroundStyle(.secondary)
-                    }
+                    } }
                     Section("Position") {
                         LabeledContent("Speed", value: "\(Int(track.speedKnots)) kn")
                         LabeledContent("Heading", value: "\(Int(track.headingDegrees))°")
@@ -288,6 +453,7 @@ struct TrackDetailView: View {
                         LabeledContent("Observed", value: Date(timeIntervalSince1970: Double(track.observedAt)).formatted(date: .abbreviated, time: .shortened))
                     }.monospacedDigit()
                     Section("Identity") {
+                        if !showsIdentityHeader { LabeledContent("Source", value: track.sourceName) }
                         LabeledContent("Identifier", value: track.identity)
                         if !track.registration.isEmpty { LabeledContent("Registration", value: track.registration) }
                         if !track.callsign.isEmpty { LabeledContent("Callsign", value: track.callsign) }
@@ -297,6 +463,9 @@ struct TrackDetailView: View {
                     Section("Recent route · 6 hours") {
                         if model.loadingDetails { ProgressView("Loading route…") }
                         else if let details = model.details {
+                            if !details.route.isEmpty {
+                                Button("Fit route", systemImage: "arrow.up.left.and.arrow.down.right", action: fitRoute)
+                            }
                             LabeledContent("Positions", value: details.route.count.formatted())
                             LabeledContent("Distance", value: "\((details.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1)))) km")
                             if details.route.isEmpty { Text("No recent positions are available.").foregroundStyle(.secondary) }
@@ -316,6 +485,48 @@ struct TrackDetailView: View {
 extension Track {
     var coordinate: CLLocationCoordinate2D { .init(latitude: latitude, longitude: longitude) }
     var vehicleColor: Color { isAircraft ? .accentColor : .indigo }
+}
+
+/// Fits geometry into the exposed part of the map, not behind the phone sheet.
+/// An explicit rect also avoids MapKit's automatic-fitting/cluster feedback loop.
+enum RouteCamera {
+    static func coveredHeight(sheetHeight: CGFloat, containerBottomInset: CGFloat,
+                              mapBottomInset: CGFloat) -> CGFloat {
+        // Map's measured viewport already excludes its status bar and bottom
+        // safe area. The sheet detent excludes only the container's safe area.
+        max(0, sheetHeight + containerBottomInset - mapBottomInset)
+    }
+
+    static func rect(coordinates: [CLLocationCoordinate2D], viewport: CGSize,
+                     coveredBottom: CGFloat, padding: CGFloat = 36) -> MKMapRect? {
+        let points = coordinates.filter { CLLocationCoordinate2DIsValid($0) }.map(MKMapPoint.init)
+        guard !points.isEmpty, viewport.width > 2 * padding, viewport.height > 2 * padding else { return nil }
+        let world = MKMapRect.world.width
+        let xs = points.map(\.x).sorted()
+        // Exclude the largest empty arc so a route crossing ±180° stays local.
+        var start = xs[0]
+        var largestGap = xs[0] + world - xs.last!
+        for index in 1..<xs.count {
+            let gap = xs[index] - xs[index - 1]
+            if gap > largestGap { largestGap = gap; start = xs[index] }
+        }
+        let wrappedX = xs.map { $0 < start ? $0 + world : $0 }
+        let minX = wrappedX.min()!, maxX = wrappedX.max()!
+        let minY = points.map(\.y).min()!, maxY = points.map(\.y).max()!
+        let width = Double(viewport.width), height = Double(viewport.height)
+        let visibleHeight = height - Double(max(coveredBottom, 0))
+        guard visibleHeight > 0 else { return nil }
+        let usableWidth = max(width - 2 * Double(padding), 1)
+        // Shrink the breathing room in short windows; never invent map space
+        // underneath a tall sheet, even at accessibility text sizes.
+        let verticalPadding = min(Double(padding), visibleHeight / 4)
+        let usableHeight = visibleHeight - 2 * verticalPadding
+        let minimumSpan = MKMapPointsPerMeterAtLatitude(coordinates.first(where: { CLLocationCoordinate2DIsValid($0) })!.latitude) * 2_000
+        let scale = max((maxX - minX) / usableWidth, (maxY - minY) / usableHeight, minimumSpan / usableWidth)
+        return MKMapRect(x: (minX + maxX) / 2 - width * scale / 2,
+                         y: (minY + maxY) / 2 - visibleHeight * scale / 2,
+                         width: width * scale, height: height * scale)
+    }
 }
 
 private struct MarkerGroup: Identifiable {
