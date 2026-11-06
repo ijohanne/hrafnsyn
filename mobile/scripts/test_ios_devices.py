@@ -225,6 +225,13 @@ class SyncTests(unittest.TestCase):
         signing.ensure_associated_domains(api, "bundle")
         self.assertEqual(api.posts, [])
 
+    def test_capability_relationship_omits_unsupported_page_limit(self):
+        api = signing.AppleAPI("not-a-real-token")
+        result = {"data": [{"attributes": {"capabilityType": "ASSOCIATED_DOMAINS"}}]}
+        with patch.object(api, "request", return_value=result) as request:
+            signing.ensure_associated_domains(api, "fixture-bundle")
+        request.assert_called_once_with("GET", "/v1/bundleIds/fixture-bundle/bundleIdCapabilities")
+
     def test_old_profile_cannot_be_reused_for_new_domains(self):
         api = FakeAPI()
         self.sync(api)

@@ -227,9 +227,10 @@ class AppleAPI:
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
             raise SigningError("Could not read the Apple API response. Check connectivity and retry.") from None
 
-    def list(self, resource, **filters):
-        query = urllib.parse.urlencode({"limit": 200, **filters})
-        path = f"/v1/{resource}?{query}"
+    def list(self, resource, *, page_size=200, **filters):
+        parameters = {"limit": page_size, **filters} if page_size is not None else filters
+        query = urllib.parse.urlencode(parameters)
+        path = f"/v1/{resource}" + (f"?{query}" if query else "")
         items = []
         for _ in range(20):
             result = self.request("GET", path)
@@ -257,7 +258,8 @@ def certificate_for_team(api, certificate_id, team):
 
 
 def ensure_associated_domains(api, bundle_id):
-    capabilities = api.list(f"bundleIds/{urllib.parse.quote(bundle_id, safe='')}/bundleIdCapabilities")
+    # The live relationship endpoint rejects limit; retain its default page size.
+    capabilities = api.list(f"bundleIds/{urllib.parse.quote(bundle_id, safe='')}/bundleIdCapabilities", page_size=None)
     if any(item.get("attributes", {}).get("capabilityType") == "ASSOCIATED_DOMAINS" for item in capabilities):
         return
     api.request("POST", "/v1/bundleIdCapabilities", {"data": {
