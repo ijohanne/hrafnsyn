@@ -1,0 +1,405 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-06T17:45:16.360213+00:00",
+  "title": "Design System: Hrafnsyn",
+  "extensions": {
+    "colorMeta": {
+      "work-bg": {
+        "role": "neutral",
+        "displayName": "Deep water",
+        "tonalRamp": [
+          "oklch(15.00% 0.0223 226.61)",
+          "oklch(26.43% 0.0223 226.61)",
+          "oklch(37.86% 0.0223 226.61)",
+          "oklch(49.29% 0.0223 226.61)",
+          "oklch(60.71% 0.0223 226.61)",
+          "oklch(72.14% 0.0223 226.61)",
+          "oklch(83.57% 0.0223 226.61)",
+          "oklch(95.00% 0.0223 226.61)"
+        ]
+      },
+      "work-panel": {
+        "role": "neutral",
+        "displayName": "Watch panel",
+        "tonalRamp": [
+          "oklch(15.00% 0.0266 224.21)",
+          "oklch(26.43% 0.0266 224.21)",
+          "oklch(37.86% 0.0266 224.21)",
+          "oklch(49.29% 0.0266 224.21)",
+          "oklch(60.71% 0.0266 224.21)",
+          "oklch(72.14% 0.0266 224.21)",
+          "oklch(83.57% 0.0266 224.21)",
+          "oklch(95.00% 0.0266 224.21)"
+        ]
+      },
+      "work-raised": {
+        "role": "neutral",
+        "displayName": "Raised panel",
+        "tonalRamp": [
+          "oklch(15.00% 0.0308 222.63)",
+          "oklch(26.43% 0.0308 222.63)",
+          "oklch(37.86% 0.0308 222.63)",
+          "oklch(49.29% 0.0308 222.63)",
+          "oklch(60.71% 0.0308 222.63)",
+          "oklch(72.14% 0.0308 222.63)",
+          "oklch(83.57% 0.0308 222.63)",
+          "oklch(95.00% 0.0308 222.63)"
+        ]
+      },
+      "work-ink": {
+        "role": "neutral",
+        "displayName": "Pale ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.0087 205.89)",
+          "oklch(26.43% 0.0087 205.89)",
+          "oklch(37.86% 0.0087 205.89)",
+          "oklch(49.29% 0.0087 205.89)",
+          "oklch(60.71% 0.0087 205.89)",
+          "oklch(72.14% 0.0087 205.89)",
+          "oklch(83.57% 0.0087 205.89)",
+          "oklch(95.00% 0.0087 205.89)"
+        ]
+      },
+      "work-soft": {
+        "role": "neutral",
+        "displayName": "Quiet ink",
+        "tonalRamp": [
+          "oklch(15.00% 0.0210 216.23)",
+          "oklch(26.43% 0.0210 216.23)",
+          "oklch(37.86% 0.0210 216.23)",
+          "oklch(49.29% 0.0210 216.23)",
+          "oklch(60.71% 0.0210 216.23)",
+          "oklch(72.14% 0.0210 216.23)",
+          "oklch(83.57% 0.0210 216.23)",
+          "oklch(95.00% 0.0210 216.23)"
+        ]
+      },
+      "work-line": {
+        "role": "neutral",
+        "displayName": "Slate divider",
+        "tonalRamp": [
+          "oklch(15.00% 0.0299 222.23)",
+          "oklch(26.43% 0.0299 222.23)",
+          "oklch(37.86% 0.0299 222.23)",
+          "oklch(49.29% 0.0299 222.23)",
+          "oklch(60.71% 0.0299 222.23)",
+          "oklch(72.14% 0.0299 222.23)",
+          "oklch(83.57% 0.0299 222.23)",
+          "oklch(95.00% 0.0299 222.23)"
+        ]
+      },
+      "work-accent": {
+        "role": "primary",
+        "displayName": "Clear cyan",
+        "tonalRamp": [
+          "oklch(15.00% 0.0764 214.04)",
+          "oklch(26.43% 0.0764 214.04)",
+          "oklch(37.86% 0.0764 214.04)",
+          "oklch(49.29% 0.0764 214.04)",
+          "oklch(60.71% 0.0764 214.04)",
+          "oklch(72.14% 0.0764 214.04)",
+          "oklch(83.57% 0.0764 214.04)",
+          "oklch(95.00% 0.0764 214.04)"
+        ]
+      },
+      "work-plane": {
+        "role": "primary",
+        "displayName": "Aircraft cyan",
+        "tonalRamp": [
+          "oklch(15.00% 0.0829 217.86)",
+          "oklch(26.43% 0.0829 217.86)",
+          "oklch(37.86% 0.0829 217.86)",
+          "oklch(49.29% 0.0829 217.86)",
+          "oklch(60.71% 0.0829 217.86)",
+          "oklch(72.14% 0.0829 217.86)",
+          "oklch(83.57% 0.0829 217.86)",
+          "oklch(95.00% 0.0829 217.86)"
+        ]
+      },
+      "work-vessel": {
+        "role": "secondary",
+        "displayName": "Warm vessel",
+        "tonalRamp": [
+          "oklch(15.00% 0.0917 58.96)",
+          "oklch(26.43% 0.0917 58.96)",
+          "oklch(37.86% 0.0917 58.96)",
+          "oklch(49.29% 0.0917 58.96)",
+          "oklch(60.71% 0.0917 58.96)",
+          "oklch(72.14% 0.0917 58.96)",
+          "oklch(83.57% 0.0917 58.96)",
+          "oklch(95.00% 0.0917 58.96)"
+        ]
+      },
+      "work-selection": {
+        "role": "secondary",
+        "displayName": "Muted route gold",
+        "tonalRamp": [
+          "oklch(15.00% 0.0993 90.92)",
+          "oklch(26.43% 0.0993 90.92)",
+          "oklch(37.86% 0.0993 90.92)",
+          "oklch(49.29% 0.0993 90.92)",
+          "oklch(60.71% 0.0993 90.92)",
+          "oklch(72.14% 0.0993 90.92)",
+          "oklch(83.57% 0.0993 90.92)",
+          "oklch(95.00% 0.0993 90.92)"
+        ]
+      },
+      "navigation-bg": {
+        "role": "neutral",
+        "displayName": "Navigation teal",
+        "tonalRamp": [
+          "oklch(15.00% 0.0387 214.28)",
+          "oklch(26.43% 0.0387 214.28)",
+          "oklch(37.86% 0.0387 214.28)",
+          "oklch(49.29% 0.0387 214.28)",
+          "oklch(60.71% 0.0387 214.28)",
+          "oklch(72.14% 0.0387 214.28)",
+          "oklch(83.57% 0.0387 214.28)",
+          "oklch(95.00% 0.0387 214.28)"
+        ]
+      },
+      "map-plane": {
+        "role": "primary",
+        "displayName": "Map aircraft",
+        "tonalRamp": [
+          "oklch(15.00% 0.1185 227.75)",
+          "oklch(26.43% 0.1185 227.75)",
+          "oklch(37.86% 0.1185 227.75)",
+          "oklch(49.29% 0.1185 227.75)",
+          "oklch(60.71% 0.1185 227.75)",
+          "oklch(72.14% 0.1185 227.75)",
+          "oklch(83.57% 0.1185 227.75)",
+          "oklch(95.00% 0.1185 227.75)"
+        ]
+      },
+      "map-vessel": {
+        "role": "secondary",
+        "displayName": "Map vessel",
+        "tonalRamp": [
+          "oklch(15.00% 0.1867 47.60)",
+          "oklch(26.43% 0.1867 47.60)",
+          "oklch(37.86% 0.1867 47.60)",
+          "oklch(49.29% 0.1867 47.60)",
+          "oklch(60.71% 0.1867 47.60)",
+          "oklch(72.14% 0.1867 47.60)",
+          "oklch(83.57% 0.1867 47.60)",
+          "oklch(95.00% 0.1867 47.60)"
+        ]
+      },
+      "map-route": {
+        "role": "secondary",
+        "displayName": "Map route",
+        "tonalRamp": [
+          "oklch(15.00% 0.1343 87.47)",
+          "oklch(26.43% 0.1343 87.47)",
+          "oklch(37.86% 0.1343 87.47)",
+          "oklch(49.29% 0.1343 87.47)",
+          "oklch(60.71% 0.1343 87.47)",
+          "oklch(72.14% 0.1343 87.47)",
+          "oklch(83.57% 0.1343 87.47)",
+          "oklch(95.00% 0.1343 87.47)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Contact identity",
+        "purpose": "Selected-track name; 21px on phones."
+      },
+      "title": {
+        "displayName": "Workspace title",
+        "purpose": "Compact page title; 15px on phones."
+      },
+      "section": {
+        "displayName": "Section heading",
+        "purpose": "Inspector section headings."
+      },
+      "body": {
+        "displayName": "Workspace body",
+        "purpose": "Controls and ordinary text; tabular figures inherited."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Counts and contact names."
+      },
+      "supporting": {
+        "displayName": "Supporting",
+        "purpose": "Actions, descriptions and observation ages."
+      },
+      "metadata": {
+        "displayName": "Metadata",
+        "purpose": "Compact supporting values, never the default body size."
+      }
+    },
+    "shadows": [
+      {
+        "name": "search-results",
+        "value": "0 8px 28px #0005",
+        "purpose": "Search results float above workspace."
+      },
+      {
+        "name": "map-overlay",
+        "value": "0 2px 8px #0002",
+        "purpose": "Controls float over map geometry."
+      },
+      {
+        "name": "map-popup",
+        "value": "0 5px 18px #0003",
+        "purpose": "Selected-contact map popup."
+      },
+      {
+        "name": "route-selection",
+        "value": "inset 0 -2px #d6bc71",
+        "purpose": "Active range underline, not elevation."
+      }
+    ],
+    "motion": [
+      {
+        "name": "map-camera",
+        "value": "900ms",
+        "purpose": "Camera fitting and selected-track movement."
+      },
+      {
+        "name": "reduced-motion-camera",
+        "value": "0ms",
+        "purpose": "Camera movement with prefers-reduced-motion."
+      },
+      {
+        "name": "reduced-motion-workspace",
+        "value": "animation: none; transition: none; scroll-behavior: auto",
+        "purpose": "Workspace reduced-motion media query."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide-inspector",
+        "value": "1600px"
+      },
+      {
+        "name": "wrapped-search",
+        "value": "950px"
+      },
+      {
+        "name": "stacked-workspace",
+        "value": "760px"
+      }
+    ],
+    "nativeAndroid": {
+      "scope": "Source-derived Compose and MapLibre extension. Web frontmatter and component previews retain web scope.",
+      "sources": [
+        "mobile/android/app/src/main/java/io/hrafnsyn/mobile/MainActivity.kt",
+        "mobile/android/app/src/main/java/io/hrafnsyn/mobile/TrafficMap.kt",
+        "mobile/android/app/src/main/res/drawable/map_aircraft.xml",
+        "mobile/android/app/src/main/res/drawable/map_vessel.xml"
+      ],
+      "guidance": {
+        "Colors": "Android uses explicit Material 3 light and dark schemes selected by system appearance. Primary teal is `#0b6570` / `#7dd3de`, with white / `#00363d` on-primary text. Aircraft list icons use primary; vessels use warm tertiary (`#9c4a1a` / `#f4b48b`). Background and surface are near-neutral `#f7f9f8` / `#111719`, with on-surface `#182427` / `#e1e8e8` and supporting on-surface-variant `#4c6268` / `#b9c7ca`. Low, ordinary and high surface containers progress through `#f0f4f3`, `#eaf0ef`, `#e2eae8` in light appearance and `#192124`, `#1d272a`, `#263135` in dark appearance. Selected traffic rows use secondary-container (`#d7e9e9` / `#30474d`); the scheme defines matching on-secondary-container (`#1a393e` / `#d8edf0`). Secondary is `#4c6268` / `#b9cbd0`. Roles not explicitly supplied, including error-container roles, retain Material defaults. These are Android semantic assignments, not web aliases or a dynamic wallpaper palette.\n\nAndroid map vehicle vectors have their own stable cyan (`#0b8394`) and warm brown (`#b25a26`) fills on white circular grounds. Gold (`#e5b84e`) marks route and selection; the selected circle has a dark `#172c31` outline. Cluster fill and text reuse the appearance-specific primary/on-primary pair. This map palette is distinct from both the web legend and adaptive Android list icons.",
+        "Typography": "Android inherits Material 3 typography rather than defining a custom font or pixel ramp. `headlineSmall` identifies connection setup and selected contacts; `titleLarge` names the empty-map state; `titleMedium` names inspector sections. `bodyLarge` carries measurements, `bodyMedium` carries explanation and identity, and `bodySmall` carries connection help. `labelLarge` carries totals and row speed; `labelMedium` carries ages and measurement labels. Contact names allow two lines before ellipsis. The map uses Noto Sans Regular for cluster counts (`14`) and selected labels (`13`) in MapLibre style units. Android measurements currently use default Material figures, without an explicit tabular or monospaced feature; do not describe that as cross-client numerical parity.",
+        "Layout": "Android adapts to available window width in dp. Below `840dp`, the top app bar switches between map and traffic list, and selection opens a dismissible Material modal bottom sheet; its detail content requests 85% of available height. From `840dp`, a `320dp` side pane sits beside the map and changes from traffic to detail on selection. From `1200dp`, traffic remains in the left pane and a separate `320dp` right inspector appears for selection. Dividers separate panes, and lists and details scroll independently. The compact selected camera adds bottom padding equal to half the map view height so the contact sits in the geographic area above the initial sheet; this is a source behavior, not a guarantee for every dragged sheet position.\n\nAndroid setup/login content caps at `520dp` with `24dp` outer padding, `16dp` vertical gaps, scrolling and IME padding. Search has `12dp` insets; horizontally scrolling filter chips use `8dp` gaps. Traffic rows have a `72dp` minimum height. Inspector content has `20dp` padding and `16dp` section gaps. The bottom status row includes navigation-bar padding, active count or reconnecting text, observation age and an Overview action. Scaffold insets keep app bars separate from content.",
+        "Elevation & Depth": "Android uses Material tonal elevation: side panes at `1dp`, the bottom status surface at `2dp`, and the empty-map message at `3dp`. The modal sheet retains Material depth and scrim behavior. Flat list items and pane dividers carry the rest of the structure; no custom web shadows are translated into Compose.",
+        "Shapes": "Android retains Material defaults for buttons, outlined fields, filter chips and modal-sheet corners rather than defining a custom shape scale. Map vehicle symbols are `24dp` vector drawables rasterized at device density. MapLibre grounds use radius `13`, selection radius `17` with stroke width `2`, and clusters radius `23` in style units. Vehicle silhouettes remain visible within these circular grounds.",
+        "Components": "Compose uses Material top app bars, labeled outlined fields, full-width connection buttons with a `48dp` minimum height, text/outlined secondary actions, filter chips and standard icon buttons. Busy connection actions disable editing and show progress with text. Errors use an error-container surface with explanatory text and a Retry action when available. Server settings expose the current address, access state, change-server action and sign-out when applicable. Back first clears selected detail, then returns from traffic to the map.\n\nTraffic uses a `LazyColumn` of Material list items with Flight or DirectionsBoat symbols, textual type, identity and trailing speed. Selection uses a secondary-container fill. Detail content is scrollable, has a labeled close button, and shows measurements and a six-hour route summary with loading progress. Empty search/category results and empty server traffic have distinct text. These components retain native semantics and interaction behavior rather than copying web markup.\n\nAndroid MapLibre loads OpenFreeMap Liberty in light appearance and Dark in dark appearance. Bundled Material aircraft/boat vectors form recognizable symbols; attribution for the source icons is retained in the Android artwork and asset licenses. GeoJSON clustering uses radius `64` through maximum zoom `14`; selecting a cluster moves to its expansion zoom. A separately rendered selected contact carries a name with contrasting halo, gold ground and route line of width `3`. Map hit testing uses a `24dp` radius around the tap. Overview fits available traffic with `32dp` bounds padding; a lone contact uses zoom `10`. Camera changes currently use immediate `moveCamera` calls rather than the web's animation duration. Map-loading failures leave a text notice and access to traffic/search; source-level fallback behavior is not a claim of offline map support."
+      },
+      "verification": "The Android finish review returned a ship verdict for the three reviewed fixes: recognizable vehicle symbols, explicit neutral/teal Material roles and phone selection visibility above the initial detail sheet. Evidence covered phone overview, traffic list, detail, setup and unreachable-server error, plus tablet overview and detail in dark appearance at 130% font scale. The reviewer observed no regressions in those views and confirmed documentation persistence. Login UI, physical-device behavior and arbitrary sheet dragging remain outside that evidence."
+    }
+  },
+  "components": [
+    {
+      "name": "Map Overview",
+      "kind": "button",
+      "refersTo": "button-map",
+      "description": "Floating map action; the built control changes no fill on hover.",
+      "html": "<button class=\"ds-map-button\" type=\"button\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M8.25 3.75h-4.5v4.5m0-4.5L9 9m6-6h5.25v5.25m0-5.25L15 8.25M3.75 15.75v4.5h4.5m-4.5 0L9 15m6 5.25h5.25V15m0 5.25L15 15\"/></svg>Overview</button>",
+      "css": ".ds-map-button{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border:0;border-radius:6px;background:#203239;color:#e6eeef;box-shadow:0 2px 8px #0002;font:14px/1.45 -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;cursor:pointer}.ds-map-button:hover{background:#203239}.ds-map-button:focus-visible{outline:2px solid #88d1e2;outline-offset:3px}"
+    },
+    {
+      "name": "Detail Action",
+      "kind": "button",
+      "refersTo": "button-detail",
+      "description": "Outlined contact action with quiet raised hover.",
+      "html": "<button class=\"ds-detail-action\" type=\"button\">Copy share link</button>",
+      "css": ".ds-detail-action{min-height:40px;padding:6px 10px;border:1px solid #40565e;border-radius:5px;color:#e6eeef;background:transparent;font:12px/1.45 -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;cursor:pointer}.ds-detail-action:hover{background:#2b4149}.ds-detail-action:focus-visible{outline:2px solid #88d1e2;outline-offset:3px}"
+    },
+    {
+      "name": "Contact Search",
+      "kind": "input",
+      "refersTo": "search-input",
+      "description": "Panel-colored search field with a leading search symbol.",
+      "html": "<label class=\"ds-search\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"m21 21-5.197-5.197M16.5 10.5a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z\"/></svg><input class=\"ds-search-input\" type=\"search\" aria-label=\"Search contacts\" placeholder=\"Search callsign, name or identity\"></label>",
+      "css": ".ds-search{position:relative;display:flex;width:360px;max-width:100%}.ds-search>svg{position:absolute;left:12px;top:13px;color:#afc1c6;pointer-events:none}.ds-search-input{width:100%;height:42px;padding:0 42px 0 36px;border:1px solid #40565e;border-radius:6px;color:#e6eeef;background:#203239;caret-color:#88d1e2;font:14px/1.45 -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}.ds-search-input::placeholder{color:#afc1c6;opacity:1}.ds-search-input::-webkit-search-cancel-button{display:none}.ds-search-input:focus-visible{outline:2px solid #88d1e2;outline-offset:3px}"
+    },
+    {
+      "name": "Workspace Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-link",
+      "description": "Plain shared navigation links on a matte teal bar.",
+      "html": "<nav class=\"ds-navigation\" aria-label=\"Workspace\"><a class=\"ds-navigation-link\" href=\"#overview\">Overview</a><a class=\"ds-navigation-link\" href=\"#login\">Log in</a></nav>",
+      "css": ".ds-navigation{display:flex;align-items:center;gap:6px;background:#19383f;padding:8px}.ds-navigation-link{border:0;border-radius:4px;background:none;padding:12px;font:13px -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;color:var(--text-main,#eff7ff);text-decoration:none}.ds-navigation-link:hover{background:#ffffff12}.ds-navigation-link:focus-visible{outline:2px solid #88d1e2;outline-offset:3px}"
+    },
+    {
+      "name": "Route Range",
+      "kind": "chip",
+      "refersTo": "route-range",
+      "description": "Functional time-range buttons with an inset selected underline.",
+      "html": "<div class=\"ds-ranges\" role=\"group\" aria-label=\"Route time range\"><button class=\"ds-range\" type=\"button\" aria-pressed=\"false\">1h</button><button class=\"ds-range ds-range-active\" type=\"button\" aria-pressed=\"true\">6h</button><button class=\"ds-range\" type=\"button\" aria-pressed=\"false\">24h</button></div>",
+      "css": ".ds-ranges{display:flex;gap:2px}.ds-range{min-width:36px;min-height:36px;border:0;border-radius:4px;padding:4px;color:#afc1c6;background:none;font:12px/1.45 -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;cursor:pointer}.ds-range:hover{color:#afc1c6}.ds-range-active,.ds-range-active:hover{color:#e6eeef;background:#2b4149;box-shadow:inset 0 -2px #d6bc71}.ds-range:focus-visible{outline:2px solid #88d1e2;outline-offset:3px}"
+    },
+    {
+      "name": "Inspector Panel",
+      "kind": "card",
+      "refersTo": "inspector",
+      "description": "Continuous side panel; square corners and a single dividing edge.",
+      "html": "<aside class=\"ds-inspector\" aria-label=\"Live contacts\"><div class=\"ds-inspector-heading\"><h2>Live contacts</h2><span>0 active</span></div><div class=\"ds-empty\"><h3>No active contacts</h3><p>Aircraft and vessels appear as observations arrive.</p></div></aside>",
+      "css": ".ds-inspector{width:352px;max-width:100%;background:#203239;color:#e6eeef;border-left:1px solid #40565e;font:14px/1.45 -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}.ds-inspector-heading{min-height:56px;padding:8px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px}.ds-inspector-heading h2{margin:0;font-size:15px;font-weight:650}.ds-inspector-heading span{color:#afc1c6;font-size:12px}.ds-empty{padding:28px 20px;color:#afc1c6}.ds-empty h3{font-size:13px;font-weight:650;color:#e6eeef;margin:0 0 8px}.ds-empty p{margin:0}"
+    },
+    {
+      "name": "Contact Row",
+      "kind": "custom",
+      "refersTo": "contact-row",
+      "description": "Compact vehicle identity and right-aligned measurements; sample values are illustrative.",
+      "html": "<button class=\"ds-contact\" type=\"button\"><svg class=\"ds-contact-icon\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" aria-hidden=\"true\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M6 12 3.269 3.125a59.769 59.769 0 0 1 19.043 8.875A59.768 59.768 0 0 1 3.27 20.875L6 12Zm0 0h7.5\"/></svg><span class=\"ds-contact-copy\"><strong>Aircraft identity</strong><span>Registration</span></span><span class=\"ds-contact-metrics\"><span>250 kn</span><span>10s ago</span></span></button>",
+      "css": ".ds-contact{width:352px;max-width:100%;display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:12px;min-height:68px;padding:11px 18px;border:0;border-bottom:1px solid color-mix(in srgb,#40565e 55%,transparent);border-radius:0;color:#e6eeef;background:none;text-align:left;font:14px/1.45 -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-variant-numeric:tabular-nums;cursor:pointer}.ds-contact:hover{background:#2b4149}.ds-contact-icon{color:#78c6dc}.ds-contact-copy{min-width:0}.ds-contact-copy strong{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ds-contact-copy>span{display:block;color:#afc1c6;font-size:11px;margin-top:3px}.ds-contact-metrics{display:flex;flex-direction:column;align-items:flex-end;color:#afc1c6;font-size:11px}.ds-contact-metrics>span:first-child{color:#e6eeef;font-size:12px}.ds-contact:focus-visible{outline:2px solid #88d1e2;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Evening watch",
+    "overview": "A matte blue-green workspace keeps geographic information legible during repeated inspection. Pale text, quiet dividers and compact controls support the map; cyan aircraft and warm vessel cues distinguish the two traffic types. The existing Hrafnsyn name and logo remain the identity assets.\n\nThis document records the implemented web tracking workspace in `assets/css/tracking.css`, `lib/hrafnsyn_web/live/dashboard_live.ex` and `assets/js/app.js`. Its frontmatter describes web tokens. The global navigation and body inherit parts of this refresh, but administrative, authentication and other routes still carry legacy `assets/css/app.css` styling; their old cards, decorative backgrounds and display typography are not the new workspace system. Native SwiftUI and Android Compose use their own adaptive semantic colors and platform components as described below. Android implementation authority is `mobile/android/app/src/main/java/io/hrafnsyn/mobile/MainActivity.kt`, `TrafficMap.kt` and the map vector drawables; native values below extend the web system without redefining its frontmatter.\n\nThe SwiftUI finish review returned a ship verdict after checking setup and overview on phone and tablet in light, dark and large-type appearances, plus selected dense-traffic iPad views. Gesture flows, the login UI and physical-device behavior were not visually exercised; authentication protocol and Keychain behavior were tested separately. The Android finish review returned a ship verdict for the three reviewed fixes: recognizable vehicle symbols, explicit neutral/teal Material roles and phone selection visibility above the initial detail sheet. Evidence covered phone overview, traffic list, detail, setup and unreachable-server error, plus tablet overview and detail in dark appearance at 130% font scale. The reviewer observed no regressions in those views and confirmed documentation persistence. Login UI, physical-device behavior and arbitrary sheet dragging remain outside that evidence.",
+    "keyCharacteristics": [
+      "Geographic content with adjacent, independently scrolling inspection.",
+      "Matte tonal surfaces, small corner radii and clear separators.",
+      "Compact system text and aligned numerical information.",
+      "Explicit vehicle, selection and connection states.",
+      "Platform-native navigation and adaptive native appearance."
+    ],
+    "rules": [
+      {
+        "name": "The Geographic Color Rule",
+        "body": "Keep map geometry and its legend synchronized; do not substitute the softer inspector colors for one side of that pair.",
+        "section": "colors"
+      },
+      {
+        "name": "The Measurement Rule",
+        "body": "Align changing numeric values with tabular or monospaced digits; retain normal proportional text for names and prose.",
+        "section": "typography"
+      },
+      {
+        "name": "The Floating Context Rule",
+        "body": "Reserve workspace shadows for content that floats over the map or another interaction surface.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep aircraft, vessel and route cues consistent with their own map legend.",
+      "**Do** use aligned numerical text and clear supporting labels for changing measurements.",
+      "**Do** preserve independent scrolling and visible ways to return to geographic overview.",
+      "**Do** retain semantic native colors, text styles, materials and size-class adaptation.",
+      "**Do** describe empty, reconnecting and authentication states with explicit text."
+    ],
+    "donts": [
+      "**Don't** treat configured source counts as evidence of live collector health.",
+      "**Don't** carry legacy decorative dashboard cards or display headings into the tracking workspace.",
+      "**Don't** replace native semantic roles with the web workspace's fixed dark colors.",
+      "**Don't** add generated decorative art to substitute for the geographic content or existing logo."
+    ]
+  }
+}
