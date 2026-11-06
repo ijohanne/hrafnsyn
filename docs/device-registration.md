@@ -21,9 +21,31 @@ collected UDID. Friends do not need a Hrafnsyn account.
 
 Each invitation accepts one device. Retrying the same device response is safe;
 a different UDID cannot replace an already-collected one. The collection page
-does not register devices with Apple, issue signing certificates or distribute
-an IPA. Apple documents the subsequent [registered-device distribution
+does not register devices with Apple or issue signing certificates. Apple documents the subsequent [registered-device distribution
 workflow](https://developer.apple.com/documentation/xcode/distributing-your-app-to-registered-devices).
+
+## Publish and download the current IPA
+
+The signed-in device page also has an **iPhone & iPad app** section. Administrators
+can expand **Upload IPA** (or **Replace IPA**), choose an exported `.ipa` of at
+most 250 MiB, and select **Publish IPA**. The upload replaces the current file
+atomically; there is no release history. A failed upload leaves the previous
+download intact. The server checks the archive structure, not Apple signatures
+or whether individual devices are provisioned.
+
+Every signed-in user can select **Download IPA**. Public invitation links do not
+grant access to the download. This is a file download, not an over-the-air
+installer: use Xcode or Apple Configurator on a Mac to install the signed IPA on
+a device included in its provisioning profile. See the [distribution
+guide](mobile.md#export-a-distributable-ipa) for the local device list and export.
+
+Files live outside `priv/static`, under `HRAFNSYN_MOBILE_BUILD_DIRECTORY`
+(`tmp/mobile-builds` in development). The NixOS module sets this to
+`/var/lib/<service-user>/mobile-builds`, so the current IPA survives service
+restarts and upgrades. Only the application serves downloads after login. The
+upload route has its own 251 MiB multipart limit; other request limits stay the
+same. If you manage a reverse proxy yourself, mirror this limit only for
+`/admin/mobile-build` and allow enough time for the upload.
 
 ## Complete an invitation on the device
 

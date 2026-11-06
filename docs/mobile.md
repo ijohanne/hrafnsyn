@@ -89,17 +89,40 @@ and [Personal Team limits](https://developer.apple.com/help/account/basics/about
 
 An Apple Developer Program membership is required. Register the intended iPhone/iPad UDIDs in your developer account, create an explicit App ID for your chosen bundle identifier, and create an **Ad Hoc distribution provisioning profile** that includes those devices and an Apple Distribution certificate whose private key is installed in your Mac's Keychain. This does not require App Store publication.
 
-1. Build the shared core with `nix develop -c fish mobile/scripts/build-core.fish`.
-2. Install the distribution certificate/private key and downloaded provisioning profile through Xcode. Choose your own bundle identifier if `io.hrafnsyn.mobile` is unavailable in your team.
-3. Export a signed IPA:
+For the configured-instance workflow that collects your device IDs, builds and uploads in one command, see [the iOS release workflow](ios-release.md).
+
+1. Add the intended devices to **`mobile/signing/devices.txt`**, one UDID followed by a descriptive name per line. Blank lines and `#` comments are supported. This entire directory is gitignored; keep device identifiers and API keys there or outside the checkout, never in tracked examples. The file is required, not an optional check: the export fails if it is absent or empty.
+2. Build the shared core with `nix develop -c fish mobile/scripts/build-core.fish`.
+3. Install the distribution certificate/private key and downloaded provisioning profile through Xcode. Choose your own bundle identifier if `io.hrafnsyn.mobile` is unavailable in your team.
+4. Export a signed IPA:
 
    ```fish
    nix develop -c fish mobile/scripts/export-adhoc.fish YOUR_TEAM_ID 'Your Ad Hoc profile name' your.bundle.identifier
    ```
 
-4. The archive, generated `ExportOptions.plist`, and IPA are placed under ignored `mobile/build/ad-hoc/`. Share the exported IPA only with registered testers. They can install it with Xcode or Apple Configurator on a connected device. An OTA installation page additionally requires your own HTTPS hosting and a correctly generated manifest; the script does not publish anything.
+5. The archive, generated `ExportOptions.plist`, and IPA are placed under ignored `mobile/build/ad-hoc/`. Share the exported IPA only with registered testers. They can install it with Xcode or Apple Configurator on a connected device. An OTA installation page additionally requires your own HTTPS hosting and a correctly generated manifest; this export command does not publish anything.
 
-The script uses Xcode's `release-testing` export method (the current name for the deprecated `ad-hoc` option), manual signing and an explicitly supplied profile. It never registers devices, changes your developer account, or invents signing credentials. The same profile must match the archive's bundle ID and contain every intended device. A newly added device requires an updated profile and another export/build. Signed builds stop working when their provisioning profile expires; plan to distribute a replacement before expiry. Apple currently allows up to 100 registered devices per product family per membership year.
+Every export reads the local device list, checks the profile before archiving, selects its exact UUID and checks the profile embedded in the final IPA. The checks include the team, exact bundle ID, expiration, distribution settings and every listed device. A stale profile fails with an actionable error before the expensive build. Override the input with `--devices-file PATH` (or `HRAFNSYN_IOS_DEVICES_FILE`); `--output-dir PATH` isolates a release's artifacts. These overrides support the one-command workflow without changing your local list.
+
+The script uses Xcode's `release-testing` export method (the current name for the deprecated `ad-hoc` option) and manual signing. The default command does not change your Apple account. A newly added device requires an updated profile and another export/build, either manually or using the opt-in sync below. Signed builds stop working when their profile expires. Apple limits the number of registered devices per product family per membership year.
+
+### Register listed devices automatically
+
+Use an App Store Connect **team API key with access to Certificates, Identifiers & Profiles**, your issuer ID and an existing Apple Distribution certificate. The certificate's private key must already be installed on the build Mac; the API key does not replace it. Set these variables locally in fish (the key path points to the downloaded `.p8`, not its contents):
+
+```fish
+set -gx HRAFNSYN_ASC_KEY_ID YOUR_KEY_ID
+set -gx HRAFNSYN_ASC_ISSUER_ID YOUR_ISSUER_ID
+set -gx HRAFNSYN_ASC_KEY_PATH /private/path/AuthKey_YOUR_KEY_ID.p8
+set -gx HRAFNSYN_ASC_CERTIFICATE_ID YOUR_CERTIFICATE_RESOURCE_ID
+nix develop -c fish mobile/scripts/export-adhoc.fish --sync-devices YOUR_TEAM_ID 'Hrafnsyn Ad Hoc' your.bundle.identifier
+```
+
+The explicit `--sync-devices` flag authorizes registration of missing devices from the file. It validates the selected certificate's team first, checks registered device status, and reuses an active matching profile or creates a new Ad Hoc profile for the exact requested device set. The profile is downloaded into Xcode's provisioning directory. It never disables devices, revokes certificates or deletes existing profiles. Apple may require waiting or account action for devices that are not yet enabled. New registrations consume Apple's device quota; removing a line locally does not unregister that device.
+
+The helper uses Apple's [device registration](https://developer.apple.com/documentation/appstoreconnectapi/post-v1-devices), [profile creation](https://developer.apple.com/documentation/appstoreconnectapi/post-v1-profiles) and [ES256 authentication](https://developer.apple.com/documentation/appstoreconnectapi/generating-tokens-for-api-requests) APIs. Tokens, private key contents and UDIDs are not printed. API errors report only status and recovery guidance. Protocol behavior is covered by mocked tests; account-specific registration and signed IPA export require your credentials and signing assets.
+
+Run the helper tests with `nix develop -c python3 -m unittest discover -s mobile/scripts -p test_ios_devices.py`.
 
 No signing team, certificate or provisioning profile is embedded in the repository. Simulator builds need none; producing the distributable IPA requires these account-specific inputs.
 

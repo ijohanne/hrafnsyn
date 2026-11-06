@@ -136,6 +136,7 @@ defmodule HrafnsynWeb.DeviceController do
 
     render(conn, :index,
       page_title: "iOS devices",
+      mobile_build: Hrafnsyn.MobileBuilds.current(),
       invitations: invitations,
       form: Phoenix.Component.to_form(changeset, as: :invitation),
       share_urls: share_urls

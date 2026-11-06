@@ -56,6 +56,13 @@ Unified aircraft + vessel tracking built with Phoenix LiveView, Elixir, and Post
 
 ## Current Operational Notes
 
+- For a requested iOS release, follow `docs/ios-release.md` and run
+  `fish mobile/scripts/release-ios.fish`; it enters this project's Nix shell,
+  reads the ignored local signing configuration, fetches the configured account's
+  UDIDs, exports and verifies the IPA, and publishes it. Never print or commit
+  `mobile/signing/` contents, substitute an instance URL, or upload a stale build.
+  Report missing local credentials without inspecting unrelated credential stores.
+
 - Default local workflow is `app`
   which resets local Postgres, starts it, runs setup, and boots Phoenix
 - Map rendering currently prefers custom plane/boat markers

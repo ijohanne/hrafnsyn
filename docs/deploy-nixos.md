@@ -3,6 +3,14 @@
 This guide covers the bundled NixOS module in [nix/module.nix](../nix/module.nix).
 It matches the current runtime contract in `config/runtime.exs`.
 
+The current private IPA is stored in `/var/lib/<service-user>/mobile-builds`
+under the service's persistent state directory. The module sets
+`HRAFNSYN_MOBILE_BUILD_DIRECTORY` and gives only the browser/admin and release-API
+upload routes a 251 MiB request limit (250 MiB file plus multipart framing).
+Downloads always go through Phoenix login checks; do not add a static nginx
+alias for this directory. See [device registration](device-registration.md)
+and the [automated iOS release](ios-release.md) workflow.
+
 ## Flake Input
 
 Add the repository as a flake input and import the module:

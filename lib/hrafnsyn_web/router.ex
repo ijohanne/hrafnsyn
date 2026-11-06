@@ -25,6 +25,46 @@ defmodule HrafnsynWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :mobile_upload do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :fetch_current_scope_for_user
+    plug :require_authenticated_user
+    plug :require_admin_user
+    plug HrafnsynWeb.Plugs.MobileUpload
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers, @browser_headers
+  end
+
+  pipeline :mobile_release_api do
+    plug HrafnsynWeb.Plugs.MobileReleaseAuth
+  end
+
+  pipeline :mobile_release_upload do
+    plug HrafnsynWeb.Plugs.MobileUpload
+  end
+
+  scope "/api/mobile-release", HrafnsynWeb do
+    pipe_through :api
+    post "/session", MobileReleaseController, :refresh, log: false
+  end
+
+  scope "/api/mobile-release", HrafnsynWeb do
+    pipe_through [:api, :mobile_release_api]
+    get "/devices", MobileReleaseController, :devices, log: false
+  end
+
+  scope "/api/mobile-release", HrafnsynWeb do
+    pipe_through [:api, :mobile_release_api, :mobile_release_upload]
+    post "/ipa", MobileReleaseController, :publish, log: false
+  end
+
+  scope "/", HrafnsynWeb do
+    pipe_through :mobile_upload
+    post "/admin/mobile-build", MobileBuildController, :create
+  end
+
   pipeline :dashboard_access do
     plug :require_authenticated_user_unless_public
   end
@@ -93,6 +133,7 @@ defmodule HrafnsynWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     get "/users/devices", DeviceController, :index
+    get "/users/devices/app.ipa", MobileBuildController, :download
     post "/users/devices", DeviceController, :create
     post "/users/devices/:id/delete", DeviceController, :delete
 

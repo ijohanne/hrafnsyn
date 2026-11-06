@@ -74,6 +74,7 @@ HRAFNSYN_PUBLIC_READONLY=false
 HRAFNSYN_BOOTSTRAP_USERS_JSON='{"admin":{"password":"change-me-now","email":"admin@example.com","is_admin":true}}'
 
 HRAFNSYN_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+HRAFNSYN_MOBILE_BUILD_DIRECTORY=/var/lib/hrafnsyn/mobile-builds
 HRAFNSYN_SOURCES_JSON=[{"id":"planes-main","name":"Airplane SDR","vehicle_type":"plane","adapter":"dump1090","base_url":"http://10.255.101.202","poll_interval_ms":1000,"enabled":true},{"id":"boats-main","name":"Boat SDR","vehicle_type":"vessel","adapter":"ais_catcher","base_url":"http://10.255.101.202:8100","poll_interval_ms":2500,"enabled":true}]
 HRAFNSYN_TRACK_POINT_RETENTION_DAYS=7
 # Optional static aircraft enrichment artifact
@@ -192,6 +193,20 @@ Example nginx site:
 server {
   server_name tracks.example.com;
 
+  location ~ ^/(admin/mobile-build|api/mobile-release/ipa)$ {
+    client_max_body_size 251m;
+    proxy_request_buffering off;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_pass http://127.0.0.1:4000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
   location / {
     grpc_read_timeout 1h;
     grpc_send_timeout 1h;
@@ -218,6 +233,11 @@ server {
 
 This keeps Phoenix/LiveView and gRPC on one public URL. If you are not exposing the gRPC listener,
 remove the `grpc_*` lines and the conditional `grpc_pass` block.
+
+Create `HRAFNSYN_MOBILE_BUILD_DIRECTORY` as a private, persistent directory owned
+by the service user. Never expose it with a static alias: authenticated Phoenix
+routes serve the IPA. The browser upload uses session/CSRF protection; release
+automation uses a revocable API token. See [automated iOS releases](ios-release.md).
 
 When gRPC is enabled, Hrafnsyn serves:
 

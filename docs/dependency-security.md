@@ -345,6 +345,15 @@ Phoenix's compile-time `force_ssl` would run before this trusted-proxy logic.
 The only Sobelow fingerprint skip is `Config.HTTPS` in `config/prod.exs`, in
 `.sobelow-skips`; the task checks its exact fingerprint and the same owner,
 tracking issue, and expiration above. Any additional skip fails the gate.
+
+`MobileBuildController.send_current_ipa/2` has a function-local
+`Traversal.SendDownload` annotation: `MobileBuilds.with_download/2` creates the
+path from the configured private storage directory and a server-generated UUID,
+never a request value or uploaded filename. Authentication precedes the context
+call; a request-scoped hard link keeps downloads stable across replacement and is
+removed after sending. Context and controller regression tests cover authorization,
+replacement, exact download bytes and snapshot cleanup. This annotation does not
+disable traversal checking for other controllers or change `.sobelow-skips`.
 ProxySSL's redirect, proxy trust, and HSTS behavior have dedicated tests.
 
 The former Sobelow hardcoded JWT secret and missing CSP findings were fixed.

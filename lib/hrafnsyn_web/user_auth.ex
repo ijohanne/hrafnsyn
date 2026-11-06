@@ -215,6 +215,14 @@ defmodule HrafnsynWeb.UserAuth do
     end
   end
 
+  def require_admin_user(conn, _opts) do
+    if Scope.admin?(conn.assigns[:current_scope]) do
+      conn
+    else
+      conn |> send_resp(:forbidden, "Administrator access is required.") |> halt()
+    end
+  end
+
   @doc """
   Plug for routes that require authentication only when the app is not in public mode.
   """

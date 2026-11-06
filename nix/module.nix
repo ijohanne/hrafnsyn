@@ -436,6 +436,7 @@ in
           HRAFNSYN_FORCE_SSL = if cfg.nginxHelper.enable then "false" else "true";
           HRAFNSYN_TRUSTED_PROXIES = builtins.concatStringsSep "," cfg.trustedProxies;
           HRAFNSYN_MAP_STYLE_URL = cfg.mapStyleUrl;
+          HRAFNSYN_MOBILE_BUILD_DIRECTORY = "/var/lib/${cfg.user}/mobile-builds";
           HRAFNSYN_PUBLIC_READONLY = if cfg.publicReadonly then "true" else "false";
           HRAFNSYN_TRACK_POINT_RETENTION_DAYS = builtins.toString cfg.trackPointRetentionDays;
           RELEASE_NODE = cfg.user;
@@ -575,6 +576,38 @@ in
               access_log off;
               error_log /dev/null;
               client_max_body_size 64k;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Forwarded-Port $server_port;
+              proxy_set_header X-Forwarded-Proto $scheme;
+            '';
+          };
+          locations."= /admin/mobile-build" = {
+            proxyPass = "http://${proxyListenAddress}:${builtins.toString cfg.port}";
+            extraConfig = ''
+              client_max_body_size 251m;
+              # Let Phoenix authorize the session before consuming a large upload.
+              proxy_request_buffering off;
+              proxy_read_timeout 300s;
+              proxy_send_timeout 300s;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Forwarded-Port $server_port;
+              proxy_set_header X-Forwarded-Proto $scheme;
+            '';
+          };
+          locations."= /api/mobile-release/ipa" = {
+            proxyPass = "http://${proxyListenAddress}:${builtins.toString cfg.port}";
+            extraConfig = ''
+              client_max_body_size 251m;
+              # Let Phoenix authorize the session before consuming a large upload.
+              proxy_request_buffering off;
+              proxy_read_timeout 300s;
+              proxy_send_timeout 300s;
               proxy_set_header Host $host;
               proxy_set_header X-Real-IP $remote_addr;
               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

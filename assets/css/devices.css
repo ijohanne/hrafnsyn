@@ -35,6 +35,19 @@
 .device-page-heading p { margin-top: 12px; }
 .device-page-heading > div { min-width: 0; }
 .device-page-heading strong { overflow-wrap: anywhere; }
+.device-app { padding: 24px 0; border-bottom: 1px solid var(--device-line); }
+.device-app-download { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.device-app-download > div { min-width: 0; }
+.device-app-download p { margin-top: 6px; }
+.device-app-meta { font-variant-numeric: tabular-nums; }
+.device-app-install-note { margin-top: 14px !important; }
+.device-app-admin { margin-top: 16px; }
+.device-app-admin summary { min-height: 44px; width: fit-content; padding: 10px 0; color: var(--device-accent); cursor: pointer; font-weight: 600; }
+.device-app-admin summary:focus-visible { outline: 2px solid var(--device-accent); outline-offset: 3px; }
+.device-app-admin form { display: grid; gap: 16px; max-width: 620px; padding-top: 12px; }
+.device-app-admin form > button { justify-self: start; }
+.device-field input[type="file"] { padding: 8px; font-size: 14px; }
+.device-field input::file-selector-button { min-height: 32px; margin-right: 12px; padding: 5px 10px; border: 0; border-radius: 4px; background: var(--device-raised); color: var(--device-ink); font: inherit; cursor: pointer; }
 .device-management { display: grid; grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.65fr); gap: 48px; padding-top: 32px; }
 .device-create > p { margin-top: 10px; }
 .device-create form { margin-top: 24px; }
@@ -102,6 +115,8 @@
   .device-page-heading { flex-direction: column; gap: 16px; padding-bottom: 24px; }
   .device-workspace h1 { font-size: 24px; }
   .device-management { grid-template-columns: minmax(0, 1fr); gap: 36px; padding-top: 24px; }
+  .device-app-download { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .device-app-download > a { width: 100%; }
   .device-create form { max-width: 480px; }
   .device-create .device-create-note { margin-top: 16px; }
   .device-row { padding: 20px 0; }

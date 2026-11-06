@@ -8,3 +8,7 @@ ios/Hrafnsyn.xcodeproj/xcuserdata/
 *.log
 
 build-device/
+
+# Local device identifiers and signing credentials never belong in source control.
+signing/
+scripts/__pycache__/

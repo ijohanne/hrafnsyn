@@ -15,6 +15,69 @@ defmodule HrafnsynWeb.DeviceHTML do
           <a href="/users/devices" class="device-button device-button-secondary">Refresh status</a>
         </header>
 
+        <section class="device-app" aria-labelledby="device-app-title">
+          <div class="device-app-download">
+            <div>
+              <h2 id="device-app-title">iPhone &amp; iPad app</h2>
+              <%= case @mobile_build do %>
+                <% {:ok, build} -> %>
+                  <p class="device-app-meta">
+                    Hrafnsyn.ipa · {format_size(build.size)}<br />
+                    Updated {format_datetime(build.uploaded_at)}
+                  </p>
+                <% {:error, :not_found} -> %>
+                  <p>No build available yet. An administrator can upload one here.</p>
+                <% _ -> %>
+                  <p>The download is temporarily unavailable. Please try again later.</p>
+              <% end %>
+            </div>
+            <a
+              :if={match?({:ok, _}, @mobile_build)}
+              href={~p"/users/devices/app.ipa"}
+              class="device-button device-button-primary"
+            >
+              <.icon name="hero-arrow-down-tray" class="size-4" /> Download IPA
+            </a>
+          </div>
+          <p class="device-help device-app-install-note">
+            For registered devices included in this build. Download the IPA to a Mac to install
+            with Xcode or Apple Configurator; downloading in Safari does not install the app.
+          </p>
+
+          <details :if={Hrafnsyn.Accounts.Scope.admin?(@current_scope)} class="device-app-admin">
+            <summary>
+              {if match?({:ok, _}, @mobile_build), do: "Replace IPA", else: "Upload IPA"}
+            </summary>
+            <.form
+              for={%{}}
+              action={~p"/admin/mobile-build"}
+              method="post"
+              multipart
+              id="mobile-build-upload"
+              data-ipa-upload
+            >
+              <div class="device-field">
+                <label for="mobile-build-file">Signed IPA file</label>
+                <input
+                  id="mobile-build-file"
+                  type="file"
+                  name="ipa"
+                  accept=".ipa"
+                  required
+                  aria-describedby="mobile-build-help"
+                />
+                <p id="mobile-build-help" class="device-help">
+                  Up to 250 MiB. Every signed-in user can download it. Uploading replaces the
+                  current file; no previous versions are kept. Export a signed Ad Hoc build
+                  that includes your testers’ devices.
+                </p>
+              </div>
+              <button type="submit" class="device-button device-button-secondary">Publish IPA</button>
+              <p class="device-help" data-ipa-upload-status role="status" aria-live="polite"></p>
+            </.form>
+          </details>
+        </section>
+
         <div class="device-management">
           <section class="device-create" aria-labelledby="device-create-title">
             <h2 id="device-create-title">Invite a device</h2>
@@ -279,4 +342,6 @@ defmodule HrafnsynWeb.DeviceHTML do
     do: Calendar.strftime(datetime, "%d %b %Y, %H:%M UTC")
 
   defp format_datetime(_datetime), do: "—"
+
+  defp format_size(bytes), do: "#{Float.round(bytes / 1_048_576, 1)} MiB"
 end

@@ -1,5 +1,9 @@
 import Config
 
+if directory = System.get_env("HRAFNSYN_MOBILE_BUILD_DIRECTORY") do
+  config :hrafnsyn, :mobile_build_directory, directory
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration

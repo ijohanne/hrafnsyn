@@ -51,16 +51,32 @@ defmodule HrafnsynWeb.Endpoint do
     event_prefix: [:phoenix, :endpoint],
     log: {__MODULE__, :request_log_level, []}
 
-  plug Plug.Parsers,
-    parsers: [:urlencoded, :multipart, :json],
-    pass: ["*/*"],
-    json_decoder: Phoenix.json_library()
+  @parser_options Plug.Parsers.init(
+                    parsers: [:urlencoded, :multipart, :json],
+                    pass: ["*/*"],
+                    json_decoder: Phoenix.json_library()
+                  )
+
+  plug :parse_request
 
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
   plug HrafnsynWeb.Router
 
+  # The large multipart upload is parsed only after session/admin authorization.
+  defp parse_request(%{method: "POST", path_info: ["admin", "mobile-build"]} = conn, _opts),
+    do: conn
+
+  defp parse_request(
+         %{method: "POST", path_info: ["api", "mobile-release", "ipa"]} = conn,
+         _opts
+       ),
+       do: conn
+
+  defp parse_request(conn, _opts), do: Plug.Parsers.call(conn, @parser_options)
+
   def request_log_level(%{path_info: ["devices", "invite" | _]}), do: false
+  def request_log_level(%{path_info: ["api", "mobile-release" | _]}), do: false
   def request_log_level(_conn), do: :info
 end
