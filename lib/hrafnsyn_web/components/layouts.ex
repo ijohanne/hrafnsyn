@@ -71,6 +71,7 @@ defmodule HrafnsynWeb.Layouts do
             </summary>
 
             <div class="profile-dropdown">
+              <.link href={~p"/users/devices"}>iOS devices</.link>
               <.link navigate={~p"/users/tokens"}>API tokens</.link>
               <.link href={~p"/users/settings"}>Change password</.link>
               <.link href={~p"/users/log-out"} method="delete">Log out</.link>

@@ -92,6 +92,10 @@ defmodule HrafnsynWeb.Router do
   scope "/", HrafnsynWeb do
     pipe_through [:browser, :require_authenticated_user]
 
+    get "/users/devices", DeviceController, :index
+    post "/users/devices", DeviceController, :create
+    post "/users/devices/:id/delete", DeviceController, :delete
+
     get "/users/settings", UserSettingsController, :edit
     put "/users/settings", UserSettingsController, :update
     get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
@@ -100,11 +104,20 @@ defmodule HrafnsynWeb.Router do
   scope "/", HrafnsynWeb do
     pipe_through [:browser]
 
+    get "/devices/invite/:token", DeviceController, :invite, log: false
+    get "/devices/invite/:token/profile", DeviceController, :profile, log: false
+
     get "/grpc", PageController, :grpc
     get "/grpc/tracking.proto", PageController, :grpc_proto
     get "/users/log-in", UserSessionController, :new
     get "/users/log-in/:token", UserSessionController, :confirm
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
+  end
+
+  # Apple posts a signed CMS body outside the browser session. A separate challenge
+  # authorizes only this bounded, single-device collection callback.
+  scope "/", HrafnsynWeb do
+    post "/devices/invite/:token/callback", DeviceController, :callback, log: false
   end
 end

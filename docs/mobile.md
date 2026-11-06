@@ -33,6 +33,29 @@ nginx gRPC routing is enabled; a separate port is unnecessary in that deployment
 
 ## Sharing with friends using Ad Hoc distribution
 
+### Collect UDIDs through Hrafnsyn
+
+No cable or Mac is needed for this collection step. Sign in to Hrafnsyn, open
+**iOS devices** from the account menu (`/users/devices`), name an invitation for
+one iPhone or iPad, and share its link with that device's owner. The friend opens
+the link in Safari, downloads the profile, and approves it under **Settings →
+General → VPN & Device Management** (or **Profile Downloaded**). The profile is
+unsigned, so iOS shows **Not Signed**. It requests only the UDID and sends it to
+this Hrafnsyn server; it does not install the app or enroll the device in device
+management.
+
+After collection, refresh **iOS devices** to copy the UDID. Register it in your
+Apple developer account, update the Ad Hoc provisioning profile, and export a
+new IPA as described below. Collecting an identifier does not perform these
+Apple registration or signing steps automatically. Use a separate invitation
+for each device, including a friend's iPhone and iPad.
+
+Links expire after seven days. Each account can keep 25 invitations; **Delete**
+invalidates the link and removes any collected UDID. Records become eligible
+for removal 30 days after invitation creation, with global cleanup running
+hourly. See [device registration](device-registration.md) for the full flow,
+retention details, HTTPS/proxy requirements and verification boundaries.
+
 ### Your own iPhone and iPad
 
 You do not need to collect or send UDIDs manually when running directly from
@@ -49,7 +72,7 @@ limits the number of personal-team devices and apps. A paid developer membership
 is needed for the Ad Hoc distribution workflow below. Owning a device does not
 exempt it from the registered-device list in an Ad Hoc profile.
 
-To collect a UDID for an Ad Hoc build:
+As an alternative to the Hrafnsyn collection link, collect a UDID with Finder:
 
 1. Connect the iPhone or iPad to your Mac and select it under Finder's Locations.
 2. Complete the Trust prompts on the Mac/device if shown.

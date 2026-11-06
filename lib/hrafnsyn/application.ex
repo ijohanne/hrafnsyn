@@ -18,7 +18,9 @@ defmodule Hrafnsyn.Application do
         Hrafnsyn.Aircraft.StaticDB,
         Hrafnsyn.Collectors.Supervisor,
         HrafnsynWeb.Endpoint
-      ] ++ tracking_pruner_children() ++ prom_ex_children() ++ grpc_children()
+      ] ++
+        tracking_pruner_children() ++
+        device_pruner_children() ++ prom_ex_children() ++ grpc_children()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -56,6 +58,11 @@ defmodule Hrafnsyn.Application do
     else
       []
     end
+  end
+
+  defp device_pruner_children do
+    config = Application.get_env(:hrafnsyn, Hrafnsyn.Devices.Pruner, [])
+    if Keyword.get(config, :enabled, true), do: [Hrafnsyn.Devices.Pruner], else: []
   end
 
   # Tell Phoenix to update the endpoint configuration

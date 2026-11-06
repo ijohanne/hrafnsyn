@@ -3,6 +3,8 @@ import Config
 # Only in tests, remove the complexity from the password hashing algorithm
 config :bcrypt_elixir, :log_rounds, 1
 
+config :hrafnsyn, Hrafnsyn.Devices.Pruner, enabled: false
+
 test_database_url = System.get_env("TEST_DATABASE_URL")
 
 test_db_config =

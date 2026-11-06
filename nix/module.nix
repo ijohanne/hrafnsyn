@@ -568,6 +568,21 @@ in
         {
           forceSSL = cfg.nginxHelper.enableACME;
           enableACME = cfg.nginxHelper.enableACME;
+          locations."^~ /devices/invite/" = {
+            proxyPass = "http://${proxyListenAddress}:${builtins.toString cfg.port}";
+            recommendedProxySettings = false;
+            extraConfig = ''
+              access_log off;
+              error_log /dev/null;
+              client_max_body_size 64k;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Forwarded-Port $server_port;
+              proxy_set_header X-Forwarded-Proto $scheme;
+            '';
+          };
           locations."~ ^/" = {
             proxyPass = "http://${proxyListenAddress}:${builtins.toString cfg.port}";
             proxyWebsockets = true;
