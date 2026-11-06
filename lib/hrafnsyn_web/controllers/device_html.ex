@@ -96,36 +96,23 @@ defmodule HrafnsynWeb.DeviceHTML do
                   </.form>
                 </div>
 
-                <div
+                <.copy_field
                   :if={Devices.invitation_status(invitation) == :pending}
-                  class="device-field device-copy-field"
-                >
-                  <label for={"device-link-#{invitation.id}"}>Invitation link</label>
-                  <input
-                    id={"device-link-#{invitation.id}"}
-                    type="text"
-                    readonly
-                    value={Map.get(@share_urls, invitation.id, "")}
-                    spellcheck="false"
-                    autocomplete="off"
-                  />
-                  <p class="device-help">Select and copy this link to send it privately.</p>
-                </div>
+                  id={"device-link-#{invitation.id}"}
+                  label="Invitation link"
+                  value={Map.get(@share_urls, invitation.id, "")}
+                  copy_label={"Copy invitation link for #{invitation.label}"}
+                  help="Copy this link to send it privately."
+                />
 
-                <div :if={invitation.udid} class="device-field device-copy-field">
-                  <label for={"device-udid-#{invitation.id}"}>UDID</label>
-                  <input
-                    id={"device-udid-#{invitation.id}"}
-                    type="text"
-                    readonly
-                    value={invitation.udid}
-                    spellcheck="false"
-                    autocomplete="off"
-                  />
-                  <p class="device-help">
-                    Copy this identifier when registering the device in your Apple developer account.
-                  </p>
-                </div>
+                <.copy_field
+                  :if={invitation.udid}
+                  id={"device-udid-#{invitation.id}"}
+                  label="UDID"
+                  value={invitation.udid}
+                  copy_label={"Copy UDID for #{invitation.label}"}
+                  help="Copy this identifier when registering the device in your Apple developer account."
+                />
               </article>
             </div>
 
@@ -228,6 +215,58 @@ defmodule HrafnsynWeb.DeviceHTML do
         <% end %>
       </section>
     </Layouts.app>
+    """
+  end
+
+  attr :id, :string, required: true
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :copy_label, :string, required: true
+  attr :help, :string, required: true
+
+  defp copy_field(assigns) do
+    ~H"""
+    <div class="device-field device-copy-field" data-device-copy-field>
+      <label for={@id}>{@label}</label>
+      <div class="device-copy-control">
+        <input
+          id={@id}
+          type="text"
+          readonly
+          value={@value}
+          spellcheck="false"
+          autocomplete="off"
+          aria-describedby={"#{@id}-help #{@id}-feedback"}
+        />
+        <button
+          type="button"
+          class="device-button device-button-secondary device-copy-button"
+          data-device-copy
+          data-copy-name={@label}
+          aria-label={@copy_label}
+          aria-controls={@id}
+          aria-describedby={"#{@id}-feedback"}
+        >
+          <span class="device-copy-icon-copy" aria-hidden="true">
+            <.icon name="hero-clipboard-document" class="device-copy-icon" />
+          </span>
+          <span class="device-copy-icon-check" aria-hidden="true">
+            <.icon name="hero-check" class="device-copy-icon" />
+          </span>
+          <span data-device-copy-label>Copy</span>
+        </button>
+      </div>
+      <p id={"#{@id}-help"} class="device-help">{@help}</p>
+      <p
+        id={"#{@id}-feedback"}
+        class="device-help device-copy-feedback"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-device-copy-feedback
+      >
+      </p>
+    </div>
     """
   end
 

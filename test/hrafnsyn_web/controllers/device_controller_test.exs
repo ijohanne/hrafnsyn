@@ -3,6 +3,7 @@ defmodule HrafnsynWeb.DeviceControllerTest do
 
   import Hrafnsyn.AccountsFixtures
   import Hrafnsyn.DeviceProfileFixtures
+  import ExUnit.CaptureLog
 
   alias Hrafnsyn.Accounts.Scope
   alias Hrafnsyn.Devices
@@ -124,6 +125,31 @@ defmodule HrafnsynWeb.DeviceControllerTest do
       assert html =~ "Device identifier received"
       refute html =~ @udid
       assert get(build_conn(), ~p"/devices/invite/#{token}/profile").status == 404
+    end
+
+    test "accepts Apple's BER callback encoding", %{token: token, challenge: challenge} do
+      # Preserve the Apple encoder's structure while binding the synthetic fixture
+      # to this invitation; collection does not verify signer trust or signatures.
+      body =
+        "test/fixtures/devices/callback-apple.ber"
+        |> File.read!()
+        |> :binary.replace("j5mw3dSgkbUN31Pp9WqHVmAJ4OeDdYNqQHCHsi2ePlI", challenge)
+
+      assert submit(token, body).status == 301
+      assert {:ok, %{status: :collected}} = Devices.get_public_invitation(token)
+    end
+
+    test "logs only a fixed rejection category, without the invitation or response", %{
+      token: token
+    } do
+      log =
+        capture_log(fn ->
+          assert submit(token, "private-device-response-sentinel").status == 400
+        end)
+
+      assert log =~ "Device profile callback rejected: invalid_cms"
+      refute log =~ token
+      refute log =~ "private-device-response-sentinel"
     end
 
     test "rejects a wrong challenge and cannot overwrite a completed identifier", %{

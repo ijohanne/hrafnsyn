@@ -5,6 +5,8 @@ defmodule HrafnsynWeb.DeviceController do
   alias Hrafnsyn.Devices.{Invitation, Profile}
   alias HrafnsynWeb.Endpoint
 
+  require Logger
+
   plug :private_response
 
   def index(conn, _params), do: render_index(conn, Devices.change_invitation(%Invitation{}, %{}))
@@ -89,7 +91,7 @@ defmodule HrafnsynWeb.DeviceController do
   def callback(conn, %{"token" => token}) do
     with {:ok, challenge} <- Devices.profile_challenge(token),
          {:ok, udid} <-
-           Profile.parse_callback(conn.private[:device_callback_body] || "", challenge),
+           parse_device_response(conn.private[:device_callback_body] || "", challenge),
          {:ok, :collected} <- Devices.complete_invitation(token, challenge, udid) do
       # iOS profile services hand this redirect back to Safari; no identifier enters the URL.
       conn
@@ -103,6 +105,23 @@ defmodule HrafnsynWeb.DeviceController do
           400,
           "Could not accept this device response. Return to the invitation in Safari and check its status, or ask for a new link."
         )
+    end
+  end
+
+  defp parse_device_response(body, challenge) do
+    case Profile.parse_callback_detailed(body, challenge) do
+      {:ok, udid} ->
+        {:ok, udid}
+
+      {:error, reason} ->
+        # Only fixed categories are logged, never the invitation or device response.
+        category =
+          if reason in [:invalid_cms, :invalid_plist, :challenge_mismatch, :invalid_udid],
+            do: reason,
+            else: :invalid_callback
+
+        Logger.warning("Device profile callback rejected: #{category}")
+        {:error, :invalid_callback}
     end
   end
 

@@ -9,6 +9,8 @@ defmodule Hrafnsyn.Devices.Profile do
   """
 
   @max_body_bytes 65_536
+  @max_asn1_depth 24
+  @max_asn1_nodes 2_048
   @signed_data_oid <<42, 134, 72, 134, 247, 13, 1, 7, 2>>
   @data_oid <<42, 134, 72, 134, 247, 13, 1, 7, 1>>
   @challenge_pattern ~r/\A[A-Za-z0-9_-]{32,128}\z/
@@ -46,20 +48,39 @@ defmodule Hrafnsyn.Devices.Profile do
 
   @spec parse_callback(binary(), String.t()) ::
           {:ok, String.t()} | {:error, :invalid_callback}
-  def parse_callback(body, expected_challenge)
+  def parse_callback(body, expected_challenge) do
+    case parse_callback_detailed(body, expected_challenge) do
+      {:ok, udid} -> {:ok, udid}
+      {:error, _reason} -> {:error, :invalid_callback}
+    end
+  end
+
+  @doc "Returns only fixed diagnostic categories; never returns callback content."
+  @spec parse_callback_detailed(binary(), String.t()) ::
+          {:ok, String.t()}
+          | {:error,
+             :invalid_callback
+             | :invalid_cms
+             | :invalid_plist
+             | :challenge_mismatch
+             | :invalid_udid}
+  def parse_callback_detailed(body, expected_challenge)
       when is_binary(body) and byte_size(body) <= @max_body_bytes and
              is_binary(expected_challenge) do
     with true <- Regex.match?(@challenge_pattern, expected_challenge),
-         {:ok, xml} <- cms_content(body),
-         {:ok, values} <- plist_values(xml),
+         {:cms, {:ok, xml}} <- {:cms, cms_content(body)},
+         {:plist, {:ok, values}} <- {:plist, plist_values(xml)},
          {:ok, udid} <- validate_values(values, expected_challenge) do
       {:ok, udid}
     else
+      {:cms, _} -> {:error, :invalid_cms}
+      {:plist, _} -> {:error, :invalid_plist}
+      {:error, reason} -> {:error, reason}
       _ -> {:error, :invalid_callback}
     end
   end
 
-  def parse_callback(_body, _expected_challenge), do: {:error, :invalid_callback}
+  def parse_callback_detailed(_body, _expected_challenge), do: {:error, :invalid_callback}
 
   @spec normalize_udid(term()) :: {:ok, String.t()} | {:error, :invalid_udid}
   def normalize_udid(value) when is_binary(value) and byte_size(value) in [25, 40] do
@@ -122,29 +143,44 @@ defmodule Hrafnsyn.Devices.Profile do
   end
 
   defp cms_content(body) do
-    with {:ok, {0x30, content}, <<>>} <- der_value(body),
-         {:ok, [{0x06, @signed_data_oid}, {0xA0, wrapped}]} <- der_fields(content, 2),
-         {:ok, {0x30, signed_data}, <<>>} <- der_value(wrapped) do
-      signed_content(signed_data)
+    case asn1_value(body, 0, @max_asn1_nodes) do
+      {:ok, {0x30, [{0x06, @signed_data_oid}, {0xA0, [{0x30, signed_data}]}]}, <<>>, _remaining} ->
+        signed_content(signed_data)
+
+      _ ->
+        :error
+    end
+  end
+
+  defp signed_content([{0x02, version}, {0x31, algorithms}, {0x30, content} | rest]) do
+    with true <- version in [<<1>>, <<3>>, <<4>>, <<5>>] and algorithms != [],
+         true <- signed_tail?(rest),
+         [{0x06, @data_oid}, {0xA0, [wrapped]}] <- content,
+         {:ok, chunks} <- octet_content(wrapped) do
+      {:ok, IO.iodata_to_binary(chunks)}
     else
       _ -> :error
     end
   end
 
-  defp signed_content(signed_data) do
-    with {:ok, [{0x02, version}, {0x31, algorithms}, {0x30, content} | rest]} <-
-           der_fields(signed_data, 6),
-         true <- version in [<<1>>, <<3>>, <<4>>, <<5>>] and algorithms != <<>>,
-         true <- signed_tail?(rest),
-         {:ok, [{0x06, @data_oid}, {0xA0, wrapped}]} <- der_fields(content, 2) do
-      case der_value(wrapped) do
-        {:ok, {0x04, xml}, <<>>} -> {:ok, xml}
-        _ -> :error
+  defp signed_content(_signed_data), do: :error
+
+  defp octet_content({0x04, bytes}) when is_binary(bytes), do: {:ok, bytes}
+
+  defp octet_content({0x24, children}) do
+    Enum.reduce_while(children, {:ok, []}, fn child, {:ok, chunks} ->
+      case octet_content(child) do
+        {:ok, bytes} -> {:cont, {:ok, [bytes | chunks]}}
+        :error -> {:halt, :error}
       end
-    else
-      _ -> :error
+    end)
+    |> case do
+      {:ok, chunks} -> {:ok, Enum.reverse(chunks)}
+      :error -> :error
     end
   end
+
+  defp octet_content(_value), do: :error
 
   defp signed_tail?([{0xA0, _certificates}, {0xA1, _revocations}, {0x31, signers}]),
     do: signers?(signers)
@@ -155,30 +191,26 @@ defmodule Hrafnsyn.Devices.Profile do
   defp signed_tail?(_rest), do: false
 
   defp signers?(signers) do
-    case der_fields(signers, 8) do
-      {:ok, [_ | _] = fields} -> Enum.all?(fields, &match?({0x30, <<_, _::binary>>}, &1))
-      _ -> false
+    length(signers) in 1..8 and Enum.all?(signers, &match?({0x30, [_ | _]}, &1))
+  end
+
+  # Apple's CMS encoder streams BER with indefinite constructed containers.
+  # Bound the entire tree, including opaque certificate/signature structures;
+  # EOC is accepted only while reading an indefinite constructed container.
+  defp asn1_value(<<tag, rest::binary>>, depth, remaining)
+       when tag != 0 and Bitwise.band(tag, 31) != 31 and
+              depth < @max_asn1_depth and remaining > 0 do
+    with {:ok, length, content} <- asn1_length(rest) do
+      asn1_content(tag, length, content, depth, remaining - 1)
     end
   end
 
-  # Decode only the shallow CMS envelope. Certificates and signer structures are
-  # opaque, bounded bytes; no recursive ASN.1 or certificate validation occurs.
-  defp der_fields(binary, limit), do: der_fields(binary, limit, [])
-  defp der_fields(<<>>, _limit, fields), do: {:ok, Enum.reverse(fields)}
+  defp asn1_value(_binary, _depth, _remaining), do: :error
 
-  defp der_fields(binary, limit, fields) when limit > 0 do
-    with {:ok, field, rest} <- der_value(binary) do
-      der_fields(rest, limit - 1, [field | fields])
-    end
-  end
+  defp asn1_length(<<128, rest::binary>>), do: {:ok, :indefinite, rest}
+  defp asn1_length(<<length, rest::binary>>) when length < 128, do: {:ok, length, rest}
 
-  defp der_fields(_binary, _limit, _fields), do: :error
-
-  defp der_value(<<tag, length, rest::binary>>) when length < 128 do
-    der_content(tag, length, rest)
-  end
-
-  defp der_value(<<tag, count, rest::binary>>) when count in 129..132 do
+  defp asn1_length(<<count, rest::binary>>) when count in 129..132 do
     octets = count - 128
 
     case rest do
@@ -186,7 +218,7 @@ defmodule Hrafnsyn.Devices.Profile do
         length = :binary.decode_unsigned(length_bytes)
 
         if :binary.first(length_bytes) != 0 and length >= 128,
-          do: der_content(tag, length, content),
+          do: {:ok, length, content},
           else: :error
 
       _ ->
@@ -194,14 +226,43 @@ defmodule Hrafnsyn.Devices.Profile do
     end
   end
 
-  defp der_value(_binary), do: :error
+  defp asn1_length(_binary), do: :error
 
-  defp der_content(tag, length, rest) when byte_size(rest) >= length do
-    <<content::binary-size(^length), tail::binary>> = rest
-    {:ok, {tag, content}, tail}
+  defp asn1_content(tag, :indefinite, rest, depth, remaining)
+       when Bitwise.band(tag, 32) != 0 do
+    with {:ok, fields, tail, remaining} <-
+           asn1_fields(rest, :indefinite, depth + 1, remaining, []) do
+      {:ok, {tag, fields}, tail, remaining}
+    end
   end
 
-  defp der_content(_tag, _length, _rest), do: :error
+  defp asn1_content(tag, length, rest, depth, remaining)
+       when is_integer(length) and byte_size(rest) >= length do
+    <<content::binary-size(^length), tail::binary>> = rest
+
+    if Bitwise.band(tag, 32) == 0 do
+      {:ok, {tag, content}, tail, remaining}
+    else
+      with {:ok, fields, <<>>, remaining} <-
+             asn1_fields(content, :definite, depth + 1, remaining, []) do
+        {:ok, {tag, fields}, tail, remaining}
+      end
+    end
+  end
+
+  defp asn1_content(_tag, _length, _rest, _depth, _remaining), do: :error
+
+  defp asn1_fields(<<>>, :definite, _depth, remaining, fields),
+    do: {:ok, Enum.reverse(fields), <<>>, remaining}
+
+  defp asn1_fields(<<0, 0, tail::binary>>, :indefinite, _depth, remaining, fields),
+    do: {:ok, Enum.reverse(fields), tail, remaining}
+
+  defp asn1_fields(binary, mode, depth, remaining, fields) do
+    with {:ok, field, rest, remaining} <- asn1_value(binary, depth, remaining) do
+      asn1_fields(rest, mode, depth, remaining, [field | fields])
+    end
+  end
 
   defp plist_values(xml) do
     if String.valid?(xml) and not String.match?(xml, ~r/[\x00-\x08\x0B\x0C\x0E-\x1F]/) do
@@ -245,14 +306,18 @@ defmodule Hrafnsyn.Devices.Profile do
 
   defp validate_values(%{"UDID" => {"string", udid}, "CHALLENGE" => challenge}, expected) do
     with {:ok, supplied} <- scalar(challenge),
-         true <- byte_size(supplied) == byte_size(expected),
-         true <- Plug.Crypto.secure_compare(supplied, expected),
+         true <-
+           byte_size(supplied) == byte_size(expected) and
+             Plug.Crypto.secure_compare(supplied, expected),
          {:ok, decoded_udid} <- scalar({"string", udid}) do
       normalize_udid(decoded_udid)
+    else
+      false -> {:error, :challenge_mismatch}
+      _ -> {:error, :invalid_plist}
     end
   end
 
-  defp validate_values(_values, _expected), do: :error
+  defp validate_values(_values, _expected), do: {:error, :invalid_plist}
 
   defp scalar({"data", text}) do
     text |> String.replace(~r/[\t\r\n ]/, "") |> Base.decode64()

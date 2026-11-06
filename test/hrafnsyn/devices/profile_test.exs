@@ -8,6 +8,7 @@ defmodule Hrafnsyn.Devices.ProfileTest do
   @udid "00008110-000123456789ABCD"
   @uuid "2778fad5-89f7-469d-bf84-874281e14914"
   @fixture Path.expand("../../fixtures/devices/callback.der", __DIR__)
+  @apple_fixture Path.expand("../../fixtures/devices/callback-apple.ber", __DIR__)
 
   test "generates an unsigned minimal profile with an escaped configured HTTPS callback" do
     callback = "https://hrafnsyn.example/devices/invite/token/callback?one=1&two=2"
@@ -52,6 +53,72 @@ defmodule Hrafnsyn.Devices.ProfileTest do
 
     assert {:error, :invalid_callback} =
              Profile.parse_callback(File.read!(@fixture), String.duplicate("x", 43))
+  end
+
+  test "parses actual Apple CMSEncoder output with indefinite BER and constructed octets" do
+    body = File.read!(@apple_fixture)
+    assert <<0x30, 0x80, _::binary>> = body
+    assert {:ok, @udid} = Profile.parse_callback(body, @challenge)
+    assert {:ok, @udid} = Profile.parse_callback_detailed(body, @challenge)
+
+    assert {:error, :challenge_mismatch} =
+             Profile.parse_callback_detailed(body, String.duplicate("x", 43))
+  end
+
+  test "accepts only OCTET STRING chunks within definite or indefinite constructed content" do
+    xml = plist(@udid)
+    <<first::binary-size(40), last::binary>> = xml
+
+    for octets <- [
+          ber(0x24, der(0x04, first) <> ber(0x24, der(0x04, last))),
+          der(0x24, der(0x04, first) <> der(0x04, last)),
+          der(0x04, xml)
+        ] do
+      assert {:ok, @udid} = Profile.parse_callback(ber_cms(octets), @challenge)
+    end
+
+    for octets <- [
+          ber(0x24, der(0x30, der(0x04, xml))),
+          ber(0x24, der(0x04, xml) <> der(0x05, <<>>)),
+          ber(0x04, xml),
+          der(0x24, <<0, 0>> <> der(0x04, xml))
+        ] do
+      assert {:error, :invalid_cms} = Profile.parse_callback_detailed(ber_cms(octets), @challenge)
+    end
+  end
+
+  test "bounds BER depth and node count and rejects unbalanced or trailing EOC" do
+    good = ber_cms(ber(0x24, der(0x04, plist(@udid))))
+    deep = Enum.reduce(1..25, der(0x04, plist(@udid)), fn _, value -> ber(0x24, value) end)
+    wide = ber(0x24, :binary.copy(der(0x04, <<>>), 2_048) <> der(0x04, plist(@udid)))
+
+    for body <- [
+          ber_cms(deep),
+          ber_cms(wide),
+          good <> <<0, 0>>,
+          binary_part(good, 0, byte_size(good) - 2),
+          binary_part(good, 0, byte_size(good) - 1),
+          <<0x30, 0x80, 0, 1, 0, 0>>,
+          <<0x30, 0x80, 0x1F, 0, 0, 0>>
+        ] do
+      assert {:error, :invalid_cms} = Profile.parse_callback_detailed(body, @challenge)
+    end
+  end
+
+  test "exposes only fixed diagnostic categories while preserving generic callback errors" do
+    cases = [
+      {"not CMS", :invalid_cms},
+      {cms("not a plist"), :invalid_plist},
+      {cms(plist(@udid, "<data>!</data>")), :invalid_plist},
+      {cms(plist(@udid, "<string>wrong</string>")), :challenge_mismatch},
+      {cms(plist("not a UDID")), :invalid_udid},
+      {String.duplicate("x", Profile.max_body_bytes() + 1), :invalid_callback}
+    ]
+
+    for {body, category} <- cases do
+      assert {:error, ^category} = Profile.parse_callback_detailed(body, @challenge)
+      assert {:error, :invalid_callback} = Profile.parse_callback(body, @challenge)
+    end
   end
 
   test "normalizes modern and legacy identifiers and accepts a binary plist challenge" do
@@ -114,7 +181,7 @@ defmodule Hrafnsyn.Devices.ProfileTest do
     assert {:ok, @udid} = Profile.parse_callback(cms(header <> plist(@udid)), @challenge)
   end
 
-  test "requires a bounded DER SignedData envelope with attached plist content" do
+  test "requires a bounded CMS SignedData envelope with attached plist content" do
     good = cms(plist(@udid))
 
     for body <- [
@@ -158,4 +225,15 @@ defmodule Hrafnsyn.Devices.ProfileTest do
 
   defp cms(xml), do: wrap_plist(xml)
   defp cms(xml, signers), do: wrap_plist(xml, signers)
+
+  defp ber(tag, content), do: <<tag, 0x80, content::binary, 0, 0>>
+
+  defp ber_cms(octets) do
+    data_oid = der(0x06, <<42, 134, 72, 134, 247, 13, 1, 7, 1>>)
+    signed_oid = der(0x06, <<42, 134, 72, 134, 247, 13, 1, 7, 2>>)
+    content = ber(0x30, data_oid <> ber(0xA0, octets))
+    signer = der(0x30, der(0x02, <<1>>))
+    signed = ber(0x30, der(0x02, <<1>>) <> der(0x31, signer) <> content <> der(0x31, signer))
+    ber(0x30, signed_oid <> ber(0xA0, signed))
+  end
 end

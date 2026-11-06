@@ -10,10 +10,10 @@ collected UDID. Friends do not need a Hrafnsyn account.
 1. Sign in and open **iOS devices** from the account menu, or visit
    `/users/devices`.
 2. Give the invitation a useful name, such as “Alex's iPhone,” and create it.
-3. Copy the invitation link and send it to the owner of that device. Create a
+3. Tap **Copy** beside the invitation link and send it to the device owner. Create a
    separate invitation for each iPhone or iPad.
-4. After your friend completes the steps below, refresh **iOS devices** and copy
-   the collected UDID.
+4. After your friend completes the steps below, refresh **iOS devices** and use
+   **Copy** beside the collected UDID.
 5. Register the device in your Apple developer account, update the Ad Hoc
    provisioning profile to include it, and export a new IPA. The [mobile
    distribution guide](mobile.md#export-a-distributable-ipa) contains the build
@@ -107,10 +107,14 @@ callback returns a 301 redirect to the invitation page, with no UDID in the URL.
 
 The profile follows Apple's [Profile Service
 payload](https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/iPhoneOTAConfiguration/profile-service/profile-service.html)
-and requests only the `UDID` device attribute. The callback accepts attached DER
-CMS SignedData containing a UTF-8 plist. It uses a bounded parser, rejects raw
-XML callbacks and indefinite-length BER, accepts modern and legacy UDID formats,
-and normalizes identifiers to uppercase. DTD references are inert; external or
+and requests only the `UDID` device attribute. The callback accepts attached
+CMS SignedData containing a UTF-8 plist, in DER or Apple's streaming BER format.
+The parser limits the complete ASN.1 tree to 24 nesting levels and 2,048 nodes
+within the 64 KiB body limit. Indefinite lengths are allowed only for constructed
+values, with balanced end-of-content markers. Constructed OCTET STRING content
+may contain only OCTET STRING chunks. Raw XML callbacks, trailing bytes and
+malformed structures are rejected. Modern and legacy UDIDs are normalized to
+uppercase. DTD references are inert; external or
 internal entity declarations, duplicate keys and nested plist values are
 rejected. No runtime OpenSSL process or XML entity resolver is used.
 
@@ -124,9 +128,16 @@ API](https://docs.unity.com/en-us/oas-build-automation-client/2.0.0) also docume
 the public CMS callback and 301 handoff to the browser; Hrafnsyn keeps device
 identifiers out of its redirect URL.
 
-Automated protocol and controller tests cover a real OpenSSL-signed CMS fixture,
-challenge binding, malformed/oversized input, ownership, expiry and repeated
-submissions. Profile installation and the Settings-to-Safari callback have not
-been exercised on physical Apple hardware. The unsigned-profile warning and
-exact Settings presentation should be checked on the intended iOS/iPadOS
-versions before broad distribution.
+Automated tests cover both an OpenSSL-signed DER fixture and a signed fixture
+produced by Apple's Security framework `CMSEncoder` on macOS, alongside challenge
+binding, malformed/oversized input, ownership, expiry and repeated submissions.
+The Apple fixture uses a disposable identity imported only into process memory;
+it contains synthetic values and is not a captured iPhone response. Its
+indefinite containers and constructed OCTET STRING reproduced a rejection by
+the original DER-only parser. A physical iPhone installation reported HTTP 400;
+successful installation and the Settings-to-Safari handoff still need a device
+retest after this compatibility fix.
+
+For valid invitations, callback parse failures log only fixed diagnostic
+categories, such as `invalid_cms`, `invalid_plist` or `challenge_mismatch`. They
+never include the response body, challenge, invitation token or UDID.
