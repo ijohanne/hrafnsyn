@@ -1,0 +1,7 @@
+[bindings.swift]
+module_name = "HrafnsynCore"
+ffi_module_name = "HrafnsynCoreFFI"
+
+[bindings.kotlin]
+package_name = "io.hrafnsyn.core"
+cdylib_name = "hrafnsyn_mobile"

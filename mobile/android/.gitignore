@@ -1,0 +1,11 @@
+.gradle/
+.sdk/
+.avd/
+.bootstrap/
+local.properties
+**/build/
+app/src/main/jniLibs/
+*.keystore
+*.jks
+keystore.properties
+*.log

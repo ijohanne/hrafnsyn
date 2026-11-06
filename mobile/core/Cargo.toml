@@ -1,0 +1,33 @@
+[package]
+name = "hrafnsyn-mobile"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "hrafnsyn_mobile"
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bindgen.rs"
+required-features = ["bindings"]
+
+[features]
+bindings = ["uniffi/cli"]
+
+[dependencies]
+uniffi = { version = "0.32", features = ["tokio"] }
+tonic = { version = "0.14", features = ["tls-ring", "tls-webpki-roots"] }
+tonic-prost = "0.14"
+prost = "0.14"
+prost-types = "0.14"
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
+thiserror = "2"
+url = "2"
+
+[build-dependencies]
+tonic-prost-build = "0.14"
+protoc-bin-vendored = "3"
+
+[dev-dependencies]
+tokio-stream = { version = "0.1", features = ["net"] }

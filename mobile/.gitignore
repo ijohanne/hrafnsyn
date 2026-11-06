@@ -1,0 +1,10 @@
+core/target/
+.toolchains/
+build/
+ios/Frameworks/
+ios/Hrafnsyn.xcodeproj/xcuserdata/
+.DS_Store
+
+*.log
+
+build-device/

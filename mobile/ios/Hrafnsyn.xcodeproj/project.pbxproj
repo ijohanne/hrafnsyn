@@ -1,0 +1,509 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2531767654E7966EEA3FFF7A /* SessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED8E4BB13A9927825BEA458 /* SessionStoreTests.swift */; };
+		25AD02525716FF39E0EA3D35 /* MapClustering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90DB2F82A06E334972FFFD79 /* MapClustering.swift */; };
+		335582E63A20671F80663F83 /* MapInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3591B44A9F327BDB3B6CA60F /* MapInteractionTests.swift */; };
+		34456A685103AC4E82448138 /* HrafnsynApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C52FFF27C47EA4910E1417B4 /* HrafnsynApp.swift */; };
+		3A19FDCA2584D9C1A14E99B2 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16209E9C4427C47A28F147B4 /* SessionStore.swift */; };
+		A6088038E5AA47BB99DAD9B0 /* TrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61430741469A15593ED0924 /* TrackingView.swift */; };
+		A7D7A6D2DF4812CB201F8154 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A82F56523CCECF367149324 /* SystemConfiguration.framework */; };
+		C8365F01EE97CA7EFCACFCE6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AB70B0D33A29CAEEAC94E0AF /* PrivacyInfo.xcprivacy */; };
+		D3FD6BD1FA5DF7A38392CB93 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5DF86403CF73994F413A84E9 /* Assets.xcassets */; };
+		E13C23E5F6539D5897FD7EB9 /* HrafnsynCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CDF2D5428C15C0CB54332DA /* HrafnsynCore.swift */; };
+		E3491DB0CE86DB4A3592D36C /* HrafnsynCore.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = DA287FA8AA085F3A0D49FF59 /* HrafnsynCore.xcframework */; };
+		EF1F9C62D4FEE4DCB7CF07CB /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3E69ADD9D7913D49AC1EDA27 /* Security.framework */; };
+		EFF4F7D6E82A368DE839A475 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D280C716682080B0764E66C /* AppModel.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		95C77C9A5AD3A2FF6130FB22 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D8FB6BA9B35B2D8828043DCD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A225C4AE63EDA52118740C18;
+			remoteInfo = Hrafnsyn;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		16209E9C4427C47A28F147B4 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		1A82F56523CCECF367149324 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
+		3591B44A9F327BDB3B6CA60F /* MapInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapInteractionTests.swift; sourceTree = "<group>"; };
+		3E69ADD9D7913D49AC1EDA27 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		4CDF2D5428C15C0CB54332DA /* HrafnsynCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HrafnsynCore.swift; sourceTree = "<group>"; };
+		4EDF2D51B20B4EEB5642672A /* Hrafnsyn.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Hrafnsyn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5D280C716682080B0764E66C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		5DF86403CF73994F413A84E9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6972E8EFE64A0980B55F120E /* HrafnsynTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HrafnsynTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8ED8E4BB13A9927825BEA458 /* SessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTests.swift; sourceTree = "<group>"; };
+		90DB2F82A06E334972FFFD79 /* MapClustering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapClustering.swift; sourceTree = "<group>"; };
+		AB70B0D33A29CAEEAC94E0AF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		C52FFF27C47EA4910E1417B4 /* HrafnsynApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HrafnsynApp.swift; sourceTree = "<group>"; };
+		DA287FA8AA085F3A0D49FF59 /* HrafnsynCore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = HrafnsynCore.xcframework; path = Frameworks/HrafnsynCore.xcframework; sourceTree = "<group>"; };
+		E61430741469A15593ED0924 /* TrackingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackingView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6248991EB9C438B59CC28297 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E3491DB0CE86DB4A3592D36C /* HrafnsynCore.xcframework in Frameworks */,
+				EF1F9C62D4FEE4DCB7CF07CB /* Security.framework in Frameworks */,
+				A7D7A6D2DF4812CB201F8154 /* SystemConfiguration.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1AFF67F7365694F6EDAD6DE7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4EDF2D51B20B4EEB5642672A /* Hrafnsyn.app */,
+				6972E8EFE64A0980B55F120E /* HrafnsynTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		353E1833EAE580E01292915E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DA287FA8AA085F3A0D49FF59 /* HrafnsynCore.xcframework */,
+				3E69ADD9D7913D49AC1EDA27 /* Security.framework */,
+				1A82F56523CCECF367149324 /* SystemConfiguration.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		416D465F74676E89BC44A277 = {
+			isa = PBXGroup;
+			children = (
+				55CA6DD76E8B0E529AB6D587 /* Generated */,
+				618FEE1E8318983F25EB1FE9 /* Hrafnsyn */,
+				D9628E6BE0C736551FB07461 /* Tests */,
+				353E1833EAE580E01292915E /* Frameworks */,
+				1AFF67F7365694F6EDAD6DE7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		55CA6DD76E8B0E529AB6D587 /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				4CDF2D5428C15C0CB54332DA /* HrafnsynCore.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
+		618FEE1E8318983F25EB1FE9 /* Hrafnsyn */ = {
+			isa = PBXGroup;
+			children = (
+				5D280C716682080B0764E66C /* AppModel.swift */,
+				5DF86403CF73994F413A84E9 /* Assets.xcassets */,
+				C52FFF27C47EA4910E1417B4 /* HrafnsynApp.swift */,
+				90DB2F82A06E334972FFFD79 /* MapClustering.swift */,
+				AB70B0D33A29CAEEAC94E0AF /* PrivacyInfo.xcprivacy */,
+				16209E9C4427C47A28F147B4 /* SessionStore.swift */,
+				E61430741469A15593ED0924 /* TrackingView.swift */,
+			);
+			path = Hrafnsyn;
+			sourceTree = "<group>";
+		};
+		D9628E6BE0C736551FB07461 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				3591B44A9F327BDB3B6CA60F /* MapInteractionTests.swift */,
+				8ED8E4BB13A9927825BEA458 /* SessionStoreTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A225C4AE63EDA52118740C18 /* Hrafnsyn */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B4EFA0F5A9738730117383A4 /* Build configuration list for PBXNativeTarget "Hrafnsyn" */;
+			buildPhases = (
+				AD9FA6B079DA329BF8B5977A /* Sources */,
+				614B2169102D979D086E804D /* Resources */,
+				6248991EB9C438B59CC28297 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Hrafnsyn;
+			packageProductDependencies = (
+			);
+			productName = Hrafnsyn;
+			productReference = 4EDF2D51B20B4EEB5642672A /* Hrafnsyn.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E235D8BEF4A1B9CB23C3A6BD /* HrafnsynTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CFC141F33806E6DB8F3A2CD6 /* Build configuration list for PBXNativeTarget "HrafnsynTests" */;
+			buildPhases = (
+				5769BB9699A665AF25E79155 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				27098FAF6491F16833E2352E /* PBXTargetDependency */,
+			);
+			name = HrafnsynTests;
+			packageProductDependencies = (
+			);
+			productName = HrafnsynTests;
+			productReference = 6972E8EFE64A0980B55F120E /* HrafnsynTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D8FB6BA9B35B2D8828043DCD /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					A225C4AE63EDA52118740C18 = {
+						ProvisioningStyle = Automatic;
+					};
+					E235D8BEF4A1B9CB23C3A6BD = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1854D38080D7002C7BCAF68B /* Build configuration list for PBXProject "Hrafnsyn" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 416D465F74676E89BC44A277;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A225C4AE63EDA52118740C18 /* Hrafnsyn */,
+				E235D8BEF4A1B9CB23C3A6BD /* HrafnsynTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		614B2169102D979D086E804D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D3FD6BD1FA5DF7A38392CB93 /* Assets.xcassets in Resources */,
+				C8365F01EE97CA7EFCACFCE6 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5769BB9699A665AF25E79155 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				335582E63A20671F80663F83 /* MapInteractionTests.swift in Sources */,
+				2531767654E7966EEA3FFF7A /* SessionStoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AD9FA6B079DA329BF8B5977A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EFF4F7D6E82A368DE839A475 /* AppModel.swift in Sources */,
+				34456A685103AC4E82448138 /* HrafnsynApp.swift in Sources */,
+				E13C23E5F6539D5897FD7EB9 /* HrafnsynCore.swift in Sources */,
+				25AD02525716FF39E0EA3D35 /* MapClustering.swift in Sources */,
+				3A19FDCA2584D9C1A14E99B2 /* SessionStore.swift in Sources */,
+				A6088038E5AA47BB99DAD9B0 /* TrackingView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		27098FAF6491F16833E2352E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A225C4AE63EDA52118740C18 /* Hrafnsyn */;
+			targetProxy = 95C77C9A5AD3A2FF6130FB22 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		20B517DAA2B556CF62A58DA5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Frameworks\"",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.hrafnsyn.mobile;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		45CA27BC9B24D4503CD5C5AE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Hrafnsyn;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Hrafnsyn connects to the tracking server you choose on your local network.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = NO;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "$(inherited) -lresolv";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		47974A11669CAE26A15B5F6A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.hrafnsyn.mobile.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Hrafnsyn.app/Hrafnsyn";
+			};
+			name = Release;
+		};
+		5381C201F03933EB0C7271B6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Frameworks\"",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.hrafnsyn.mobile;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		749C8B5457D3E13099E40340 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Hrafnsyn;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Hrafnsyn connects to the tracking server you choose on your local network.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = NO;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				OTHER_LDFLAGS = "$(inherited) -lresolv";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		FF825A6A4B5818BCBA4170BC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.hrafnsyn.mobile.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Hrafnsyn.app/Hrafnsyn";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1854D38080D7002C7BCAF68B /* Build configuration list for PBXProject "Hrafnsyn" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				45CA27BC9B24D4503CD5C5AE /* Debug */,
+				749C8B5457D3E13099E40340 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B4EFA0F5A9738730117383A4 /* Build configuration list for PBXNativeTarget "Hrafnsyn" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5381C201F03933EB0C7271B6 /* Debug */,
+				20B517DAA2B556CF62A58DA5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CFC141F33806E6DB8F3A2CD6 /* Build configuration list for PBXNativeTarget "HrafnsynTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FF825A6A4B5818BCBA4170BC /* Debug */,
+				47974A11669CAE26A15B5F6A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D8FB6BA9B35B2D8828043DCD /* Project object */;
+}
