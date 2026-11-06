@@ -31,17 +31,21 @@ defmodule HrafnsynWeb.DeviceHTML do
                   <p>The download is temporarily unavailable. Please try again later.</p>
               <% end %>
             </div>
-            <a
+            <div
               :if={match?({:ok, _}, @mobile_build)}
-              href={~p"/users/devices/app.ipa"}
-              class="device-button device-button-primary"
+              class="device-app-actions"
             >
-              <.icon name="hero-arrow-down-tray" class="size-4" /> Download IPA
-            </a>
+              <a href={~p"/users/devices/install"} class="device-button device-button-primary">
+                <.icon name="hero-device-phone-mobile" class="size-4" /> Install on iPhone or iPad
+              </a>
+              <a href={~p"/users/devices/app.ipa"} class="device-button device-button-secondary">
+                <.icon name="hero-arrow-down-tray" class="size-4" /> Download IPA
+              </a>
+            </div>
           </div>
           <p class="device-help device-app-install-note">
-            For registered devices included in this build. Download the IPA to a Mac to install
-            with Xcode or Apple Configurator; downloading in Safari does not install the app.
+            Open the install page in Safari on a registered device included in this build.
+            No computer or cable is needed. The IPA download is also available for Mac installation.
           </p>
 
           <details :if={Hrafnsyn.Accounts.Scope.admin?(@current_scope)} class="device-app-admin">

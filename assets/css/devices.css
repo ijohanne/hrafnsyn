@@ -39,6 +39,8 @@
 .device-app-download { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
 .device-app-download > div { min-width: 0; }
 .device-app-download p { margin-top: 6px; }
+.device-app-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.device-workspace :is(.device-steps, .device-privacy) p a { color: var(--device-accent); text-decoration: underline; }
 .device-app-meta { font-variant-numeric: tabular-nums; }
 .device-app-install-note { margin-top: 14px !important; }
 .device-app-admin { margin-top: 16px; }
@@ -117,6 +119,8 @@
   .device-management { grid-template-columns: minmax(0, 1fr); gap: 36px; padding-top: 24px; }
   .device-app-download { align-items: flex-start; flex-direction: column; gap: 14px; }
   .device-app-download > a { width: 100%; }
+  .device-app-actions { width: 100%; flex-direction: column; }
+  .device-app-actions > a { width: 100%; }
   .device-create form { max-width: 480px; }
   .device-create .device-create-note { margin-top: 16px; }
   .device-row { padding: 20px 0; }

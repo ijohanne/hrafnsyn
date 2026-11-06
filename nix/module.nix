@@ -584,6 +584,24 @@ in
               proxy_set_header X-Forwarded-Proto $scheme;
             '';
           };
+          locations."^~ /mobile-install/" = {
+            proxyPass = "http://${proxyListenAddress}:${builtins.toString cfg.port}";
+            recommendedProxySettings = false;
+            extraConfig = ''
+              # Installation grants are bearer credentials, including in errors.
+              access_log off;
+              error_log /dev/null;
+              proxy_http_version 1.1;
+              proxy_buffering off;
+              proxy_read_timeout 300s;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Host $host;
+              proxy_set_header X-Forwarded-Port $server_port;
+              proxy_set_header X-Forwarded-Proto $scheme;
+            '';
+          };
           locations."= /admin/mobile-build" = {
             proxyPass = "http://${proxyListenAddress}:${builtins.toString cfg.port}";
             recommendedProxySettings = false;

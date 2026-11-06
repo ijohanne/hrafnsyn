@@ -20,6 +20,12 @@ The shell provides:
 - Tailwind CSS v4
 - helper scripts for a local Postgres cluster
 
+The IPA installation manifest reader uses Python 3's standard library to read
+binary and XML property lists. Python is in the developer shell. Release package
+builders must patch `priv/scripts/read_ipa_metadata.py` to an absolute Python 3
+interpreter before assembling the release, as `flake.nix` does, so it remains in
+the runtime closure. It reads only bounded metadata and never extracts an app.
+
 ## Fastest Local Start
 
 Inside the dev shell, the shortest path is:

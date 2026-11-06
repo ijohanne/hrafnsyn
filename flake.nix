@@ -253,6 +253,8 @@ EOF
 
           inherit mixFodDeps;
 
+          nativeBuildInputs = [ pkgs.python3 ];
+
           MIX_ESBUILD_PATH = "${esbuild}/bin/esbuild";
           MIX_TAILWIND_PATH = "${tailwindcss}/bin/tailwindcss";
 
@@ -262,6 +264,8 @@ EOF
           '';
 
           postBuild = ''
+            # Keep the stdlib IPA metadata reader's interpreter in the runtime closure.
+            patchShebangs priv/scripts/read_ipa_metadata.py
             ${tailwindcss}/bin/tailwindcss \
               --input=assets/css/app.css \
               --output=priv/static/assets/css/app.css \

@@ -354,6 +354,13 @@ call; a request-scoped hard link keeps downloads stable across replacement and i
 removed after sending. Context and controller regression tests cover authorization,
 replacement, exact download bytes and snapshot cleanup. This annotation does not
 disable traversal checking for other controllers or change `.sobelow-skips`.
+`MobileInstallController.send_ipa/2` has the same function-local annotation and
+uses the same generated snapshot path. Before serving it, the installation
+context verifies the IPA-purpose grant, its absolute expiry, the account's
+continued existence, and the snapshot's SHA-256. Separate manifest grants cannot
+download the IPA. Tests cover purpose confusion, expiry, tampering, account
+deletion, and replacement. Grant URLs are excluded from Phoenix and nginx logs;
+responses use `no-store` and `no-referrer`.
 ProxySSL's redirect, proxy trust, and HSTS behavior have dedicated tests.
 
 The former Sobelow hardcoded JWT secret and missing CSP findings were fixed.

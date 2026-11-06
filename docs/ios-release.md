@@ -2,8 +2,9 @@
 
 The release command fetches the signed-in administrator's collected device IDs,
 merges them with the local device list, exports a signed Ad Hoc IPA, checks its
-embedded profile, and uploads it to Hrafnsyn. The device page serves only the
-current build to signed-in users. Uploading a new build replaces the old one.
+embedded profile, and uploads it to Hrafnsyn. The device page offers installation
+directly from Safari on registered iPhones and iPads, plus the IPA download for
+installation from a Mac. Uploading a new build replaces the old one.
 
 ## Configure this Mac once
 
@@ -88,6 +89,30 @@ access-token lifetime, then streams the file to the server. Temporary device
 lists and build output are removed after the run. A successful upload is
 reported only after the server confirms publication.
 
+## Install on an iPhone or iPad
+
+Sign in to the configured Hrafnsyn instance in Safari on the registered device.
+Open `/users/devices`, choose **Install on iPhone or iPad**, then **Install on this
+device**. Confirm the system prompt and return to the Home Screen while the app
+downloads. Follow any Developer Mode prompt in Settings → Privacy & Security.
+The recipient does not need a Mac or a cable for this flow. The device must
+already be included in the signed build; collecting its UDID alone does not add it.
+
+The installer reads an HTTPS manifest and IPA using separate, signed links that
+expire after 15 minutes. This lets the system installer work without Safari's
+session cookies. Links are scoped to the signed-in user and current file;
+replacing the build invalidates links to the previous one. Refresh the install
+page to start again. The manifest uses the bundle identifier, build version and
+app title read from the IPA, so forks do not need hardcoded application metadata.
+
+Set the endpoint's public URL to its final HTTPS origin. The NixOS module disables
+access logging for `/mobile-install/`, since these URLs contain temporary bearer
+grants. A custom reverse proxy must do the same and must not cache these responses.
+Never paste generated install URLs into public logs or tickets.
+
+The ordinary IPA download remains available for Xcode or Apple Configurator.
+Downloading an IPA into Files is different from using the install button.
+
 ## Recovery and limits
 
 - A signing or build failure uploads nothing. Correct the reported problem and
@@ -98,7 +123,7 @@ reported only after the server confirms publication.
   refresh token in `/users/tokens` and replace the one in the private JSON file.
 - Only admins can use these release APIs. The browser download still requires
   a signed-in account, and each device must be covered by the IPA's provisioning
-  profile. Downloading an IPA does not itself install it on iOS.
+  profile. The install page requires a correctly formed app Info.plist and HTTPS.
 - The upload limit is 250 MiB. HTTPS and normal certificate verification are
   required; redirects are rejected without forwarding credentials. For local
   development only, `allow_loopback_http: true` permits HTTP on `localhost` or a

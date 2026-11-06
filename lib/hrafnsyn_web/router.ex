@@ -133,6 +133,7 @@ defmodule HrafnsynWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     get "/users/devices", DeviceController, :index
+    get "/users/devices/install", MobileInstallController, :index, log: false
     get "/users/devices/app.ipa", MobileBuildController, :download
     post "/users/devices", DeviceController, :create
     post "/users/devices/:id/delete", DeviceController, :delete
@@ -160,5 +161,12 @@ defmodule HrafnsynWeb.Router do
   # authorizes only this bounded, single-device collection callback.
   scope "/", HrafnsynWeb do
     post "/devices/invite/:token/callback", DeviceController, :callback, log: false
+  end
+
+  # The system installer does not share Safari's session. Purpose-scoped,
+  # expiring grants authorize these requests without making the IPA public.
+  scope "/mobile-install", HrafnsynWeb do
+    get "/:token/manifest.plist", MobileInstallController, :manifest, log: false
+    get "/:token/app.ipa", MobileInstallController, :ipa, log: false
   end
 end

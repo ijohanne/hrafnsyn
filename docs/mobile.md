@@ -100,7 +100,7 @@ For the configured-instance workflow that collects your device IDs, builds and u
    nix develop -c fish mobile/scripts/export-adhoc.fish YOUR_TEAM_ID 'Your Ad Hoc profile name' your.bundle.identifier
    ```
 
-5. The archive, generated `ExportOptions.plist`, and IPA are placed under ignored `mobile/build/ad-hoc/`. Share the exported IPA only with registered testers. They can install it with Xcode or Apple Configurator on a connected device. An OTA installation page additionally requires your own HTTPS hosting and a correctly generated manifest; this export command does not publish anything.
+5. The archive, generated `ExportOptions.plist`, and IPA are placed under ignored `mobile/build/ad-hoc/`. Publish it using the [release workflow](ios-release.md) or the administrator upload on `/users/devices`. Signed-in testers can then install from Safari without a computer; Hrafnsyn generates the HTTPS manifest and temporary download links. Xcode or Apple Configurator installation remains available using the IPA download. This export command alone does not publish anything.
 
 Every export reads the local device list, checks the profile before archiving, selects its exact UUID and checks the profile embedded in the final IPA. The checks include the team, exact bundle ID, expiration, distribution settings and every listed device. A stale profile fails with an actionable error before the expensive build. Override the input with `--devices-file PATH` (or `HRAFNSYN_IOS_DEVICES_FILE`); `--output-dir PATH` isolates a release's artifacts. These overrides support the one-command workflow without changing your local list.
 

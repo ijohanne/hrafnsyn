@@ -78,5 +78,6 @@ defmodule HrafnsynWeb.Endpoint do
 
   def request_log_level(%{path_info: ["devices", "invite" | _]}), do: false
   def request_log_level(%{path_info: ["api", "mobile-release" | _]}), do: false
+  def request_log_level(%{path_info: ["mobile-install" | _]}), do: false
   def request_log_level(_conn), do: :info
 end

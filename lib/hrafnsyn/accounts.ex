@@ -76,6 +76,10 @@ defmodule Hrafnsyn.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
 
+  @doc "Gets an account by ID without raising when it has been removed."
+  @spec get_user(Ecto.UUID.t()) :: User.t() | nil
+  def get_user(id), do: Repo.get(User, id, log: false)
+
   ## User registration
 
   @doc """
