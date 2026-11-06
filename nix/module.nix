@@ -586,7 +586,9 @@ in
           };
           locations."= /admin/mobile-build" = {
             proxyPass = "http://${proxyListenAddress}:${builtins.toString cfg.port}";
+            recommendedProxySettings = false;
             extraConfig = ''
+              proxy_http_version 1.1;
               client_max_body_size 251m;
               # Let Phoenix authorize the session before consuming a large upload.
               proxy_request_buffering off;
@@ -602,7 +604,9 @@ in
           };
           locations."= /api/mobile-release/ipa" = {
             proxyPass = "http://${proxyListenAddress}:${builtins.toString cfg.port}";
+            recommendedProxySettings = false;
             extraConfig = ''
+              proxy_http_version 1.1;
               client_max_body_size 251m;
               # Let Phoenix authorize the session before consuming a large upload.
               proxy_request_buffering off;
