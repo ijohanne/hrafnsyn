@@ -1,5 +1,20 @@
 import Config
 
+ios_app_ids =
+  System.get_env("HRAFNSYN_IOS_APP_IDS", "")
+  |> String.split(",", trim: true)
+  |> Enum.map(&String.trim/1)
+  |> Enum.uniq()
+
+unless Enum.all?(
+         ios_app_ids,
+         &Regex.match?(~r/\A[A-Z0-9]{10}\.[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+\z/, &1)
+       ) do
+  raise "HRAFNSYN_IOS_APP_IDS must contain comma-separated Apple application identifiers"
+end
+
+config :hrafnsyn, :ios_app_ids, ios_app_ids
+
 if directory = System.get_env("HRAFNSYN_MOBILE_BUILD_DIRECTORY") do
   config :hrafnsyn, :mobile_build_directory, directory
 end

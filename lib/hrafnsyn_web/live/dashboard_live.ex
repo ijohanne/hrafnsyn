@@ -354,6 +354,19 @@ defmodule HrafnsynWeb.DashboardLive do
                     <.icon name="hero-link" class="size-4" /> Copy link
                   </button>
                   <a
+                    id="open-selected-track-in-app"
+                    class="detail-action"
+                    href={
+                      Hrafnsyn.MobileLinks.open_url(
+                        @selected_track.vehicle_type,
+                        @selected_track.identity,
+                        @range_hours
+                      )
+                    }
+                  >
+                    <.icon name="hero-device-phone-mobile" class="size-4" /> Open in app
+                  </a>
+                  <a
                     :for={action <- external_actions}
                     class="detail-action"
                     href={action.href}

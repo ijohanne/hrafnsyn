@@ -25,6 +25,13 @@ defmodule HrafnsynWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Apple verifies this public metadata before handing web links to the app.
+  scope "/", HrafnsynWeb do
+    pipe_through :api
+    get "/.well-known/apple-app-site-association", MobileLinkController, :association
+    get "/apple-app-site-association", MobileLinkController, :association
+  end
+
   pipeline :mobile_upload do
     plug :accepts, ["html"]
     plug :fetch_session

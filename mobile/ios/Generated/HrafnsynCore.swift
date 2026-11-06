@@ -589,12 +589,16 @@ public protocol TrackingClientProtocol: AnyObject, Sendable {
     
     func connect() async throws  -> ConnectionStatus
     
+    func getTrackByIdentity(vehicle: String, identity: String, historyHours: Int32) async throws  -> TrackDetails
+
     func login(username: String, password: String) async throws  -> SavedSession
     
     func savedSession() async  -> SavedSession?
     
     func server()  -> String
     
+    func serverWebUrl() async throws  -> String
+
     func signOut() async throws 
     
     func trackDetails(id: String) async throws  -> TrackDetails
@@ -695,6 +699,22 @@ open func connect()async throws  -> ConnectionStatus  {
         )
 }
     
+open func getTrackByIdentity(vehicle: String, identity: String, historyHours: Int32)async throws  -> TrackDetails  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_hrafnsyn_mobile_fn_method_trackingclient_get_track_by_identity(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(vehicle),FfiConverterString.lower(identity),FfiConverterInt32.lower(historyHours)
+                )
+            },
+            pollFunc: ffi_hrafnsyn_mobile_rust_future_poll_rust_buffer,
+            completeFunc: ffi_hrafnsyn_mobile_rust_future_complete_rust_buffer,
+            freeFunc: ffi_hrafnsyn_mobile_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeTrackDetails_lift,
+            errorHandler: FfiConverterTypeClientError_lift
+        )
+}
+
 open func login(username: String, password: String)async throws  -> SavedSession  {
     return
         try  await uniffiRustCallAsync(
@@ -737,6 +757,22 @@ open func server() -> String  {
 })
 }
     
+open func serverWebUrl()async throws  -> String  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_hrafnsyn_mobile_fn_method_trackingclient_server_web_url(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_hrafnsyn_mobile_rust_future_poll_rust_buffer,
+            completeFunc: ffi_hrafnsyn_mobile_rust_future_complete_rust_buffer,
+            freeFunc: ffi_hrafnsyn_mobile_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeClientError_lift
+        )
+}
+
 open func signOut()async throws   {
     return
         try  await uniffiRustCallAsync(
@@ -996,6 +1032,68 @@ public func FfiConverterTypeSavedSession_lift(_ buf: RustBuffer) throws -> Saved
 #endif
 public func FfiConverterTypeSavedSession_lower(_ value: SavedSession) -> RustBuffer {
     return FfiConverterTypeSavedSession.lower(value)
+}
+
+
+public struct SharedTrackLink: Equatable, Hashable {
+    public var webOrigin: String
+    public var vehicle: String
+    public var identity: String
+    public var historyHours: Int32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(webOrigin: String, vehicle: String, identity: String, historyHours: Int32) {
+        self.webOrigin = webOrigin
+        self.vehicle = vehicle
+        self.identity = identity
+        self.historyHours = historyHours
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SharedTrackLink: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSharedTrackLink: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SharedTrackLink {
+        return
+            try SharedTrackLink(
+                webOrigin: FfiConverterString.read(from: &buf),
+                vehicle: FfiConverterString.read(from: &buf),
+                identity: FfiConverterString.read(from: &buf),
+                historyHours: FfiConverterInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SharedTrackLink, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.webOrigin, into: &buf)
+        FfiConverterString.write(value.vehicle, into: &buf)
+        FfiConverterString.write(value.identity, into: &buf)
+        FfiConverterInt32.write(value.historyHours, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSharedTrackLink_lift(_ buf: RustBuffer) throws -> SharedTrackLink {
+    return try FfiConverterTypeSharedTrackLink.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSharedTrackLink_lower(_ value: SharedTrackLink) -> RustBuffer {
+    return FfiConverterTypeSharedTrackLink.lower(value)
 }
 
 
@@ -1425,6 +1523,28 @@ public func normalizeServer(server: String)throws  -> String  {
     )
 })
 }
+public func makeTrackShareUrl(webOrigin: String, vehicle: String, identity: String, historyHours: Int32)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeClientError_lift) {
+        uniffiCallStatus in
+    uniffi_hrafnsyn_mobile_fn_func_make_track_share_url(
+        FfiConverterString.lower(webOrigin),
+        FfiConverterString.lower(vehicle),
+        FfiConverterString.lower(identity),
+        FfiConverterInt32.lower(historyHours),uniffiCallStatus
+    )
+})
+}
+/**
+ * Parses web shares and the explicit app handoff without carrying credentials.
+ */
+public func parseSharedTrackLink(url: String)throws  -> SharedTrackLink  {
+    return try  FfiConverterTypeSharedTrackLink_lift(try rustCallWithError(FfiConverterTypeClientError_lift) {
+        uniffiCallStatus in
+    uniffi_hrafnsyn_mobile_fn_func_parse_shared_track_link(
+        FfiConverterString.lower(url),uniffiCallStatus
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -1444,10 +1564,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_hrafnsyn_mobile_checksum_func_normalize_server() != 15666) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_hrafnsyn_mobile_checksum_func_make_track_share_url() != 38015) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_hrafnsyn_mobile_checksum_func_parse_shared_track_link() != 15319) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_hrafnsyn_mobile_checksum_method_trackingclient_active_tracks() != 51878) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_hrafnsyn_mobile_checksum_method_trackingclient_connect() != 34563) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_hrafnsyn_mobile_checksum_method_trackingclient_get_track_by_identity() != 16091) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_hrafnsyn_mobile_checksum_method_trackingclient_login() != 27087) {
@@ -1457,6 +1586,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_hrafnsyn_mobile_checksum_method_trackingclient_server() != 22770) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_hrafnsyn_mobile_checksum_method_trackingclient_server_web_url() != 13029) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_hrafnsyn_mobile_checksum_method_trackingclient_sign_out() != 39712) {

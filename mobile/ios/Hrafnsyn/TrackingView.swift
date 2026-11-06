@@ -77,7 +77,10 @@ struct TrackingView: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { containerBottomInset = $0 }
         .sheet(isPresented: $showSettings) { settings }
-        .onChange(of: model.selectedID) { _, id in selectionChanged(id) }
+        .onChange(of: model.selectedID) { _, id in
+            if !model.selectionFromLink { selectionChanged(id) }
+        }
+        .onChange(of: model.sharedSelectionRevision) { _, _ in selectionChanged(model.selectedID) }
         .onChange(of: model.details?.track?.id) { _, id in
             if let id, id == pendingRouteFitID, id == model.selectedID {
                 pendingRouteFitID = nil
@@ -147,6 +150,13 @@ struct TrackingView: View {
                                 .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 8)
+                        if let url = model.selectedShareURL {
+                            ShareLink(item: url, subject: Text("\(track.name) · Hrafnsyn"),
+                                      preview: SharePreview("\(track.name) · Hrafnsyn",
+                                          image: track.sharePreviewImage)) {
+                                Image(systemName: "square.and.arrow.up").frame(width: 44, height: 44)
+                            }.accessibilityLabel("Share \(track.name)")
+                        }
                         Button(action: closePhonePanel) {
                             Text("Close").frame(minWidth: 44, minHeight: 44)
                         }
@@ -190,6 +200,7 @@ struct TrackingView: View {
     }
 
     private func selectTrack(_ id: String, fromMap: Bool = false) {
+        model.selectionFromLink = false
         selectionCameFromMap = fromMap
         // Reopening the selected row must work too: selectedID need not change.
         if model.selectedID == id { selectionChanged(id) }
@@ -198,6 +209,7 @@ struct TrackingView: View {
 
     private func selectionChanged(_ id: String?) {
         guard let id else { pendingRouteFitID = nil; return }
+        if model.selectionFromLink { selectionCameFromMap = false }
         pendingRouteFitID = id
         if sizeClass != .regular {
             phonePanel = .details
@@ -208,6 +220,11 @@ struct TrackingView: View {
             pendingRouteFitID = nil
             if model.details?.hasUsefulRoute == true {
                 fitSelectedRoute(compact: true)
+            } else if model.selectionFromLink, let track = model.selectedTrack {
+                if let rect = RouteCamera.sharedPosition(coordinate: track.coordinate, current: mapRect,
+                    viewport: mapSize, coveredBottom: coveredMapHeight(compact: true)) {
+                    camera = .rect(rect)
+                }
             } else if !selectionCameFromMap, let track = model.selectedTrack {
                 revealPositionIfNeeded(track.coordinate)
             }
@@ -333,7 +350,7 @@ struct TrackingView: View {
             .background(.regularMaterial)
         }
         .overlay {
-            if model.tracks.isEmpty && model.updatedAt != nil {
+            if model.tracks.isEmpty && model.selectedTrack == nil && model.updatedAt != nil {
                 ContentUnavailableView("No active tracks", systemImage: "map", description: Text("Tracks appear here when your server receives aircraft or vessel positions."))
                     .padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)).padding()
                     .allowsHitTesting(false)
@@ -393,7 +410,7 @@ struct TrackingView: View {
     }
 
     private var markerGroups: [MarkerGroup] {
-        let tracks = model.visibleTracks
+        let tracks = model.mapTracks
         let width = max(mapRect.width, 1), height = max(mapRect.height, 1)
         let projected = tracks.map { track in
             let point = MKMapPoint(track.coordinate)
@@ -467,6 +484,16 @@ struct TrackDetailView: View {
                         LabeledContent("Observed", value: Date(timeIntervalSince1970: Double(track.observedAt)).formatted(date: .abbreviated, time: .shortened))
                     }.monospacedDigit()
                     Section("Identity") {
+                        if let url = model.selectedShareURL {
+                            ShareLink(item: url, subject: Text("\(track.name) · Hrafnsyn"),
+                                      preview: SharePreview("\(track.name) · Hrafnsyn",
+                                          image: track.sharePreviewImage)) {
+                                Label("Share track", systemImage: "square.and.arrow.up")
+                            }
+                        } else {
+                            Text("Sharing is unavailable: this server has not provided a website address.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
                         if !showsIdentityHeader { LabeledContent("Source", value: track.sourceName) }
                         LabeledContent("Identifier", value: track.identity)
                         if !track.registration.isEmpty { LabeledContent("Registration", value: track.registration) }
@@ -474,7 +501,7 @@ struct TrackDetailView: View {
                         if !track.country.isEmpty { LabeledContent("Country", value: track.country) }
                         if !track.destination.isEmpty { LabeledContent("Destination", value: track.destination) }
                     }
-                    Section("Recent route · 6 hours") {
+                    Section("Recent route · \(model.selectionHistoryHours) hours") {
                         if model.loadingDetails { ProgressView("Loading route…") }
                         else if let details = model.details {
                             if details.hasUsefulRoute {
@@ -498,6 +525,19 @@ struct TrackDetailView: View {
 }
 
 extension Track {
+    var sharePreviewImage: Image {
+        // The share service cannot reliably export a symbolic SwiftUI Image.
+        // Draw the existing native vehicle glyph into its transferable preview.
+        let preview = UIGraphicsImageRenderer(size: CGSize(width: 80, height: 80)).image { context in
+            UIColor.systemGroupedBackground.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 80, height: 80))
+            let symbol = UIImage(systemName: isAircraft ? "airplane" : "ferry.fill")?
+                .withTintColor(.systemTeal, renderingMode: .alwaysOriginal)
+            symbol?.draw(in: CGRect(x: 16, y: 16, width: 48, height: 48))
+        }
+        return Image(uiImage: preview)
+    }
+
     var coordinate: CLLocationCoordinate2D { .init(latitude: latitude, longitude: longitude) }
     var vehicleColor: Color { isAircraft ? .accentColor : .indigo }
 }
@@ -513,6 +553,24 @@ extension TrackDetails {
 /// Fits geometry into the exposed part of the map, not behind the phone sheet.
 /// An explicit rect also avoids MapKit's automatic-fitting/cluster feedback loop.
 enum RouteCamera {
+    /// External navigation may zoom in from an overview, but never zooms out
+    /// from an existing close inspection of a stationary contact.
+    static func sharedPosition(coordinate: CLLocationCoordinate2D, current: MKMapRect,
+                               viewport: CGSize, coveredBottom: CGFloat) -> MKMapRect? {
+        guard CLLocationCoordinate2DIsValid(coordinate), viewport.width > 0, viewport.height > 0 else { return nil }
+        let visibleHeight = Double(viewport.height - max(coveredBottom, 0))
+        guard visibleHeight > 0 else { return nil }
+        let point = MKMapPoint(coordinate)
+        let maximumWidth = 2_000 / MKMetersPerMapPointAtLatitude(coordinate.latitude)
+        if !current.isNull, !current.isEmpty, current.width <= maximumWidth {
+            return recenterIfNeeded(coordinate: coordinate, current: current,
+                                    viewport: viewport, coveredBottom: coveredBottom)
+        }
+        let scale = maximumWidth / Double(viewport.width)
+        return MKMapRect(x: point.x - maximumWidth / 2, y: point.y - visibleHeight * scale / 2,
+                         width: maximumWidth, height: Double(viewport.height) * scale)
+    }
+
     static func shouldCancelPendingFit(previous: MKMapRect, current: MKMapRect,
                                        userPositioned: Bool) -> Bool {
         guard userPositioned else { return false }

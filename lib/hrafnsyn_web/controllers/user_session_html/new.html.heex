@@ -14,6 +14,17 @@
         </.header>
       </div>
 
+      <div :if={native_return_link(@conn)} class="my-6">
+        <a
+          id="open-shared-track-in-app"
+          href={native_return_link(@conn)}
+          class="btn btn-outline w-full"
+        >
+          <.icon name="hero-device-phone-mobile" class="size-4" /> Open shared track in app
+        </a>
+        <p class="mt-2 text-sm text-center">Or sign in below to view it here.</p>
+      </div>
+
       <.form :let={f} for={@form} as={:user} id="login_form_password" action={~p"/users/log-in"}>
         <.input
           readonly={!!@current_scope}

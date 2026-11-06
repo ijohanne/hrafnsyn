@@ -9,6 +9,9 @@ use tonic::{
 };
 use url::Url;
 
+mod sharing;
+pub use sharing::{make_track_share_url, parse_shared_track_link, SharedTrackLink};
+
 mod proto {
     tonic::include_proto!("hrafnsyn.v1");
 }
@@ -269,39 +272,63 @@ impl TrackingClient {
             .collect())
     }
     pub async fn track_details(&self, id: String) -> Result<TrackDetails, ClientError> {
-        let mut client =
-            proto::tracking_service_client::TrackingServiceClient::new(self.channel().await?);
-        let message = proto::GetTrackRequest {
+        self.fetch_track_details(proto::GetTrackRequest {
             track_id: id,
             history_hours: 6,
             log_limit: 100,
+            ..Default::default()
+        })
+        .await
+    }
+    pub async fn get_track_by_identity(
+        &self,
+        vehicle: String,
+        identity: String,
+        history_hours: i32,
+    ) -> Result<TrackDetails, ClientError> {
+        let vehicle_type = match vehicle.as_str() {
+            "plane" => 1,
+            "vessel" => 2,
+            _ => {
+                return Err(ClientError::Server {
+                    reason: "Unknown vehicle type.".into(),
+                })
+            }
         };
-        let response = client
-            .get_track(self.request(message.clone(), true).await?)
-            .await;
+        if !sharing::valid_identity(&identity) || !sharing::valid_history(history_hours) {
+            return Err(ClientError::Server {
+                reason: "Invalid shared track selection.".into(),
+            });
+        }
+        self.fetch_track_details(proto::GetTrackRequest {
+            vehicle_type,
+            identity,
+            history_hours,
+            log_limit: 100,
+            ..Default::default()
+        })
+        .await
+    }
+    pub async fn server_web_url(&self) -> Result<String, ClientError> {
+        let mut client =
+            proto::tracking_service_client::TrackingServiceClient::new(self.channel().await?);
+        let response = client.get_system_info(self.request((), true).await?).await;
         let response = match response {
             Err(status) if status.code() == Code::Unauthenticated => {
                 self.refresh_if_needed(true).await?;
                 client
-                    .get_track(self.request(message, false).await?)
+                    .get_system_info(self.request((), false).await?)
                     .await?
             }
             other => other?,
         }
         .into_inner();
-        Ok(TrackDetails {
-            track: response.track.map(Track::from),
-            route: response
-                .route_points
-                .into_iter()
-                .map(|p| RoutePoint {
-                    latitude: p.latitude,
-                    longitude: p.longitude,
-                    observed_at: p.observed_at.map_or(0, |t| t.seconds),
-                })
-                .collect(),
-            distance_meters: response.route_stats.map_or(0.0, |s| s.distance_meters),
-        })
+        // Older servers omit this optional field; keep their read API usable.
+        if response.web_url.is_empty() {
+            Ok(String::new())
+        } else {
+            normalize_server(response.web_url)
+        }
     }
     pub async fn sign_out(&self) -> Result<(), ClientError> {
         let _guard = self.refresh_lock.lock().await;
@@ -331,6 +358,39 @@ impl TrackingClient {
     }
 }
 impl TrackingClient {
+    async fn fetch_track_details(
+        &self,
+        message: proto::GetTrackRequest,
+    ) -> Result<TrackDetails, ClientError> {
+        let mut client =
+            proto::tracking_service_client::TrackingServiceClient::new(self.channel().await?);
+        let response = client
+            .get_track(self.request(message.clone(), true).await?)
+            .await;
+        let response = match response {
+            Err(status) if status.code() == Code::Unauthenticated => {
+                self.refresh_if_needed(true).await?;
+                client
+                    .get_track(self.request(message, false).await?)
+                    .await?
+            }
+            other => other?,
+        }
+        .into_inner();
+        Ok(TrackDetails {
+            track: response.track.map(Track::from),
+            route: response
+                .route_points
+                .into_iter()
+                .map(|p| RoutePoint {
+                    latitude: p.latitude,
+                    longitude: p.longitude,
+                    observed_at: p.observed_at.map_or(0, |t| t.seconds),
+                })
+                .collect(),
+            distance_meters: response.route_stats.map_or(0.0, |s| s.distance_meters),
+        })
+    }
     async fn channel(&self) -> Result<Channel, ClientError> {
         let mut channel = self.channel.lock().await;
         if let Some(channel) = channel.as_ref() {

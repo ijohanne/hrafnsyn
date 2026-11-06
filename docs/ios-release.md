@@ -26,6 +26,7 @@ logs or issues.
   "team_id": "YOUR_APPLE_TEAM_ID",
   "profile_name": "Hrafnsyn Ad Hoc",
   "bundle_id": "io.hrafnsyn.mobile",
+  "associated_domains": ["tracks.example.com"],
   "sync_devices": false
 }
 ```
@@ -55,6 +56,41 @@ This is an additional field in the same JSON object, not a separate file.
 private and outside version control. The same four values may instead come
 from the `HRAFNSYN_ASC_*` environment variables documented in the signing guide.
 Configuration is parsed as JSON; it is never executed as shell code.
+
+## Share links and Universal Links
+
+`associated_domains` is a list of exact DNS hostnames, without `https://`, paths,
+ports or wildcards. If omitted, the release uses the hostname of `server_url`
+when it is HTTPS on port 443. IP addresses, loopback and other ports default to
+an empty list. Set `associated_domains: []` explicitly for a build that only uses
+the `hrafnsyn://` fallback. Multiple Hrafnsyn instances can be listed in one build.
+No instance hostname is stored in the app's tracked project files.
+
+Each listed host must publicly serve `/.well-known/apple-app-site-association`
+over HTTPS without authentication or redirects. Configure the server's
+`HRAFNSYN_IOS_APP_IDS` with the exact `application-identifier` from the signed
+provisioning profile, such as `APP_ID_PREFIX.io.hrafnsyn.mobile`; the historical
+App ID prefix can differ from the team ID. The signing preparation writes this
+identifier to `signing-application-identifier.txt` in its temporary output for
+operator inspection. It is public association metadata, not a credential.
+
+With `sync_devices: true`, signing enables Apple's Associated Domains capability
+for the exact bundle ID and creates or reuses a profile that permits it. With
+manual profiles, enable that capability in Apple Developer and regenerate the
+profile before building. The release generates entitlements in its private
+temporary output, then verifies the exported code signature and the exact signed
+domain list before uploading. Existing profiles without the capability are not
+reused, and no unrelated profile or capability is removed.
+
+Install the resulting app after the association file is live. Apple caches the
+association through its CDN; new domains and changed association files may take
+time to propagate. A domain added after installation needs a new signed build.
+Safari can keep same-domain navigation on the website by design; the web
+**Open in app** action uses the registered `hrafnsyn://` fallback. Ordinary
+shared HTTPS links continue to work in the browser when the app is absent.
+
+References: [Apple's associated-domain setup](https://developer.apple.com/documentation/xcode/supporting-associated-domains)
+and [capability API](https://developer.apple.com/documentation/appstoreconnectapi/post-v1-bundleidcapabilities).
 
 ## Release
 

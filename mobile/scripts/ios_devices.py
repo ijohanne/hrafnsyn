@@ -5,11 +5,13 @@ import argparse
 import base64
 import datetime as dt
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
 import plistlib
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -23,6 +25,40 @@ import zipfile
 
 class SigningError(Exception):
     """An actionable error that contains no credentials or device identifiers."""
+
+
+ASSOCIATED_DOMAINS = "com.apple.developer.associated-domains"
+
+
+def normalize_domains(values):
+    if not isinstance(values, list) or len(values) > 30:
+        raise SigningError("associated_domains must be a list of at most 30 DNS hostnames.")
+    domains = []
+    for value in values:
+        if not isinstance(value, str) or not value.isascii() or len(value) > 253:
+            raise SigningError("Associated domains must be exact ASCII DNS hostnames, without URLs, ports or wildcards.")
+        value = value.lower()
+        labels = value.split(".")
+        if len(labels) < 2 or any(not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label) for label in labels):
+            raise SigningError("Associated domains must be exact ASCII DNS hostnames, without URLs, ports or wildcards.")
+        try:
+            ipaddress.ip_address(value)
+        except ValueError:
+            pass
+        else:
+            raise SigningError("Associated domains require DNS hostnames, not IP addresses.")
+        if value not in domains:
+            domains.append(value)
+    return sorted(domains)
+
+
+def read_domains(path):
+    if path is None:
+        return []
+    path = Path(path)
+    if not path.is_file() or path.stat().st_size > 16 * 1024:
+        raise SigningError("Could not read the associated domains JSON list.")
+    return normalize_domains(json.loads(path.read_text()))
 
 
 def read_devices(path):
@@ -63,7 +99,7 @@ def decode_profile(path):
         raise SigningError("Apple returned an invalid provisioning profile.") from None
 
 
-def validate_profile(profile, devices, team, bundle, certificate=None, exact=False):
+def validate_profile(profile, devices, team, bundle, certificate=None, exact=False, domains=()):
     expiry = profile.get("ExpirationDate")
     if not isinstance(expiry, dt.datetime) or expiry.replace(tzinfo=dt.timezone.utc) <= dt.datetime.now(dt.timezone.utc):
         raise SigningError("The provisioning profile has expired; regenerate it before building.")
@@ -76,6 +112,14 @@ def validate_profile(profile, devices, team, bundle, certificate=None, exact=Fal
         raise SigningError("The provisioning profile does not match the exact app bundle identifier.")
     if entitlements.get("get-task-allow") is not False or profile.get("ProvisionsAllDevices"):
         raise SigningError("Use an Ad Hoc distribution profile, not a development or enterprise profile.")
+    if domains:
+        allowed = entitlements.get(ASSOCIATED_DOMAINS, [])
+        if isinstance(allowed, str):
+            allowed = [allowed]
+        if not isinstance(allowed, list) or not all(
+                "*" in allowed or "applinks:*" in allowed or f"applinks:{domain}" in allowed
+                for domain in domains):
+            raise SigningError("The provisioning profile does not allow the requested Associated Domains. Enable the capability and regenerate the profile, or use --sync-devices.")
     included = {value.upper() for value in profile.get("ProvisionedDevices", [])}
     missing = set(devices) - included
     if missing:
@@ -91,7 +135,7 @@ def validate_profile(profile, devices, team, bundle, certificate=None, exact=Fal
         raise SigningError("The provisioning profile has an invalid UUID.") from None
 
 
-def find_installed_profile(name, devices, team, bundle):
+def find_installed_profile(name, devices, team, bundle, domains=()):
     roots = [
         Path.home() / "Library/Developer/Xcode/UserData/Provisioning Profiles",
         Path.home() / "Library/MobileDevice/Provisioning Profiles",
@@ -107,7 +151,7 @@ def find_installed_profile(name, devices, team, bundle):
             if name not in (profile.get("Name"), profile.get("UUID")):
                 continue
             try:
-                validate_profile(profile, devices, team, bundle)
+                validate_profile(profile, devices, team, bundle, domains=domains)
                 matches.append(profile)
             except SigningError as error:
                 last_error = error
@@ -212,7 +256,17 @@ def certificate_for_team(api, certificate_id, team):
     return cert
 
 
-def sync_profile(api, devices, team, bundle, name, certificate_id, output):
+def ensure_associated_domains(api, bundle_id):
+    capabilities = api.list(f"bundleIds/{urllib.parse.quote(bundle_id, safe='')}/bundleIdCapabilities")
+    if any(item.get("attributes", {}).get("capabilityType") == "ASSOCIATED_DOMAINS" for item in capabilities):
+        return
+    api.request("POST", "/v1/bundleIdCapabilities", {"data": {
+        "type": "bundleIdCapabilities", "attributes": {"capabilityType": "ASSOCIATED_DOMAINS"},
+        "relationships": {"bundleId": {"data": {"type": "bundleIds", "id": bundle_id}}},
+    }})
+
+
+def sync_profile(api, devices, team, bundle, name, certificate_id, output, domains=()):
     # Validate the selected account/certificate before registering any devices.
     certificate = certificate_for_team(api, certificate_id, team)
     bundles = api.list("bundleIds", **{"filter[identifier]": bundle})
@@ -220,6 +274,8 @@ def sync_profile(api, devices, team, bundle, name, certificate_id, output):
                and item["attributes"]["platform"] in ("IOS", "UNIVERSAL")]
     if len(bundles) != 1:
         raise SigningError("Create the exact iOS bundle identifier in this Apple developer account before syncing.")
+    if domains:
+        ensure_associated_domains(api, bundles[0]["id"])
     device_ids = []
     for udid, label in devices.items():
         existing = api.list("devices", **{"filter[udid]": udid, "filter[platform]": "IOS"})
@@ -236,7 +292,7 @@ def sync_profile(api, devices, team, bundle, name, certificate_id, output):
             raise SigningError("A requested device is disabled or pending with Apple. Resolve its status before rebuilding.")
         device_ids.append(device["id"])
 
-    fingerprint = hashlib.sha256(json.dumps([team, bundle, certificate_id, sorted(devices)]).encode()).hexdigest()[:12]
+    fingerprint = hashlib.sha256(json.dumps([team, bundle, certificate_id, sorted(devices), sorted(domains)]).encode()).hexdigest()[:12]
     prefix = f"{name[:70]} {fingerprint}"
     for resource in api.list("profiles"):
         attrs = resource["attributes"]
@@ -245,7 +301,7 @@ def sync_profile(api, devices, team, bundle, name, certificate_id, output):
         content = base64.b64decode(attrs["profileContent"], validate=True)
         try:
             profile = inspect_content(content, output)
-            validate_profile(profile, devices, team, bundle, certificate, exact=True)
+            validate_profile(profile, devices, team, bundle, certificate, exact=True, domains=domains)
             return content, profile
         except SigningError:
             continue
@@ -259,7 +315,7 @@ def sync_profile(api, devices, team, bundle, name, certificate_id, output):
     resource = api.request("POST", "/v1/profiles", body)["data"]
     content = base64.b64decode(resource["attributes"]["profileContent"], validate=True)
     profile = inspect_content(content, output)
-    validate_profile(profile, devices, team, bundle, certificate, exact=True)
+    validate_profile(profile, devices, team, bundle, certificate, exact=True, domains=domains)
     return content, profile
 
 
@@ -270,13 +326,50 @@ def inspect_content(content, directory):
         return decode_profile(temporary.name)
 
 
-def verify_ipa(path, devices, team, bundle, output):
+def validate_app_entitlements(entitlements, profile, domains):
+    expected = [f"applinks:{domain}" for domain in domains]
+    actual = entitlements.get(ASSOCIATED_DOMAINS, [])
+    if not isinstance(actual, list) or sorted(actual) != sorted(expected):
+        raise SigningError("The signed app's Associated Domains differ from the requested exact domain list.")
+    if entitlements.get("application-identifier") != profile["Entitlements"]["application-identifier"]:
+        raise SigningError("The signed app and provisioning profile have different application identifiers.")
+    if entitlements.get("get-task-allow", False) is not False:
+        raise SigningError("The signed app unexpectedly allows debugging.")
+
+
+def verify_signed_app(archive, profile, domains, bundle, output):
+    members = archive.infolist()
+    if len(members) > 20_000 or sum(item.file_size for item in members) > 500 * 1024 * 1024:
+        raise SigningError("The exported IPA exceeds the verification size limit.")
+    if any(Path(item.filename).is_absolute() or ".." in Path(item.filename).parts
+           or stat.S_ISLNK(item.external_attr >> 16) for item in members):
+        raise SigningError("The exported IPA contains an unsafe archive entry.")
+    with tempfile.TemporaryDirectory(prefix="verify-", dir=output) as temporary:
+        archive.extractall(temporary)
+        apps = list((Path(temporary) / "Payload").glob("*.app"))
+        if len(apps) != 1:
+            raise SigningError("The exported IPA must contain exactly one app.")
+        app = apps[0]
+        info = plistlib.loads((app / "Info.plist").read_bytes())
+        if info.get("CFBundleIdentifier") != bundle:
+            raise SigningError("The exported app has the wrong bundle identifier.")
+        verified = subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], capture_output=True)
+        if verified.returncode:
+            raise SigningError("The exported app's code signature is invalid.")
+        signed = subprocess.run(["/usr/bin/codesign", "-d", "--entitlements", ":-", str(app)], capture_output=True)
+        if signed.returncode:
+            raise SigningError("Could not inspect the exported app's signed entitlements.")
+        validate_app_entitlements(plistlib.loads(signed.stdout), profile, domains)
+
+
+def verify_ipa(path, devices, team, bundle, output, domains=()):
     with zipfile.ZipFile(path) as archive:
         paths = [name for name in archive.namelist() if re.fullmatch(r"Payload/[^/]+\.app/embedded\.mobileprovision", name)]
         if len(paths) != 1 or archive.getinfo(paths[0]).file_size > 2 * 1024 * 1024:
             raise SigningError("The exported IPA must contain one bounded provisioning profile.")
         profile = inspect_content(archive.read(paths[0]), output)
-        validate_profile(profile, devices, team, bundle)
+        validate_profile(profile, devices, team, bundle, domains=domains)
+        verify_signed_app(archive, profile, domains, bundle, output)
 
 
 def main():
@@ -289,13 +382,15 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--sync-devices", action="store_true")
     parser.add_argument("--ipa")
+    parser.add_argument("--associated-domains-file")
     args = parser.parse_args()
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True, mode=0o700)
     devices = read_devices(args.devices)
+    domains = read_domains(args.associated_domains_file)
     if args.command == "verify":
-        verify_ipa(args.ipa, devices, args.team, args.bundle, output)
-        print(f"Exported IPA covers all {len(devices)} listed device(s).")
+        verify_ipa(args.ipa, devices, args.team, args.bundle, output, domains)
+        print(f"Exported IPA signature and domains verified; covers all {len(devices)} listed device(s).")
         return
     if args.sync_devices:
         names = ["HRAFNSYN_ASC_KEY_ID", "HRAFNSYN_ASC_ISSUER_ID", "HRAFNSYN_ASC_KEY_PATH", "HRAFNSYN_ASC_CERTIFICATE_ID"]
@@ -304,7 +399,7 @@ def main():
             raise SigningError("Automatic device registration needs " + ", ".join(missing) + ". See docs/mobile.md; do not put private keys in tracked files.")
         key_id, issuer, key_path, certificate_id = [os.environ[name] for name in names]
         api = AppleAPI(api_token(key_id, issuer, key_path))
-        content, profile = sync_profile(api, devices, args.team, args.bundle, args.profile, certificate_id, output)
+        content, profile = sync_profile(api, devices, args.team, args.bundle, args.profile, certificate_id, output, domains)
         target = Path.home() / "Library/Developer/Xcode/UserData/Provisioning Profiles"
         target.mkdir(parents=True, exist_ok=True)
         profile_file = target / f"{profile['UUID']}.mobileprovision"
@@ -316,8 +411,11 @@ def main():
         finally:
             temp_path.unlink(missing_ok=True)
     else:
-        profile = find_installed_profile(args.profile, devices, args.team, args.bundle)
+        profile = find_installed_profile(args.profile, devices, args.team, args.bundle, domains)
     (output / "signing-profile.txt").write_text(profile["UUID"] + "\n")
+    (output / "signing-application-identifier.txt").write_text(profile["Entitlements"]["application-identifier"] + "\n")
+    entitlements = {ASSOCIATED_DOMAINS: [f"applinks:{domain}" for domain in domains]} if domains else {}
+    (output / "signing.entitlements").write_bytes(plistlib.dumps(entitlements))
     print(f"Provisioning profile verified for {len(devices)} listed device(s).")
 
 

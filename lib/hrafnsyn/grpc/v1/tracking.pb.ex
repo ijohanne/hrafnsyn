@@ -199,6 +199,7 @@ defmodule Hrafnsyn.V1.SystemInfo do
 
   field :sources, 1, repeated: true, type: Hrafnsyn.V1.SourceDescriptor
   field :counts, 2, type: Hrafnsyn.V1.ActiveCounts
+  field :web_url, 3, type: :string, json_name: "webUrl"
 end
 
 defmodule Hrafnsyn.V1.TrackSummary do
@@ -284,6 +285,8 @@ defmodule Hrafnsyn.V1.GetTrackRequest do
   field :track_id, 1, type: :string, json_name: "trackId"
   field :history_hours, 2, type: :int32, json_name: "historyHours"
   field :log_limit, 3, type: :int32, json_name: "logLimit"
+  field :vehicle_type, 4, type: Hrafnsyn.V1.VehicleType, enum: true, json_name: "vehicleType"
+  field :identity, 5, type: :string
 end
 
 defmodule Hrafnsyn.V1.GetTrackResponse do

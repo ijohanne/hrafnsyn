@@ -3,6 +3,23 @@ import MapKit
 @testable import Hrafnsyn
 
 final class MapInteractionTests: XCTestCase {
+    func testSharedStationaryContactPreservesCloseZoomAndCapsOverview() throws {
+        let viewport = CGSize(width: 390, height: 740)
+        let point = MKMapPoint(CLLocationCoordinate2D(latitude: 36.14, longitude: -5.35))
+        let close = MKMapRect(x: point.x - 500, y: point.y - 500, width: 1_000, height: 2_000)
+        XCTAssertNil(RouteCamera.sharedPosition(coordinate: point.coordinate, current: close,
+                                                viewport: viewport, coveredBottom: 200))
+        let offscreen = MKMapPoint(x: point.x + 5_000, y: point.y)
+        let moved = try XCTUnwrap(RouteCamera.sharedPosition(coordinate: offscreen.coordinate, current: close,
+                                                             viewport: viewport, coveredBottom: 200))
+        XCTAssertEqual(moved.width, close.width)
+        XCTAssertEqual(moved.height, close.height)
+        let overview = try XCTUnwrap(RouteCamera.sharedPosition(coordinate: point.coordinate, current: .world,
+                                                                viewport: viewport, coveredBottom: 200))
+        XCTAssertEqual(overview.width * MKMetersPerMapPointAtLatitude(point.coordinate.latitude), 2_000, accuracy: 0.01)
+        XCTAssertLessThan((point.y - overview.minY) / overview.height * viewport.height, viewport.height - 200)
+    }
+
     func testPanningAnAlreadyUserPositionedCameraCancelsDelayedRouteFit() {
         let before = MKMapRect(x: 10_000, y: 20_000, width: 1_000, height: 2_000)
         var pendingSelection: String? = "vessel"

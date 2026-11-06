@@ -322,6 +322,17 @@ in
       };
     };
 
+    iosAppIds = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [ "ABCDE12345.io.hrafnsyn.mobile" ];
+      description = ''
+        Signed iOS application identifiers allowed to open shared track links.
+        Use the application-identifier entitlement from the signed app, including
+        its App ID prefix. Served publicly in apple-app-site-association.
+      '';
+    };
+
     grpc = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -437,6 +448,7 @@ in
           HRAFNSYN_TRUSTED_PROXIES = builtins.concatStringsSep "," cfg.trustedProxies;
           HRAFNSYN_MAP_STYLE_URL = cfg.mapStyleUrl;
           HRAFNSYN_MOBILE_BUILD_DIRECTORY = "/var/lib/${cfg.user}/mobile-builds";
+          HRAFNSYN_IOS_APP_IDS = builtins.concatStringsSep "," cfg.iosAppIds;
           HRAFNSYN_PUBLIC_READONLY = if cfg.publicReadonly then "true" else "false";
           HRAFNSYN_TRACK_POINT_RETENTION_DAYS = builtins.toString cfg.trackPointRetentionDays;
           RELEASE_NODE = cfg.user;

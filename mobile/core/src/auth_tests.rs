@@ -7,6 +7,79 @@ struct AuthFixture {
     required: bool,
     refreshes: Arc<AtomicUsize>,
 }
+
+struct TrackingFixture;
+
+fn require_rotated_token<T>(request: &Request<T>) -> Result<(), Status> {
+    if request
+        .metadata()
+        .get("authorization")
+        .and_then(|value| value.to_str().ok())
+        != Some("Bearer rotated-access")
+    {
+        return Err(Status::unauthenticated("Rotate the access token"));
+    }
+    Ok(())
+}
+
+#[tonic::async_trait]
+impl proto::tracking_service_server::TrackingService for TrackingFixture {
+    async fn get_system_info(
+        &self,
+        request: Request<()>,
+    ) -> Result<Response<proto::SystemInfo>, Status> {
+        require_rotated_token(&request)?;
+        Ok(Response::new(proto::SystemInfo {
+            web_url: "https://SHARE.example:443/".into(),
+            ..Default::default()
+        }))
+    }
+    async fn list_active_tracks(
+        &self,
+        _: Request<proto::ListActiveTracksRequest>,
+    ) -> Result<Response<proto::ListActiveTracksResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn search_tracks(
+        &self,
+        _: Request<proto::SearchTracksRequest>,
+    ) -> Result<Response<proto::SearchTracksResponse>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+    async fn get_track(
+        &self,
+        request: Request<proto::GetTrackRequest>,
+    ) -> Result<Response<proto::GetTrackResponse>, Status> {
+        require_rotated_token(&request)?;
+        let request = request.into_inner();
+        if request.identity == "missing" {
+            return Err(Status::not_found("Track was not found"));
+        }
+        if !request.track_id.is_empty()
+            || request.vehicle_type != 2
+            || request.identity != "378113455"
+            || request.history_hours != 24
+        {
+            return Err(Status::invalid_argument("Wrong shared selector"));
+        }
+        Ok(Response::new(proto::GetTrackResponse {
+            track: Some(proto::TrackSummary {
+                id: "resolved-id".into(),
+                identity: request.identity,
+                vehicle_type: 2,
+                ..Default::default()
+            }),
+            ..Default::default()
+        }))
+    }
+    type StreamTrackUpdatesStream = tokio_stream::Empty<Result<proto::TrackUpdate, Status>>;
+    async fn stream_track_updates(
+        &self,
+        _: Request<proto::StreamTrackUpdatesRequest>,
+    ) -> Result<Response<Self::StreamTrackUpdatesStream>, Status> {
+        Err(Status::unimplemented("test"))
+    }
+}
 fn pair(access: &str, refresh: &str) -> proto::TokenPair {
     proto::TokenPair {
         access_token: access.into(),
@@ -92,6 +165,9 @@ async fn fixture(required: bool) -> (String, Arc<AtomicUsize>, tokio::task::Join
     let task = tokio::spawn(async move {
         Server::builder()
             .add_service(proto::auth_service_server::AuthServiceServer::new(service))
+            .add_service(proto::tracking_service_server::TrackingServiceServer::new(
+                TrackingFixture,
+            ))
             .serve_with_incoming(TcpListenerStream::new(listener))
             .await
             .unwrap();
@@ -135,5 +211,35 @@ async fn public_server_does_not_require_login_for_expired_saved_session() {
     let status = client.connect().await.unwrap();
     assert!(!status.auth_required && !status.authenticated);
     assert!(client.saved_session().await.is_none());
+    task.abort();
+}
+
+#[tokio::test]
+async fn shared_selection_and_server_metadata_refresh_credentials_on_the_grpc_origin() {
+    let (address, refreshes, task) = fixture(true).await;
+    let client = TrackingClient::new(
+        address.clone(),
+        Some(session_from(pair("stale-access", "refresh"))),
+    )
+    .unwrap();
+    assert_eq!(
+        client.server_web_url().await.unwrap(),
+        "https://share.example"
+    );
+    assert_eq!(client.server(), address);
+    assert_eq!(refreshes.load(Ordering::SeqCst), 1);
+    let details = client
+        .get_track_by_identity("vessel".into(), "378113455".into(), 24)
+        .await
+        .unwrap();
+    assert_eq!(details.track.unwrap().id, "resolved-id");
+    assert!(
+        matches!(client.get_track_by_identity("vessel".into(), "missing".into(), 24).await,
+        Err(ClientError::Server { reason }) if reason == "Track was not found")
+    );
+    assert_eq!(
+        client.saved_session().await.unwrap().refresh_token,
+        "rotated-refresh"
+    );
     task.abort();
 }

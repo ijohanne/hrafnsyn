@@ -684,15 +684,23 @@ internal object IntegrityCheckingUniffiLib {
     internal fun ensureInitialized() = Unit
     external fun uniffi_hrafnsyn_mobile_checksum_func_normalize_server(
     ): Int
+    external fun uniffi_hrafnsyn_mobile_checksum_func_make_track_share_url(
+    ): Int
+    external fun uniffi_hrafnsyn_mobile_checksum_func_parse_shared_track_link(
+    ): Int
     external fun uniffi_hrafnsyn_mobile_checksum_method_trackingclient_active_tracks(
     ): Int
     external fun uniffi_hrafnsyn_mobile_checksum_method_trackingclient_connect(
+    ): Int
+    external fun uniffi_hrafnsyn_mobile_checksum_method_trackingclient_get_track_by_identity(
     ): Int
     external fun uniffi_hrafnsyn_mobile_checksum_method_trackingclient_login(
     ): Int
     external fun uniffi_hrafnsyn_mobile_checksum_method_trackingclient_saved_session(
     ): Int
     external fun uniffi_hrafnsyn_mobile_checksum_method_trackingclient_server(
+    ): Int
+    external fun uniffi_hrafnsyn_mobile_checksum_method_trackingclient_server_web_url(
     ): Int
     external fun uniffi_hrafnsyn_mobile_checksum_method_trackingclient_sign_out(
     ): Int
@@ -730,17 +738,25 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_hrafnsyn_mobile_fn_method_trackingclient_connect(`ptr`: Long,
     ): Long
+    external fun uniffi_hrafnsyn_mobile_fn_method_trackingclient_get_track_by_identity(`ptr`: Long,`vehicle`: RustBuffer.ByValue,`identity`: RustBuffer.ByValue,`historyHours`: Int,
+    ): Long
     external fun uniffi_hrafnsyn_mobile_fn_method_trackingclient_login(`ptr`: Long,`username`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_hrafnsyn_mobile_fn_method_trackingclient_saved_session(`ptr`: Long,
     ): Long
     external fun uniffi_hrafnsyn_mobile_fn_method_trackingclient_server(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_hrafnsyn_mobile_fn_method_trackingclient_server_web_url(`ptr`: Long,
+    ): Long
     external fun uniffi_hrafnsyn_mobile_fn_method_trackingclient_sign_out(`ptr`: Long,
     ): Long
     external fun uniffi_hrafnsyn_mobile_fn_method_trackingclient_track_details(`ptr`: Long,`id`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_hrafnsyn_mobile_fn_func_normalize_server(`server`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_hrafnsyn_mobile_fn_func_make_track_share_url(`webOrigin`: RustBuffer.ByValue,`vehicle`: RustBuffer.ByValue,`identity`: RustBuffer.ByValue,`historyHours`: Int,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_hrafnsyn_mobile_fn_func_parse_shared_track_link(`url`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun ffi_hrafnsyn_mobile_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -864,10 +880,19 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if ((lib.uniffi_hrafnsyn_mobile_checksum_func_normalize_server() and 0xFFFF) != 15666) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if ((lib.uniffi_hrafnsyn_mobile_checksum_func_make_track_share_url() and 0xFFFF) != 38015) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_hrafnsyn_mobile_checksum_func_parse_shared_track_link() and 0xFFFF) != 15319) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if ((lib.uniffi_hrafnsyn_mobile_checksum_method_trackingclient_active_tracks() and 0xFFFF) != 51878) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_hrafnsyn_mobile_checksum_method_trackingclient_connect() and 0xFFFF) != 34563) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_hrafnsyn_mobile_checksum_method_trackingclient_get_track_by_identity() and 0xFFFF) != 16091) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_hrafnsyn_mobile_checksum_method_trackingclient_login() and 0xFFFF) != 27087) {
@@ -877,6 +902,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_hrafnsyn_mobile_checksum_method_trackingclient_server() and 0xFFFF) != 22770) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_hrafnsyn_mobile_checksum_method_trackingclient_server_web_url() and 0xFFFF) != 13029) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_hrafnsyn_mobile_checksum_method_trackingclient_sign_out() and 0xFFFF) != 39712) {
@@ -1336,12 +1364,16 @@ public interface TrackingClientInterface {
     
     suspend fun `connect`(): ConnectionStatus
     
+    suspend fun `getTrackByIdentity`(`vehicle`: kotlin.String, `identity`: kotlin.String, `historyHours`: kotlin.Int): TrackDetails
+
     suspend fun `login`(`username`: kotlin.String, `password`: kotlin.String): SavedSession
     
     suspend fun `savedSession`(): SavedSession?
     
     fun `server`(): kotlin.String
     
+    suspend fun `serverWebUrl`(): kotlin.String
+
     suspend fun `signOut`()
     
     suspend fun `trackDetails`(`id`: kotlin.String): TrackDetails
@@ -1505,6 +1537,30 @@ open class TrackingClient: Disposable, AutoCloseable, TrackingClientInterface
     
     @Throws(ClientException::class)
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `getTrackByIdentity`(`vehicle`: kotlin.String, `identity`: kotlin.String, `historyHours`: kotlin.Int) : TrackDetails {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_hrafnsyn_mobile_fn_method_trackingclient_get_track_by_identity(
+                uniffiHandle,
+
+        FfiConverterString.lower(`vehicle`),
+        FfiConverterString.lower(`identity`),
+        FfiConverterInt.lower(`historyHours`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_hrafnsyn_mobile_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_hrafnsyn_mobile_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_hrafnsyn_mobile_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeTrackDetails.lift(it) },
+        // Error FFI converter
+        ClientException.ErrorHandler,
+    )
+    }
+
+
+    @Throws(ClientException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
     override suspend fun `login`(`username`: kotlin.String, `password`: kotlin.String) : SavedSession {
         return uniffiRustCallAsync(
         callWithHandle { uniffiHandle ->
@@ -1559,6 +1615,27 @@ open class TrackingClient: Disposable, AutoCloseable, TrackingClientInterface
     
 
     
+    @Throws(ClientException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `serverWebUrl`() : kotlin.String {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_hrafnsyn_mobile_fn_method_trackingclient_server_web_url(
+                uniffiHandle,
+
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_hrafnsyn_mobile_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_hrafnsyn_mobile_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_hrafnsyn_mobile_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterString.lift(it) },
+        // Error FFI converter
+        ClientException.ErrorHandler,
+    )
+    }
+
+
     @Throws(ClientException::class)
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
     override suspend fun `signOut`() {
@@ -1776,6 +1853,54 @@ public object FfiConverterTypeSavedSession: FfiConverterRustBuffer<SavedSession>
             FfiConverterLong.write(value.`refreshExpiresAt`, buf)
             FfiConverterString.write(value.`sessionId`, buf)
             FfiConverterString.write(value.`username`, buf)
+    }
+}
+
+
+
+data class SharedTrackLink (
+    var `webOrigin`: kotlin.String
+    ,
+    var `vehicle`: kotlin.String
+    ,
+    var `identity`: kotlin.String
+    ,
+    var `historyHours`: kotlin.Int
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSharedTrackLink: FfiConverterRustBuffer<SharedTrackLink> {
+    override fun read(buf: ByteBuffer): SharedTrackLink {
+        return SharedTrackLink(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SharedTrackLink) = (
+            FfiConverterString.allocationSize(value.`webOrigin`) +
+            FfiConverterString.allocationSize(value.`vehicle`) +
+            FfiConverterString.allocationSize(value.`identity`) +
+            FfiConverterInt.allocationSize(value.`historyHours`)
+    )
+
+    override fun write(value: SharedTrackLink, buf: ByteBuffer) {
+            FfiConverterString.write(value.`webOrigin`, buf)
+            FfiConverterString.write(value.`vehicle`, buf)
+            FfiConverterString.write(value.`identity`, buf)
+            FfiConverterInt.write(value.`historyHours`, buf)
     }
 }
 
@@ -2200,5 +2325,35 @@ public object FfiConverterSequenceTypeTrack: FfiConverterRustBuffer<List<Track>>
     )
     }
     
+
+    @Throws(ClientException::class) fun `makeTrackShareUrl`(`webOrigin`: kotlin.String, `vehicle`: kotlin.String, `identity`: kotlin.String, `historyHours`: kotlin.Int): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(ClientException) { _status ->
+    UniffiLib.uniffi_hrafnsyn_mobile_fn_func_make_track_share_url(
+
+
+        FfiConverterString.lower(`webOrigin`),
+        FfiConverterString.lower(`vehicle`),
+        FfiConverterString.lower(`identity`),
+        FfiConverterInt.lower(`historyHours`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Parses web shares and the explicit app handoff without carrying credentials.
+         */
+    @Throws(ClientException::class) fun `parseSharedTrackLink`(`url`: kotlin.String): SharedTrackLink {
+            return FfiConverterTypeSharedTrackLink.lift(
+    uniffiRustCallWithError(ClientException) { _status ->
+    UniffiLib.uniffi_hrafnsyn_mobile_fn_func_parse_shared_track_link(
+
+
+        FfiConverterString.lower(`url`),_status)
+}
+    )
+    }
+
 
 

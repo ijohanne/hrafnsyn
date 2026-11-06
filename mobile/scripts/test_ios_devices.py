@@ -3,6 +3,7 @@
 import base64
 import datetime as dt
 from pathlib import Path
+import plistlib
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -31,12 +32,13 @@ def profile():
 
 
 class FakeAPI:
-    def __init__(self, existing=True, status="ENABLED", profiles=None, platform="IOS"):
+    def __init__(self, existing=True, status="ENABLED", profiles=None, platform="IOS", capabilities=None):
         self.existing = existing
         self.status = status
         self.profiles = profiles or []
         self.posts = []
         self.platform = platform
+        self.capabilities = capabilities or []
 
     def list(self, resource, **filters):
         if resource == "bundleIds":
@@ -47,6 +49,8 @@ class FakeAPI:
             return []
         if resource == "profiles":
             return self.profiles
+        if resource == "bundleIds/bundle/bundleIdCapabilities":
+            return self.capabilities
         raise AssertionError(resource)
 
     def request(self, method, path, body=None):
@@ -55,6 +59,8 @@ class FakeAPI:
             return {"data": {"id": "new-device", "attributes": {**body["data"]["attributes"], "status": self.status}}}
         if path == "/v1/profiles":
             return {"data": {"attributes": {"profileContent": base64.b64encode(b"fixture CMS").decode()}}}
+        if path == "/v1/bundleIdCapabilities":
+            return {"data": body["data"]}
         raise AssertionError(path)
 
 
@@ -112,7 +118,8 @@ class DeviceListTests(unittest.TestCase):
             ipa = Path(tmp) / "test.ipa"
             with zipfile.ZipFile(ipa, "w") as archive:
                 archive.writestr("Payload/App.app/embedded.mobileprovision", b"CMS")
-            with patch.object(signing, "inspect_content", return_value=profile()) as inspect:
+            with patch.object(signing, "inspect_content", return_value=profile()) as inspect, \
+                    patch.object(signing, "verify_signed_app"):
                 signing.verify_ipa(ipa, {UDID: "phone"}, TEAM, BUNDLE, tmp)
                 inspect.assert_called_once_with(b"CMS", tmp)
             with zipfile.ZipFile(ipa, "w") as archive:
@@ -201,6 +208,37 @@ class SyncTests(unittest.TestCase):
                 signing.sync_profile(api, {UDID: "phone"}, TEAM, BUNDLE, "Hrafnsyn", "certificate", ".")
         self.assertEqual(api.posts, [])
 
+    def test_associated_domains_capability_enabled_for_exact_bundle(self):
+        api = FakeAPI()
+        candidate = profile()
+        candidate["Entitlements"][signing.ASSOCIATED_DOMAINS] = ["*"]
+        with patch.object(signing, "certificate_for_team", return_value=b"fixture certificate"), \
+                patch.object(signing, "inspect_content", return_value=candidate):
+            signing.sync_profile(api, {UDID: "phone"}, TEAM, BUNDLE, "Hrafnsyn", "certificate", ".", ["tracks.example.com"])
+        capability = api.posts[0]
+        self.assertEqual(capability[1], "/v1/bundleIdCapabilities")
+        self.assertEqual(capability[2]["data"]["attributes"], {"capabilityType": "ASSOCIATED_DOMAINS"})
+        self.assertEqual(capability[2]["data"]["relationships"]["bundleId"]["data"]["id"], "bundle")
+
+    def test_existing_capability_does_not_mutate_bundle(self):
+        api = FakeAPI(capabilities=[{"attributes": {"capabilityType": "ASSOCIATED_DOMAINS"}}])
+        signing.ensure_associated_domains(api, "bundle")
+        self.assertEqual(api.posts, [])
+
+    def test_old_profile_cannot_be_reused_for_new_domains(self):
+        api = FakeAPI()
+        self.sync(api)
+        name = api.posts[-1][2]["data"]["attributes"]["name"]
+        old = {"attributes": {"name": name, "profileState": "ACTIVE", "profileType": "IOS_APP_ADHOC", "profileContent": base64.b64encode(b"old").decode()}}
+        candidate = profile()
+        candidate["Entitlements"][signing.ASSOCIATED_DOMAINS] = "*"
+        api = FakeAPI(profiles=[old], capabilities=[{"attributes": {"capabilityType": "ASSOCIATED_DOMAINS"}}])
+        with patch.object(signing, "certificate_for_team", return_value=b"fixture certificate"), \
+                patch.object(signing, "inspect_content", return_value=candidate):
+            content, _ = signing.sync_profile(api, {UDID: "phone"}, TEAM, BUNDLE, "Hrafnsyn", "certificate", ".", ["tracks.example.com"])
+        self.assertEqual(content, b"fixture CMS")
+        self.assertEqual([post[1] for post in api.posts], ["/v1/profiles"])
+
     def test_pagination_is_bounded_and_cross_origin_is_rejected(self):
         api = signing.AppleAPI("not-a-real-token")
         with self.assertRaises(signing.SigningError):
@@ -215,6 +253,69 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(signing.jwt_signature(raw), b"\x80" * 32 + b"\x81" * 32)
         with self.assertRaises(signing.SigningError):
             signing.jwt_signature(b"bad")
+
+
+class AssociatedDomainTests(unittest.TestCase):
+    def test_exact_dns_domains_are_normalized_and_deduplicated(self):
+        self.assertEqual(signing.normalize_domains(["TRACKS.example.com", "tracks.example.com"]), ["tracks.example.com"])
+        for invalid in [["https://example.com"], ["example.com:443"], ["*.example.com"], ["localhost"],
+                        ["127.0.0.1"], ["example.com?mode=developer"], ["user@example.com"], ["example.com/path"],
+                        ["example.com\n"], ["example..com"], ["-example.com"], ["éxample.com"], "example.com", [1]]:
+            with self.subTest(value=invalid), self.assertRaises(signing.SigningError):
+                signing.normalize_domains(invalid)
+
+    def test_profile_must_authorize_requested_domains(self):
+        candidate = profile()
+        with self.assertRaises(signing.SigningError):
+            signing.validate_profile(candidate, {UDID: "phone"}, TEAM, BUNDLE, domains=["example.com"])
+        for allowed in ("*", ["*"], ["applinks:example.com"]):
+            candidate["Entitlements"][signing.ASSOCIATED_DOMAINS] = allowed
+            signing.validate_profile(candidate, {UDID: "phone"}, TEAM, BUNDLE, domains=["example.com"])
+        candidate["Entitlements"][signing.ASSOCIATED_DOMAINS] = ["applinks:another.example.com"]
+        with self.assertRaises(signing.SigningError):
+            signing.validate_profile(candidate, {UDID: "phone"}, TEAM, BUNDLE, domains=["example.com"])
+
+    def test_signed_entitlements_must_match_exact_requested_domains(self):
+        candidate = profile()
+        entitlements = {**candidate["Entitlements"], signing.ASSOCIATED_DOMAINS: ["applinks:example.com"]}
+        signing.validate_app_entitlements(entitlements, candidate, ["example.com"])
+        for actual in ([], ["*"], ["applinks:example.com", "applinks:other.example.com"], "applinks:example.com"):
+            with self.subTest(actual=actual), self.assertRaises(signing.SigningError):
+                signing.validate_app_entitlements({**entitlements, signing.ASSOCIATED_DOMAINS: actual}, candidate, ["example.com"])
+
+    def test_signed_app_identity_and_distribution_mode_must_match(self):
+        candidate = profile()
+        for change in ({"application-identifier": "OTHER.io.example.fixture"}, {"get-task-allow": True}):
+            with self.subTest(change=change), self.assertRaises(signing.SigningError):
+                signing.validate_app_entitlements({**candidate["Entitlements"], **change}, candidate, [])
+
+    def test_ipa_verifies_actual_signature_before_reading_signed_domains(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ipa = Path(tmp) / "test.ipa"
+            with zipfile.ZipFile(ipa, "w") as archive:
+                archive.writestr("Payload/App.app/Info.plist", plistlib.dumps({"CFBundleIdentifier": BUNDLE}))
+            candidate = profile()
+            signed = {**candidate["Entitlements"], signing.ASSOCIATED_DOMAINS: ["applinks:example.com"]}
+            with zipfile.ZipFile(ipa) as archive, patch.object(signing.subprocess, "run") as run:
+                run.side_effect = [type("Result", (), {"returncode": 0})(),
+                                   type("Result", (), {"returncode": 0, "stdout": plistlib.dumps(signed)})()]
+                signing.verify_signed_app(archive, candidate, ["example.com"], BUNDLE, tmp)
+                self.assertEqual(run.call_args_list[0].args[0][1:4], ["--verify", "--deep", "--strict"])
+                self.assertIn("--entitlements", run.call_args_list[1].args[0])
+            with zipfile.ZipFile(ipa) as archive, patch.object(signing.subprocess, "run") as run:
+                run.return_value.returncode = 1
+                with self.assertRaisesRegex(signing.SigningError, "signature is invalid"):
+                    signing.verify_signed_app(archive, candidate, ["example.com"], BUNDLE, tmp)
+                self.assertEqual(run.call_count, 1)
+
+    def test_unsafe_ipa_paths_are_rejected_before_extraction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ipa = Path(tmp) / "test.ipa"
+            with zipfile.ZipFile(ipa, "w") as archive:
+                archive.writestr("../outside.txt", b"bad")
+            with zipfile.ZipFile(ipa) as archive, self.assertRaises(signing.SigningError):
+                signing.verify_signed_app(archive, profile(), [], BUNDLE, tmp)
+            self.assertFalse((Path(tmp).parent / "outside.txt").exists())
 
 
 if __name__ == "__main__":

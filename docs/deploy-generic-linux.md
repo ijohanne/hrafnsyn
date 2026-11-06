@@ -286,3 +286,24 @@ nix build .#default
 
 Then copy the resulting release bundle to the target machine and run it under systemd with the
 same environment contract shown above.
+
+## Native shared links
+
+Set `HRAFNSYN_IOS_APP_IDS` to a comma-separated list of exact signed iOS
+`application-identifier` entitlements, for example
+`ABCDE12345.io.hrafnsyn.mobile`. This is public association metadata, not a
+secret. An unset value produces an empty association. Invalid identifiers
+fail startup rather than silently claiming an unintended app.
+
+Allow unauthenticated HTTPS requests to
+`/.well-known/apple-app-site-association` without redirects or an upstream
+login wall. The application still protects tracking data normally. Configure
+the matching host in the signed app's associated domains and deploy the
+website before installing the app; see [iOS releases](ios-release.md).
+The association is limited to shared aircraft/vessel URLs, with explicit
+**Open in app** links as the fallback for other self-hosted instances.
+
+`PHX_HOST`, `HRAFNSYN_SCHEME` and `HRAFNSYN_EXTERNAL_PORT` must describe the
+public website. The gRPC metadata uses that address for sharing. No login
+credentials are included in shared URLs, and private-server recipients must
+authenticate with their own account.

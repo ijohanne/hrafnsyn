@@ -373,3 +373,26 @@ The current schema expects these extensions in the target database:
 - `citext`
 - `pg_trgm`
 - `postgis`
+
+## Native shared links
+
+Set `services.hrafnsyn.iosAppIds` to the exact `application-identifier`
+entitlement from your signed iOS app, for example
+`[ "ABCDE12345.io.hrafnsyn.mobile" ]`. The prefix is the App ID prefix, which
+is not necessarily the Apple team ID. The default empty list claims no app.
+Hrafnsyn serves this public metadata at
+`/.well-known/apple-app-site-association` without requiring a browser session.
+Only shared aircraft/vessel links on `/` match; account, device-registration
+and installation routes remain web routes.
+
+The signed build must also include this website's host in its associated
+domains. Configure it through the private release configuration described in
+[iOS releases](ios-release.md). Deploy the association endpoint before
+installing that build. Adding a server at runtime cannot add an iOS domain
+entitlement; other instances can use the explicit **Open in app** action.
+
+Keep `host`, `scheme` and `externalPort` set to the public website address.
+The gRPC API advertises that canonical address for native sharing; it does not
+derive it from request headers or assume the internal gRPC port is a web port.
+Shared links contain a vehicle identity and history range, never a session
+token. Recipients still need their own access on private deployments.

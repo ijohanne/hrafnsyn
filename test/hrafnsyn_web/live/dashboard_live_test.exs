@@ -205,6 +205,12 @@ defmodule HrafnsynWeb.DashboardLiveTest do
              "#share-selected-track[data-share-vehicle='plane'][data-share-identity='406ABC'][data-share-range='24']",
              "Copy link"
            )
+
+    assert has_element?(
+             view,
+             "#open-selected-track-in-app[href^='hrafnsyn://open?url=']",
+             "Open in app"
+           )
   end
 
   test "selected vessels render flag emoji and code in the detail card", %{conn: conn} do

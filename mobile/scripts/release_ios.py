@@ -19,7 +19,7 @@ import tempfile
 import unicodedata
 from urllib.parse import urlsplit
 
-from ios_devices import SigningError, read_devices
+from ios_devices import SigningError, normalize_domains, read_devices
 
 
 MAX_IPA_BYTES = 250 * 1024 * 1024
@@ -65,6 +65,22 @@ def clean_token(value):
     return value
 
 
+def associated_domains(config):
+    if "associated_domains" in config:
+        try:
+            return normalize_domains(config["associated_domains"])
+        except SigningError as error:
+            raise ReleaseError(str(error)) from None
+    origin = validate_origin(config.get("server_url"), config.get("allow_loopback_http", False))
+    if origin.scheme != "https" or origin.port not in (None, 443):
+        return []
+    try:
+        return normalize_domains([origin.hostname])
+    except SigningError:
+        # IP and loopback development servers cannot publish Apple's AASA file.
+        return []
+
+
 def load_config(path):
     if path.is_symlink():
         raise ReleaseError("Use a regular private release.json file, not a symbolic link.")
@@ -84,6 +100,7 @@ def load_config(path):
         if name in config and not isinstance(config[name], bool):
             raise ReleaseError(f"{name} must be true or false.")
     validate_origin(config.get("server_url"), config.get("allow_loopback_http", False))
+    associated_domains(config)
     clean_token(config.get("refresh_token"))
     os.chmod(path, 0o600)
     return config
@@ -259,6 +276,7 @@ def run_checked(command, environment, repo, failure):
 def release(repo, config_path, api_factory=ReleaseAPI):
     with release_lock(config_path):
         config = load_config(config_path)
+        domains = associated_domains(config)
         environment = signing_environment(config, config_path)
         api = api_factory(config)
         session = api.request("POST", "/api/mobile-release/session", config["refresh_token"])
@@ -277,7 +295,10 @@ def release(repo, config_path, api_factory=ReleaseAPI):
                 os.chmod(device_file, 0o600)
                 output.writelines(f"{udid}\t{name}\n" for udid, name in sorted(devices.items()))
             output_dir = work / "signed"
-            signing = ["--devices-file", str(device_file), "--output-dir", str(output_dir)]
+            domain_file = work / "associated-domains.json"
+            domain_file.write_text(json.dumps(domains))
+            signing = ["--devices-file", str(device_file), "--output-dir", str(output_dir),
+                       "--associated-domains-file", str(domain_file)]
             if config.get("sync_devices"):
                 signing.append("--sync-devices")
             run_checked(["fish", str(repo / "mobile/scripts/build-core.fish")], environment, repo,
@@ -290,7 +311,8 @@ def release(repo, config_path, api_factory=ReleaseAPI):
                 raise ReleaseError("Expected one newly exported IPA. Nothing was uploaded.")
             run_checked([sys.executable, str(repo / "mobile/scripts/ios_devices.py"), "verify",
                          "--devices", str(device_file), "--team", config["team_id"], "--bundle", config["bundle_id"],
-                         "--output", str(output_dir), "--ipa", str(ipas[0])], environment, repo,
+                         "--output", str(output_dir), "--ipa", str(ipas[0]),
+                         "--associated-domains-file", str(domain_file)], environment, repo,
                         "Exported IPA verification failed. Nothing was uploaded.")
             # Signing can outlast the short-lived access token. Rotate again immediately
             # before publishing, saving it with the same lock and atomic replacement.

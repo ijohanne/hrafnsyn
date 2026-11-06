@@ -9,6 +9,10 @@ struct HrafnsynApp: App {
         WindowGroup {
             RootView(model: model)
                 .tint(.accentColor)
+                .onOpenURL { url in Task { await model.openSharedURL(url) } }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL { Task { await model.openSharedURL(url) } }
+                }
                 .task {
                     await model.resume()
                     #if DEBUG
@@ -39,11 +43,70 @@ struct RootView: View {
     @Bindable var model: AppModel
     var body: some View {
         Group {
-            switch model.phase {
-            case .server, .connecting: ServerView(model: model)
-            case .login: LoginView(model: model)
-            case .tracking: TrackingView(model: model)
+            if let prompt = model.sharedServerPrompt {
+                SharedServerView(model: model, prompt: prompt).id(prompt.id)
+            } else {
+                switch model.phase {
+                case .server, .connecting: ServerView(model: model)
+                case .login: LoginView(model: model)
+                case .tracking: TrackingView(model: model)
+                }
             }
+        }
+        .safeAreaInset(edge: .top) {
+            if let message = model.sharedLinkError {
+                HStack(alignment: .top) {
+                    Image(systemName: "link.badge.plus")
+                    Text(message).font(.footnote)
+                    Spacer(minLength: 8)
+                    if model.canRetrySharedLink {
+                        Button("Retry") { Task { await model.retrySharedLink() } }
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    Button { model.cancelSharedLink() } label: { Image(systemName: "xmark") }
+                        .frame(width: 44, height: 44).accessibilityLabel("Dismiss link error")
+                }.padding(.horizontal).background(.regularMaterial)
+            }
+        }
+    }
+}
+
+struct SharedServerView: View {
+    @Bindable var model: AppModel
+    let prompt: AppModel.SharedServerPrompt
+    @State private var address: String
+
+    init(model: AppModel, prompt: AppModel.SharedServerPrompt) {
+        self.model = model; self.prompt = prompt
+        _address = State(initialValue: prompt.suggestedServer)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    LabeledContent("Shared from", value: prompt.webOrigin)
+                        .textSelection(.enabled)
+                    Text(prompt.knownServer
+                         ? "Open this track using your saved connection to this server."
+                         : "Connect to this server to open the shared track. You’ll be asked to sign in if needed.")
+                        .foregroundStyle(.secondary)
+                }
+                Section {
+                    TextField("Server address", text: $address)
+                        .keyboardType(.URL).textContentType(.URL)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    Button("Connect and open") { Task { await model.confirmSharedServer(address) } }
+                        .frame(minHeight: 32)
+                        .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty)
+                } header: { Text("Tracking server") } footer: {
+                    Text("If this installation uses a separate gRPC address, enter it here. Your saved logins stay with their own server.")
+                }
+            }
+            .frame(maxWidth: 640).frame(maxWidth: .infinity)
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationTitle("Open shared track")
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: model.cancelSharedLink) } }
         }
     }
 }

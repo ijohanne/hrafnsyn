@@ -80,6 +80,9 @@ class ReleaseTests(unittest.TestCase):
                 self.assertIn(SECOND + "\tLocal iPad", devices)
                 self.assertEqual(devices.count(FIRST), 1)
                 self.assertEqual(json.loads(self.path.read_text())["refresh_token"], "refresh-1")
+            if "--associated-domains-file" in command:
+                domains = Path(command[command.index("--associated-domains-file") + 1])
+                self.assertEqual(json.loads(domains.read_text()), ["example.test"])
             return self.successful_build(command, **kwargs)
 
         self.run_release(build)
@@ -168,6 +171,20 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
         self.assertFalse((self.repo / "should-not-exist").exists())
         self.assertFalse((self.repo / "mobile/signing/should-not-exist").exists())
+
+    def test_associated_domains_default_to_https_instance_and_can_be_overridden(self):
+        self.assertEqual(release.associated_domains(self.config), ["example.test"])
+        self.assertEqual(release.associated_domains({**self.config, "associated_domains": []}), [])
+        self.assertEqual(release.associated_domains({**self.config, "associated_domains": ["SHARE.example.test"]}), ["share.example.test"])
+        for origin in ("https://127.0.0.1", "https://localhost", "https://example.test:8443", "http://127.0.0.1:4000"):
+            self.assertEqual(release.associated_domains({**self.config, "server_url": origin, "allow_loopback_http": True}), [])
+
+    def test_invalid_domains_fail_before_any_session_rotation(self):
+        self.config["associated_domains"] = ["https://attacker.invalid/path"]
+        self.path.write_text(json.dumps(self.config))
+        with self.assertRaises(release.ReleaseError):
+            self.run_release(self.successful_build)
+        self.assertEqual(self.api.calls, [])
 
     def test_rotated_token_is_atomic_private_and_preserves_other_settings(self):
         release.save_rotated_token(self.path, self.config, "next-refresh")
