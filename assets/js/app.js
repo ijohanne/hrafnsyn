@@ -275,6 +275,8 @@ const ShareSelection = {
 const TrackingMap = {
   mounted() {
     this.mapEl = this.el.querySelector("[data-map-canvas]")
+    this.mapReady = false
+    this.mapDestroyed = false
     this.pendingPayload = null
     this.lastTrackFeatures = []
     this.lastSelectedTrackId = null
@@ -287,6 +289,9 @@ const TrackingMap = {
     this.popupMargin = 12
     this.popupOffset = 16
     this.popupRepositionFrame = null
+    this.mapResizeFrame = null
+    this.pendingOverview = false
+    this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
     this.visibility = {plane: true, vessel: true}
     this.handleLegendClick = event => {
       const button = event.target.closest("[data-track-toggle]")
@@ -332,6 +337,14 @@ const TrackingMap = {
 
     this.map.addControl(new maplibregl.NavigationControl({visualizePitch: true}), "top-right")
     this.map.addControl(new maplibregl.ScaleControl({unit: "metric"}), "bottom-right")
+    this.mapResizeObserver = new ResizeObserver(() => {
+      if (this.mapResizeFrame) window.cancelAnimationFrame(this.mapResizeFrame)
+      this.mapResizeFrame = window.requestAnimationFrame(() => {
+        this.mapResizeFrame = null
+        this.map.resize()
+      })
+    })
+    this.mapResizeObserver.observe(this.mapEl)
     this.popup = new maplibregl.Popup({
       closeButton: true,
       closeOnClick: false,
@@ -345,7 +358,7 @@ const TrackingMap = {
       this.popupPinned = false
     })
 
-    this.map.on("load", async () => {
+    this.map.once("style.load", async () => {
       this.map.addSource("tracks", {
         type: "geojson",
         data: this.emptyCollection(),
@@ -386,6 +399,7 @@ const TrackingMap = {
       })
 
       this.usesSymbolIcons = await this.installTrackIcons()
+      if (this.mapDestroyed) return
 
       this.map.addLayer({
         id: "tracks-selected-halo",
@@ -514,6 +528,7 @@ const TrackingMap = {
       this.map.on("move", () => this.schedulePopupReposition())
       this.map.on("resize", () => this.schedulePopupReposition())
 
+      this.mapReady = true
       if (this.pendingPayload) {
         this.sync(this.pendingPayload)
       }
@@ -522,6 +537,7 @@ const TrackingMap = {
     })
 
     this.handleEvent("map:sync", payload => this.sync(payload))
+    this.handleEvent("map:overview", () => this.showOverview())
   },
 
   updated() {
@@ -529,19 +545,20 @@ const TrackingMap = {
   },
 
   destroyed() {
+    this.mapDestroyed = true
+    this.mapReady = false
     if (this.popupRepositionFrame) window.cancelAnimationFrame(this.popupRepositionFrame)
+    if (this.mapResizeFrame) window.cancelAnimationFrame(this.mapResizeFrame)
+    this.mapResizeObserver?.disconnect()
     this.el.removeEventListener("click", this.handleLegendClick)
     delete this.el.__trackingMapHook
     if (this.map) this.map.remove()
   },
 
   sync(payload) {
-    if (!this.map?.isStyleLoaded()) {
-      this.pendingPayload = payload
-      return
-    }
-
     this.pendingPayload = payload
+    if (payload.selected_track_id) this.pendingOverview = false
+    if (!this.mapReady) return
 
     const trackFeatures = payload.tracks
       .filter(track => typeof track.latitude === "number" && typeof track.longitude === "number")
@@ -620,7 +637,7 @@ const TrackingMap = {
     if (!restoredSharedView && payload.selected_track_id && payload.selected_track_id !== this.lastSelectedTrackId && routeFeatures.length > 0) {
       const bounds = new maplibregl.LngLatBounds()
       routeFeatures[0].geometry.coordinates.forEach(coord => bounds.extend(coord))
-      this.map.fitBounds(bounds, {padding: 80, duration: 900, maxZoom: 12.5})
+      this.map.fitBounds(bounds, {padding: 80, duration: this.cameraDuration(), maxZoom: 12.5})
     } else if (!restoredSharedView && payload.selected_track_id && payload.selected_track_id !== this.lastSelectedTrackId) {
       const selectedTrack = payload.tracks.find(track => track.id === payload.selected_track_id)
 
@@ -628,14 +645,44 @@ const TrackingMap = {
         this.map.flyTo({
           center: [selectedTrack.longitude, selectedTrack.latitude],
           zoom: Math.max(this.map.getZoom(), 9.8),
-          duration: 900,
-          essential: true,
+          duration: this.cameraDuration(),
         })
       }
     }
 
     this.refreshPopup(trackFeatures, payload.selected_track_id)
     this.lastSelectedTrackId = payload.selected_track_id
+    if (this.pendingOverview) this.showOverview()
+  },
+
+  cameraDuration() {
+    return this.reducedMotion.matches ? 0 : 900
+  },
+
+  showOverview() {
+    if (!this.mapReady || !this.pendingPayload) {
+      this.pendingOverview = true
+      return
+    }
+
+    this.pendingOverview = false
+    this.hoveredTrackId = null
+    this.popup.remove()
+
+    const tracks = this.lastTrackFeatures.filter(feature => this.isFeatureVisible(feature))
+    if (tracks.length === 0) return
+
+    const bounds = new maplibregl.LngLatBounds()
+    tracks.forEach(feature => bounds.extend(feature.geometry.coordinates))
+    const padding = Math.min(64, this.mapEl.clientWidth / 5, this.mapEl.clientHeight / 5)
+
+    this.map.fitBounds(bounds, {
+      padding,
+      maxZoom: 12.5,
+      bearing: 0,
+      pitch: 0,
+      duration: this.cameraDuration(),
+    })
   },
 
   currentView() {
@@ -661,8 +708,7 @@ const TrackingMap = {
       zoom: sharedView.zoom,
       bearing: sharedView.bearing,
       pitch: sharedView.pitch,
-      duration: 900,
-      essential: true,
+      duration: this.cameraDuration(),
     })
 
     return true
@@ -702,7 +748,7 @@ const TrackingMap = {
   },
 
   applyTrackVisibility() {
-    if (!this.map?.isStyleLoaded()) return
+    if (!this.mapReady) return
 
     const trackFilter = this.visibleTrackFilter()
     const haloFilter = ["all", ["==", ["get", "selected"], true], trackFilter]
@@ -898,6 +944,12 @@ const TrackingMap = {
   },
 
   refreshPopup(trackFeatures, selectedTrackId) {
+    if (!selectedTrackId && this.lastSelectedTrackId) {
+      this.hoveredTrackId = null
+      this.popup.remove()
+      return
+    }
+
     if (
       selectedTrackId &&
       (selectedTrackId !== this.lastSelectedTrackId ||

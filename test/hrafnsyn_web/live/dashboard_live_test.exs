@@ -83,7 +83,7 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     assert has_element?(view, ".legend-row-static", "Selected route")
   end
 
-  test "search stays collapsed by default and submitting an exact match selects the track", %{
+  test "search is available immediately and submitting an exact match selects the track", %{
     conn: conn
   } do
     observed_at = DateTime.utc_now(:second)
@@ -93,15 +93,11 @@ defmodule HrafnsynWeb.DashboardLiveTest do
                plane_observation(observed_at, "406ABC", "AFR69ZJ", "F-GZNE", 36.101, -6.141)
              ])
 
-    {:ok, view, html} = live(conn, ~p"/")
+    {:ok, view, _html} = live(conn, ~p"/")
 
-    refute html =~ "Press Enter to jump to an exact or unique active match."
-
-    view
-    |> element(".search-panel .panel-toggle")
-    |> render_click()
-
-    assert render(view) =~ "Press Enter to jump to an exact or unique active match."
+    assert has_element?(view, "#search_query[type='search'][aria-label='Search contacts']")
+    assert has_element?(view, "#traffic-sources summary", "configured sources")
+    assert has_element?(view, "#traffic-sources summary", "Read only")
 
     view
     |> form(".search-panel .search-form", search: %{query: "AFR69ZJ"})
@@ -115,7 +111,8 @@ defmodule HrafnsynWeb.DashboardLiveTest do
 
     assert has_element?(view, ".detail-card h2", "AFR69ZJ")
     assert has_element?(view, ".detail-hero p", "406ABC")
-    refute render(view) =~ "Press Enter to jump to an exact or unique active match."
+    assert has_element?(view, "#search_query[value='']")
+    refute has_element?(view, "#search-results")
   end
 
   test "clicking a search result selects the requested track", %{conn: conn} do
@@ -131,10 +128,6 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     [%{id: second_track_id}] = Tracking.search_active_tracks("AFR11AA")
 
     {:ok, view, _html} = live(conn, ~p"/")
-
-    view
-    |> element(".search-panel .panel-toggle")
-    |> render_click()
 
     view
     |> form(".search-panel .search-form", search: %{query: "AFR"})
@@ -186,8 +179,7 @@ defmodule HrafnsynWeb.DashboardLiveTest do
              "Flight page"
            )
 
-    assert render(view) =~
-             "External lookup. Opens in a new tab when this aircraft has enough identifiers."
+    assert has_element?(view, "a.detail-action[target='_blank'][rel='noopener noreferrer']")
   end
 
   test "deep links restore the selected track, range, and share metadata", %{conn: conn} do
@@ -205,7 +197,8 @@ defmodule HrafnsynWeb.DashboardLiveTest do
 
     assert html =~ "AFR69ZJ"
     assert has_element?(view, ".detail-hero p", "406ABC")
-    assert has_element?(view, ".range-tab.is-active", "24h")
+    assert has_element?(view, ".range-tab.is-active[aria-pressed='true']", "24h")
+    assert has_element?(view, ".range-tab[aria-pressed='false']", "6h")
 
     assert has_element?(
              view,
@@ -230,6 +223,85 @@ defmodule HrafnsynWeb.DashboardLiveTest do
 
     assert render(view) =~ "Flag"
     assert render(view) =~ "🇧🇸 BS"
+  end
+
+  test "closing track details clears the selected route and restores contacts", %{conn: conn} do
+    track_id = route_track_fixture()
+    {:ok, view, _html} = live(conn, ~p"/")
+    assert_push_event(view, "map:sync", %{selected_track_id: nil})
+
+    view |> element("#track-#{track_id}") |> render_click()
+    assert_push_event(view, "map:sync", %{selected_track_id: ^track_id, route: [_, _]})
+    assert has_element?(view, "#selected-track-detail", "AFR69ZJ")
+    refute has_element?(view, "#track-grid")
+
+    view |> element("button[aria-label='Close track details']") |> render_click()
+
+    assert_push_event(view, "map:sync", %{selected_track_id: nil, route: [], shared_view: nil})
+    refute_push_event(view, "map:overview", %{})
+    refute has_element?(view, "#selected-track-detail")
+    assert has_element?(view, "#track-#{track_id}", "AFR69ZJ")
+
+    view |> element("#track-#{track_id}") |> render_click()
+    assert_push_event(view, "map:sync", %{selected_track_id: ^track_id, route: [_, _]})
+    assert has_element?(view, "#selected-track-detail", "AFR69ZJ")
+  end
+
+  test "overview clears a shared selection and requests map overview", %{conn: conn} do
+    track_id = route_track_fixture()
+
+    {:ok, view, _html} =
+      live(conn, "/?vehicle=plane&identity=406ABC&lat=36.15&lon=-6.10&zoom=10.4")
+
+    assert_push_event(view, "map:sync", %{
+      selected_track_id: ^track_id,
+      route: [_, _],
+      shared_view: %{latitude: 36.15, longitude: -6.1, zoom: 10.4}
+    })
+
+    view |> element("button.map-overview") |> render_click()
+
+    assert_push_event(view, "map:sync", %{selected_track_id: nil, route: [], shared_view: nil})
+    assert_push_event(view, "map:overview", %{})
+    refute has_element?(view, "#selected-track-detail")
+    assert has_element?(view, "#track-#{track_id}", "AFR69ZJ")
+  end
+
+  test "ambiguous search keeps choices available and clear search restores an empty field", %{
+    conn: conn
+  } do
+    observed_at = DateTime.utc_now(:second)
+
+    assert {:ok, [_, _]} =
+             Ingest.ingest_batch(plane_source_fixture(), [
+               plane_observation(observed_at, "406ABC", "AFR69ZJ", "F-GZNE", 36.101, -6.141),
+               plane_observation(observed_at, "406ABD", "AFR11AA", "F-HABC", 36.141, -6.181)
+             ])
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view |> form("#traffic-search", search: %{query: "AFR"}) |> render_change()
+    assert has_element?(view, "#search-status[role='status']", "2 matching contacts")
+    view |> form("#traffic-search", search: %{query: "AFR"}) |> render_submit()
+
+    assert has_element?(
+             view,
+             "#search-status[role='status']",
+             "Pick one from the results below"
+           )
+
+    assert has_element?(view, "button.search-result-row", "AFR69ZJ")
+    assert has_element?(view, "button.search-result-row", "AFR11AA")
+    refute has_element?(view, "#selected-track-detail")
+
+    view |> element("button[aria-label='Clear search']") |> render_click()
+
+    assert has_element?(view, "#search_query[value='']")
+    refute has_element?(view, "#search-results")
+    assert has_element?(view, "#track-grid")
+
+    view |> form("#traffic-search", search: %{query: "no-such-contact"}) |> render_change()
+    assert has_element?(view, "#search-status[role='status']", "No active contacts match")
   end
 
   test "selected aircraft render derived registration and flag details", %{conn: conn} do
@@ -276,6 +348,29 @@ defmodule HrafnsynWeb.DashboardLiveTest do
     assert render(view) =~ "Landplane, 2 jet engines (L2J)"
     assert render(view) =~ "Wake turbulence"
     assert render(view) =~ "Medium (M)"
+  end
+
+  defp route_track_fixture do
+    observed_at = DateTime.utc_now(:second)
+
+    assert {:ok, [track_id]} =
+             Ingest.ingest_batch(plane_source_fixture(), [
+               plane_observation(
+                 DateTime.add(observed_at, -60, :second),
+                 "406ABC",
+                 "AFR69ZJ",
+                 "F-GZNE",
+                 36.101,
+                 -6.141
+               )
+             ])
+
+    assert {:ok, [^track_id]} =
+             Ingest.ingest_batch(plane_source_fixture(), [
+               plane_observation(observed_at, "406ABC", "AFR69ZJ", "F-GZNE", 36.141, -6.181)
+             ])
+
+    track_id
   end
 
   defp plane_source_fixture do

@@ -40,17 +40,16 @@ defmodule HrafnsynWeb.Layouts do
       assign(assigns, :profile_initials, profile_initials(assigns.current_scope))
 
     ~H"""
-    <header class="app-shell">
-      <div class="brand-bar">
+    <div class="app-shell">
+      <header class="brand-bar">
         <a href="/" class="brand-lockup">
-          <img src={~p"/images/logo.svg"} width="48" height="48" alt="Hrafnsyn logo" />
+          <img src={~p"/images/logo.svg"} width="32" height="32" alt="" />
           <div>
             <span>Hrafnsyn</span>
-            <small>Unified maritime and aviation situational awareness</small>
           </div>
         </a>
 
-        <nav class="top-nav">
+        <nav class="top-nav" aria-label="Main navigation">
           <.link navigate={~p"/"}>Live map</.link>
           <.link navigate={~p"/grpc"}>gRPC API</.link>
           <.link :if={Scope.admin?(@current_scope)} navigate={~p"/admin/users"}>Admin</.link>
@@ -78,12 +77,12 @@ defmodule HrafnsynWeb.Layouts do
             </div>
           </details>
         </nav>
-      </div>
+      </header>
 
-      <div id="page-frame" class="page-frame" phx-hook="PreserveScroll">
+      <main id="page-frame" class="page-frame" phx-hook="PreserveScroll">
         {render_slot(@inner_block)}
-      </div>
-    </header>
+      </main>
+    </div>
 
     <.flash_group flash={@flash} />
     """

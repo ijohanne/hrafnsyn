@@ -6,8 +6,9 @@ defmodule HrafnsynWeb.PageControllerTest do
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
     response = html_response(conn, 200)
-    assert response =~ "Air and sea traffic on one living map."
-    assert response =~ "Live Contacts"
+    assert response =~ "Live traffic"
+    assert response =~ "Live contacts"
+    assert response =~ ~s(aria-label="Search contacts")
     assert response =~ "gRPC API"
   end
 

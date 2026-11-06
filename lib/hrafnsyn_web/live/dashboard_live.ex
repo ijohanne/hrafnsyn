@@ -88,6 +88,18 @@ defmodule HrafnsynWeb.DashboardLive do
     {:noreply, select_track(socket, id)}
   end
 
+  def handle_event("clear_selection", _params, socket) do
+    {:noreply, socket |> clear_selection() |> push_map_state()}
+  end
+
+  def handle_event("overview_map", _params, socket) do
+    {:noreply,
+     socket
+     |> clear_selection()
+     |> push_map_state()
+     |> push_event("map:overview", %{})}
+  end
+
   def handle_event("share_link_copied", _params, socket) do
     {:noreply, put_flash(socket, :info, "Share link copied to your clipboard.")}
   end
@@ -138,29 +150,92 @@ defmodule HrafnsynWeb.DashboardLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <section class="shell-grid">
-        <div class="map-column">
-          <div class="map-header">
-            <div>
-              <p class="eyebrow">Hrafnsyn</p>
-              <h1>Air and sea traffic on one living map.</h1>
-              <p class="lede">
-                Plane ADS-B and AIS vessel feeds are merged into a single realtime view, with searchable identities,
-                replayable tracks, and a durable log in Postgres.
+      <section
+        class={["tracking-workspace", @selected_track && "has-selection"]}
+        aria-label="Live tracking workspace"
+      >
+        <div class="workspace-toolbar">
+          <h1>Live traffic</h1>
+          <div class="traffic-counts" aria-label="Active contacts">
+            <span><span class="type-dot plane"></span><strong>{@plane_count}</strong> aircraft</span>
+            <span><span class="type-dot vessel"></span><strong>{@vessel_count}</strong> vessels</span>
+          </div>
+          <section class="search-panel" aria-label="Find a contact">
+            <.form
+              for={@search_form}
+              id="traffic-search"
+              phx-change="search"
+              phx-submit="submit_search"
+              class="search-form"
+            >
+              <.icon name="hero-magnifying-glass" class="search-icon size-4" />
+              <input
+                type="search"
+                id="search_query"
+                name="search[query]"
+                value={@search_query}
+                placeholder="Search callsign, name or identity"
+                aria-label="Search contacts"
+                autocomplete="off"
+                phx-debounce="200"
+                phx-focus="open_search"
+              />
+              <button
+                :if={@search_query != ""}
+                type="button"
+                class="search-clear"
+                phx-click="close_search"
+                aria-label="Clear search"
+              >
+                <.icon name="hero-x-mark" class="size-4" />
+              </button>
+            </.form>
+            <p id="search-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+              <%= cond do %>
+                <% @search_feedback -> %>
+                  {@search_feedback}
+                <% @search_query != "" and @search_results == [] -> %>
+                  No active contacts match. Try a callsign or identity.
+                <% @search_query != "" -> %>
+                  {length(@search_results)} matching contacts.
+                <% true -> %>
+              <% end %>
+            </p>
+            <div
+              :if={@search_query != "" or @search_feedback}
+              class="search-results"
+              id="search-results"
+            >
+              <p :if={@search_feedback} class="search-feedback">{@search_feedback}</p>
+              <button
+                :for={track <- @search_results}
+                type="button"
+                class="track-row search-result-row"
+                phx-click="select_search_result"
+                phx-value-id={track.id}
+              >
+                <.icon
+                  name={
+                    if track.vehicle_type == "plane", do: "hero-paper-airplane", else: "hero-lifebuoy"
+                  }
+                  class={["contact-icon size-5", track.vehicle_type]}
+                />
+                <span class="track-copy"><strong>{track.display_name || track.identity}</strong><span>{track.identity}</span></span>
+                <span class="track-metrics"><span>{format_speed(track.speed)}</span><span>{format_age(
+                  track.observed_at
+                )}</span></span>
+              </button>
+              <p :if={@search_results == [] and is_nil(@search_feedback)} class="list-empty">
+                No active contacts match. Try a callsign or identity.
+              </p>
+              <p :if={@search_results != []} class="search-hint">
+                Choose a contact, or press Enter for an exact match.
               </p>
             </div>
-            <section class="summary-card">
-              <div class="summary-row">
-                <span>Aircraft</span>
-                <strong>{@plane_count}</strong>
-              </div>
-              <div class="summary-row">
-                <span>Boats</span>
-                <strong>{@vessel_count}</strong>
-              </div>
-            </section>
-          </div>
+          </section>
+        </div>
 
+        <div class="workspace-body">
           <div
             id="tracking-map-frame"
             class="tracking-map-frame"
@@ -169,7 +244,9 @@ defmodule HrafnsynWeb.DashboardLive do
             data-glyph-color={Application.get_env(:hrafnsyn, :map_glyph_color)}
           >
             <div id="tracking-map" class="tracking-map" phx-update="ignore" data-map-canvas></div>
-
+            <button type="button" class="map-overview" phx-click="overview_map">
+              <.icon name="hero-arrows-pointing-out" class="size-4" /> Overview
+            </button>
             <div
               class="map-overlay bottom-left legend-card"
               aria-label="Map legend and visibility controls"
@@ -180,8 +257,7 @@ defmodule HrafnsynWeb.DashboardLive do
                 data-track-toggle="plane"
                 aria-pressed="true"
               >
-                <span class="legend-swatch plane"></span>
-                <span>Aircraft</span>
+                <span class="legend-swatch plane"></span><span>Aircraft</span>
               </button>
               <button
                 type="button"
@@ -189,161 +265,83 @@ defmodule HrafnsynWeb.DashboardLive do
                 data-track-toggle="vessel"
                 aria-pressed="true"
               >
-                <span class="legend-swatch vessel"></span>
-                <span>Vessels</span>
+                <span class="legend-swatch vessel"></span><span>Vessels</span>
               </button>
               <div class="legend-row legend-row-static">
-                <span class="legend-swatch route"></span>
-                <span>Selected route</span>
+                <span class="legend-swatch route"></span><span>Selected route</span>
               </div>
             </div>
           </div>
 
-          <details id="live-contacts-panel" class="panel live-contacts-panel" data-preserve-open>
-            <summary class="panel-title summary-toggle">
-              <span>Live Contacts</span>
-              <span class="subtle">{@track_count} active</span>
-            </summary>
-
-            <div id="track-grid" class="track-grid" data-preserve-scroll>
-              <button
-                :for={track <- @tracks}
-                id={"track-#{track.id}"}
-                type="button"
-                class={["track-row", @selected_track && @selected_track.id == track.id && "is-active"]}
-                phx-click="select_track"
-                phx-value-id={track.id}
-              >
-                <span class={["track-pill", track.vehicle_type]}>
-                  {String.upcase(track.vehicle_type)}
-                </span>
-                <div class="track-copy">
-                  <strong>{track.display_name || track.identity}</strong>
-                  <span>{track.identity}</span>
-                </div>
-                <div class="track-metrics">
-                  <span>{format_speed(track.speed)}</span>
-                  <span>{format_age(track.observed_at)}</span>
-                </div>
-              </button>
-
-              <div :if={Enum.empty?(@tracks)} class="list-empty">
-                No active tracks are available right now.
-              </div>
-            </div>
-          </details>
-        </div>
-
-        <aside class="side-column">
-          <section class="panel status-panel">
-            <div class="panel-title">
-              <span>Map Status</span>
-              <span class="subtle">Collector health</span>
-            </div>
-            <div class="status-card">
-              <span class="overlay-label">Merged LiveView map</span>
-              <strong>{length(@source_cards)} active upstream feeds</strong>
-              <small>
-                Each feed runs in its own collector process and merges by tracked identity.
-              </small>
-            </div>
-          </section>
-
-          <section class="panel search-panel">
-            <button type="button" class="panel-title panel-toggle" phx-click="toggle_search">
-              <span>Search</span>
-              <span class="subtle">
-                {if search_panel_open?(@search_open, @search_query, @search_feedback),
-                  do: "Hide",
-                  else: "Boat / plane id, callsign, name"}
-              </span>
-            </button>
-
-            <div
-              :if={search_panel_open?(@search_open, @search_query, @search_feedback)}
-              class="search-panel-body"
-            >
-              <.form
-                for={@search_form}
-                phx-change="search"
-                phx-submit="submit_search"
-                class="search-form"
-              >
-                <.input
-                  field={@search_form[:query]}
-                  type="text"
-                  placeholder="Boat / plane id, callsign, name"
-                  phx-focus="open_search"
-                />
-              </.form>
-
-              <div class="search-actions">
-                <p class="subtle">Press Enter to jump to an exact or unique active match.</p>
-                <button type="button" class="search-clear" phx-click="close_search">Collapse</button>
-              </div>
-
-              <p :if={@search_feedback} class="search-feedback">{@search_feedback}</p>
-
-              <div :if={@search_query != ""} class="search-results">
+          <aside class="traffic-inspector" aria-label="Contacts and track details">
+            <section :if={@selected_track} class="detail-panel">
+              <div class="inspector-heading">
+                <h2>Track details</h2>
                 <button
-                  :for={track <- @search_results}
                   type="button"
-                  class="track-row search-result-row"
-                  phx-click="select_search_result"
-                  phx-value-id={track.id}
+                  class="inspector-close"
+                  phx-click="clear_selection"
+                  aria-label="Close track details"
                 >
-                  <span class={["track-pill", track.vehicle_type]}>
-                    {String.upcase(track.vehicle_type)}
-                  </span>
-                  <div class="track-copy">
-                    <strong>{track.display_name || track.identity}</strong>
-                    <span>{track.identity}</span>
-                  </div>
-                  <div class="track-metrics">
-                    <span>{format_speed(track.speed)}</span>
-                    <span>{format_age(track.observed_at)}</span>
-                  </div>
-                </button>
-
-                <div :if={Enum.empty?(@search_results)} class="list-empty">
-                  No active tracks match that query.
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel detail-panel">
-            <div class="panel-title">
-              <span>Detail</span>
-              <div :if={@selected_track} class="range-tabs">
-                <button
-                  :for={{label, hours} <- @ranges}
-                  type="button"
-                  class={["range-tab", @range_hours == hours && "is-active"]}
-                  phx-click="set_range"
-                  phx-value-hours={hours}
-                >
-                  {label}
+                  <.icon name="hero-x-mark" class="size-5" />
                 </button>
               </div>
-            </div>
-
-            <div :if={@selected_track} class="detail-card">
-              <% external_actions = detail_external_actions(@selected_track) %>
-              <div class="detail-hero">
-                <span class={["track-pill", @selected_track.vehicle_type]}>
-                  {String.upcase(@selected_track.vehicle_type)}
-                </span>
-                <div>
-                  <h2>{@selected_track.display_name || @selected_track.identity}</h2>
-                  <p>{@selected_track.identity}</p>
+              <div class="detail-card" id="selected-track-detail" data-preserve-scroll>
+                <% external_actions = detail_external_actions(@selected_track) %>
+                <div class="detail-hero">
+                  <div>
+                    <h2>{@selected_track.display_name || @selected_track.identity}</h2><p>
+                      {@selected_track.identity}
+                      <span class={["track-pill", @selected_track.vehicle_type]}>
+                        · {if @selected_track.vehicle_type == "plane", do: "Aircraft", else: "Vessel"}
+                      </span>
+                    </p>
+                  </div>
                 </div>
-              </div>
-
-              <div class="detail-actions">
+                <p class="observation-age">Last observed {format_age(@selected_track.observed_at)}</p>
+                <dl class="movement-metrics">
+                  <div>
+                    <dt>Speed</dt><dd>{format_speed(@selected_track.speed)}</dd>
+                  </div>
+                  <div>
+                    <dt>Heading</dt><dd>{format_heading(@selected_track.heading)}</dd>
+                  </div>
+                  <div :if={@selected_track.vehicle_type == "plane"}>
+                    <dt>Altitude</dt><dd>{format_altitude(@selected_track.altitude)}</dd>
+                  </div>
+                  <div :if={@selected_track.vehicle_type == "vessel" and @selected_track.destination}>
+                    <dt>Destination</dt><dd>{@selected_track.destination}</dd>
+                  </div>
+                </dl>
+                <div class="route-heading">
+                  <h3>Route history</h3><div class="range-tabs" aria-label="Route history duration">
+                    <button
+                      :for={{label, hours} <- @ranges}
+                      type="button"
+                      class={["range-tab", @range_hours == hours && "is-active"]}
+                      phx-click="set_range"
+                      phx-value-hours={hours}
+                      aria-pressed={if @range_hours == hours, do: "true", else: "false"}
+                    >{label}</button>
+                  </div>
+                </div>
+                <p class="route-summary">
+                  {format_distance(@route_stats.distance_meters)} over {format_duration(
+                    @route_stats.observed_seconds
+                  )}
+                </p>
+                <details id="track-identification" class="track-identification" data-preserve-open>
+                  <summary>Identification &amp; source</summary>
+                  <dl class="detail-grid">
+                    <div :for={
+                      {label, value} <-
+                        detail_items(@selected_track, @route_points, @route_stats, @log_entries)
+                    }>
+                      <dt>{label}</dt><dd>{value}</dd>
+                    </div>
+                  </dl>
+                </details>
                 <div class="detail-actions-row">
-                  <span class="detail-actions-label">Share</span>
-
                   <button
                     id="share-selected-track"
                     type="button"
@@ -353,19 +351,8 @@ defmodule HrafnsynWeb.DashboardLive do
                     data-share-identity={@selected_track.identity}
                     data-share-range={@range_hours}
                   >
-                    Copy link
+                    <.icon name="hero-link" class="size-4" /> Copy link
                   </button>
-                </div>
-
-                <p class="detail-actions-note">
-                  Copies a deep link that restores this selected track and map view.
-                </p>
-              </div>
-
-              <div :if={external_actions != []} class="detail-actions">
-                <div class="detail-actions-row">
-                  <span class="detail-actions-label">FlightAware</span>
-
                   <a
                     :for={action <- external_actions}
                     class="detail-action"
@@ -373,73 +360,82 @@ defmodule HrafnsynWeb.DashboardLive do
                     target="_blank"
                     rel="noopener noreferrer"
                     title={action.description}
-                  >
-                    {action.label}
-                  </a>
+                  >{action.label}</a>
                 </div>
-
-                <p class="detail-actions-note">
-                  External lookup. Opens in a new tab when this aircraft has enough identifiers.
-                </p>
-              </div>
-
-              <dl class="detail-grid">
-                <div :for={
-                  {label, value} <-
-                    detail_items(@selected_track, @route_points, @route_stats, @log_entries)
-                }>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
+                <div class="log-header">
+                  <h3>Recent observations</h3><span>{length(@log_entries)}</span>
                 </div>
-              </dl>
-
-              <div class="log-header">
-                <strong>Recent log</strong>
-                <span>{length(@log_entries)} rows</span>
+                <div id="detail-log-list" class="log-list" data-preserve-scroll>
+                  <article :for={entry <- @log_entries} id={"log-#{entry.id}"} class="log-row">
+                    <div>
+                      <strong>{format_timestamp(entry.observed_at)}</strong><span>{entry.source_name}</span>
+                    </div>
+                    <div>
+                      <span>{format_latlon(entry.latitude, entry.longitude)}</span><span>{format_speed(
+                        entry.speed
+                      )} · {format_heading(entry.heading)}</span>
+                    </div>
+                  </article>
+                  <p :if={@log_entries == []} class="list-empty">
+                    No observations in this interval. Try a longer range.
+                  </p>
+                </div>
               </div>
+            </section>
 
-              <div id="detail-log-list" class="log-list" data-preserve-scroll>
-                <article :for={entry <- @log_entries} id={"log-#{entry.id}"} class="log-row">
-                  <div>
-                    <strong>{format_timestamp(entry.observed_at)}</strong>
-                    <span>{entry.source_name}</span>
-                  </div>
-                  <div>
-                    <span>{format_latlon(entry.latitude, entry.longitude)}</span>
-                    <span>{format_speed(entry.speed)} • {format_heading(entry.heading)}</span>
-                  </div>
+            <section
+              :if={is_nil(@selected_track)}
+              class="live-contacts-panel"
+              id="live-contacts-panel"
+            >
+              <div class="inspector-heading">
+                <h2>Live contacts</h2><span class="subtle">{@track_count} active</span>
+              </div>
+              <div class="contact-columns" aria-hidden="true">
+                <span>Contact / identity</span><span>Speed / last seen</span>
+              </div>
+              <div id="track-grid" class="track-grid" data-preserve-scroll>
+                <button
+                  :for={track <- @tracks}
+                  id={"track-#{track.id}"}
+                  type="button"
+                  class="track-row"
+                  phx-click="select_track"
+                  phx-value-id={track.id}
+                >
+                  <.icon
+                    name={
+                      if track.vehicle_type == "plane",
+                        do: "hero-paper-airplane",
+                        else: "hero-lifebuoy"
+                    }
+                    class={["contact-icon size-5", track.vehicle_type]}
+                  />
+                  <span class="track-copy"><strong>{track.display_name || track.identity}</strong><span>{track.identity}</span></span>
+                  <span class="track-metrics"><span>{format_speed(track.speed)}</span><span>{format_age(
+                    track.observed_at
+                  )}</span></span>
+                </button>
+                <div :if={@tracks == []} class="list-empty">
+                  <h3>No active contacts</h3><p>
+                    New observations will appear here automatically. You can still explore the map.
+                  </p>
+                </div>
+              </div>
+            </section>
+            <details id="traffic-sources" class="source-panel" data-preserve-open>
+              <summary>
+                {length(@source_cards)} configured sources
+                <span :if={@public_readonly? and is_nil(@current_scope)}>Read only</span>
+              </summary>
+              <div class="feed-grid">
+                <article :for={source <- @source_cards} class="source-card">
+                  <strong>{source.name}</strong><small>{source.poll_label}</small>
                 </article>
               </div>
-            </div>
-
-            <div :if={is_nil(@selected_track)} class="empty-state">
-              Select a plane or vessel from the map or the live list to inspect its route and recent history.
-            </div>
-          </section>
-
-          <section class="panel source-panel">
-            <div class="panel-title">
-              <span>Sources</span>
-              <span class="subtle">Feed cadence and mode</span>
-            </div>
-            <p :if={@public_readonly? and is_nil(@current_scope)} class="readonly-note">
-              Public access is readonly. Add an admin user later to unlock account management.
-            </p>
-
-            <div class="feed-grid">
-              <article :for={source <- @source_cards} class="source-card">
-                <div class="source-card-top">
-                  <span class={["track-pill", source.vehicle_type]}>
-                    {String.upcase(source.vehicle_type)}
-                  </span>
-                  <span class="source-meta">{source.adapter}</span>
-                </div>
-                <strong>{source.name}</strong>
-                <small>{source.poll_label}</small>
-              </article>
-            </div>
-          </section>
-        </aside>
+            </details>
+          </aside>
+        </div>
       </section>
     </Layouts.app>
     """
@@ -470,6 +466,15 @@ defmodule HrafnsynWeb.DashboardLive do
     |> assign(:search_feedback, nil)
   end
 
+  defp clear_selection(socket) do
+    socket
+    |> assign(:selected_track, nil)
+    |> assign(:route_points, [])
+    |> assign(:route_stats, %{distance_meters: 0.0, observed_seconds: 0})
+    |> assign(:log_entries, [])
+    |> assign(:shared_map_view, nil)
+  end
+
   defp maybe_open_search(socket, query) do
     if String.trim(query) == "" do
       socket
@@ -484,10 +489,6 @@ defmodule HrafnsynWeb.DashboardLive do
       :search_results,
       Tracking.search_active_tracks(socket.assigns.search_query, limit: 8)
     )
-  end
-
-  defp search_panel_open?(search_open, query, feedback) do
-    search_open or String.trim(query) != "" or not is_nil(feedback)
   end
 
   defp search_feedback_message(:blank_query),

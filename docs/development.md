@@ -64,6 +64,25 @@ mix phx.server
 
 Visit [http://localhost:4000](http://localhost:4000).
 
+## Phone preview on the local network
+
+To preserve the current database and allow another device on the same network to
+open the web dashboard, run this from fish inside `nix develop`:
+
+```fish
+pg-start
+set -l db_port (cat .pgdev/port)
+set -l db_user (whoami)
+set -gx DATABASE_URL "ecto://$db_user@localhost:$db_port/hrafnsyn_dev?socket_dir=$PWD/.pgdev/run"
+set -gx LISTEN_ADDRESS 0.0.0.0
+set -gx PORT 4088
+mix phx.server
+```
+
+Open `http://<your-Mac-LAN-address>:4088/` on the phone. This exposes the development
+web server to your LAN for the life of the process. The native app uses the separate
+gRPC endpoint; see [mobile setup and distribution](mobile.md).
+
 ## Tests and Quality Gates
 
 ```sh
@@ -78,6 +97,7 @@ mix precommit
 - remove unused unlocked deps
 - formatter
 - Credo strict
+- dependency and application security checks
 - tests
 
 ## Source Overrides
