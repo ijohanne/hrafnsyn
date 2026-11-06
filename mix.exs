@@ -74,10 +74,17 @@ defmodule Hrafnsyn.MixProject do
       {:googleapis, "~> 0.2.0", override: true},
       # grpc 1.0.x still restricts its optional transport to Gun 2.4.x.
       {:gun, "~> 2.7", override: true},
-      # Exact upstream structured-header encoder fix for CVE-2026-43966.
+      # Exact upstream HTTP/1 pipelining fix for CVE-2026-115701.
+      {:cowboy,
+       git: "https://github.com/ninenines/cowboy.git",
+       ref: "3a630c07e1521abf63a1b9ea080509aa1337b60d",
+       override: true},
+      # Keep the current Ranch release rather than Cowboy's Git-build 1.x default.
+      {:ranch, "~> 2.3", override: true},
+      # HTTP/2 header-list bounds; retains the CVE-2026-43966 encoder fix.
       {:cowlib,
        git: "https://github.com/ninenines/cowlib.git",
-       ref: "4401b858f2229abb3ea115c60924f6c77e5f8aa3",
+       ref: "a3b15e29b3067644bfd580246c87f7af7a90b3b8",
        override: true},
       {:joken, "~> 2.6"},
       {:protobuf, "~> 0.17.0"},

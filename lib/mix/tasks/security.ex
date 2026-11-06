@@ -17,10 +17,12 @@ defmodule Mix.Tasks.Security do
   @owner "Ian Johannesen"
   @tracking_issue "hrafnsyn-fhv"
   @reviewed_ids []
-  @reviewed_versions %{cowboy: "2.20.0", gun: "2.7.0"}
+  @reviewed_versions %{gun: "2.7.0"}
+  @fixed_cowboy_repo "https://github.com/ninenines/cowboy.git"
+  @fixed_cowboy_ref "3a630c07e1521abf63a1b9ea080509aa1337b60d"
   @fixed_cowlib_repo "https://github.com/ninenines/cowlib.git"
-  @fixed_cowlib_ref "4401b858f2229abb3ea115c60924f6c77e5f8aa3"
-  @fixed_encoder_sha256 "69a5d5b3c41a562489532bfb7385801fcefa6e47cbc0a6a9675cdc4105686ab7"
+  @fixed_cowlib_ref "a3b15e29b3067644bfd580246c87f7af7a90b3b8"
+  @fixed_encoder_sha256 "8bea38f7ede96e4a404e37d53e27613f1ce6ed4a3b967674a5ca7d3019dc30aa"
   @catalog_aliases ~w(EEF-CVE-2026-43966 GHSA-w4f7-4cxr-rv3c CVE-2026-43966)
   @sobelow_skip "Config.HTTPS: HTTPS Not Enabled,config/prod.exs:0,2B5C077\n"
 
@@ -137,8 +139,16 @@ defmodule Mix.Tasks.Security do
       end
     end)
 
+    ensure_fixed_cowboy!(lock)
     ensure_fixed_cowlib!(lock)
     ensure_osv_config!()
+  end
+
+  defp ensure_fixed_cowboy!(lock) do
+    case lock[:cowboy] do
+      {:git, @fixed_cowboy_repo, @fixed_cowboy_ref, _opts} -> :ok
+      _ -> Mix.raise("cowboy must resolve to the reviewed upstream pipelining fix")
+    end
   end
 
   defp ensure_fixed_cowlib!(lock) do

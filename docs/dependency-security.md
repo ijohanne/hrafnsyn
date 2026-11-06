@@ -1,6 +1,65 @@
 # Dependency Security Review
 
-This note records the August review (`hrafnsyn-r3t`), September follow-up (`hrafnsyn-4dg`), and October update (`hrafnsyn-h5e`). The application-level reachability assessment below supports the narrow, temporary local gate exceptions described at the end.
+This note records the dependency reviews through November 2026. The latest
+update is `hrafnsyn-5ww`; older sections preserve the evidence from previous
+reviews. The narrow local gate classifications are described at the end.
+
+## November 6, 2026 security update
+
+`hrafnsyn-5ww` addresses the six advisories found by the deployment precommit
+gate. The resolved dependency changes are:
+
+| Package | Previous | Updated | Advisory |
+| --- | --- | --- | --- |
+| Bandit | 1.14.0 | 1.14.1 | CVE-2026-116078 |
+| Cowboy | Hex 2.20.0 | Git `3a630c07e1521abf63a1b9ea080509aa1337b60d` | CVE-2026-115701 |
+| Cowlib | Git `4401b858f2229abb3ea115c60924f6c77e5f8aa3` | Git `a3b15e29b3067644bfd580246c87f7af7a90b3b8` | CVE-2026-113431 |
+| Ecto | 3.14.2 | 3.14.3 | CVE-2026-118391 |
+| Phoenix.HTML | 4.3.0 | 4.4.0 | CVE-2026-117645 |
+| ssl_verify_fun | 1.1.7 | 1.1.9 | CVE-2026-117666 |
+
+Cowboy and Cowlib have no patched Hex releases at review time. Their pins
+use the exact fixes in the maintained upstream repositories:
+[Cowboy HTTP/1 pipelining](https://github.com/ninenines/cowboy/commit/3a630c07e1521abf63a1b9ea080509aa1337b60d)
+and [Cowlib HTTP/2 header-list bounds](https://github.com/ninenines/cowlib/commit/a3b15e29b3067644bfd580246c87f7af7a90b3b8).
+The upstream source deltas were inspected separately from the Hex audit.
+Cowboy's unused removed APIs have no application or transport call sites.
+Cowlib's changed structured-date representation is likewise unused here;
+the project already uses OTP 29. An explicit Ranch override preserves the
+existing 2.3.0 release because Cowboy's Git build otherwise requests Ranch 1.x.
+No application or database migration is needed.
+
+The Cowlib pin retains the previous printable-ASCII encoder fix. The gate
+now verifies both exact Git refs and the updated encoder SHA-256
+`8bea38f7ede96e4a404e37d53e27613f1ce6ed4a3b967674a5ca7d3019dc30aa`.
+Its exhaustive byte-rejection checks remain active. No advisory IDs, scanner
+rules, Sobelow fingerprints, or expiration dates were added or relaxed.
+New regression tests exercise HPACK repeated-header expansion, malicious
+HTML attribute names, and rejection of an unreviewed Cowboy revision.
+
+`mix precommit` passed compilation, formatting, strict Credo, the retirement
+and vulnerability checks, Sobelow, and all **161 tests**. The six advisories
+are absent from the current raw scanner reports; the existing source-fixed
+Gun catalog alias remains visible and narrowly classified as before.
+The fixed-output Nix dependency hash was regenerated and the dependency
+derivation and full application release built successfully on the configured
+x86_64-linux builder.
+
+The separate Mode B supply-chain audit ran all eight rules on both versions
+of the four changed Hex packages. It identified **one publisher-change finding, rule 6**:
+Phoenix.HTML's release publisher changed from `josevalim` to `steffend`.
+[Hex lists `steffend` as a current owner](https://hex.pm/packages/phoenix_html),
+and [the upstream v4.4.0 tag](https://github.com/phoenixframework/phoenix_html/releases/tag/v4.4.0)
+points to a GitHub-verified commit signed by `SteffenDE`. The reviewed source
+delta contains attribute-name validation and a JSON-escaping helper. This
+evidence is consistent with an authorized maintainer release, but does not
+prove historical ownership. After reviewing this finding, the user explicitly
+approved **Phoenix.HTML 4.4.0** for deployment on November 6. `hex_vet.exs`
+records only that exact version as `safe_to_deploy`; the publisher-change
+finding remains visible as INFO on the subsequent audit. This review does
+not approve future versions or change the ledger policy. The subsequent
+Mode B audit reports zero BLOCKs, zero WARNs, and one INFO, with
+`audit_passed: true` for the current lockfile SHA-256.
 
 ## October 26, 2026 local update
 

@@ -31,6 +31,14 @@ defmodule Mix.Tasks.SecurityTest do
     end
   end
 
+  test "a different Cowboy source cannot reuse the reviewed HTTP stack" do
+    lock = Map.update!(Lock.read(), :cowboy, &put_elem(&1, 2, String.duplicate("0", 40)))
+
+    assert_raise Mix.Error, ~r/cowboy must resolve to the reviewed upstream pipelining fix/, fn ->
+      Security.ensure_reviewed_exceptions!(~D[2026-11-06], lock)
+    end
+  end
+
   test "raw catalog classification rejects additional unrelated advisories" do
     finding = %{
       dependency: %{package: "gun", version: "2.7.0"},

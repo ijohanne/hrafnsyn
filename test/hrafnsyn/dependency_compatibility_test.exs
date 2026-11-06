@@ -45,6 +45,41 @@ defmodule Hrafnsyn.DependencyCompatibilityTest do
     assert response =~ "HTTP/1.1 400"
   end
 
+  test "Cowlib bounds the decoded HTTP/2 header list, including repeated HPACK entries" do
+    headers = [
+      {":method", "GET"},
+      {":scheme", "http"},
+      {":path", "/"}
+    ]
+
+    {block, _encoder} =
+      :cow_hpack.encode(
+        headers ++ List.duplicate({"user-agent", String.duplicate("a", 4_000)}, 9),
+        :cow_hpack.init(),
+        %{huffman: false}
+      )
+
+    {:ok, _preface, state} =
+      :cow_http2_machine.init(:server, %{
+        preface_timeout: :infinity,
+        settings_timeout: :infinity
+      })
+
+    {:ok, state} = :cow_http2_machine.frame({:settings, %{}}, state)
+
+    assert {:error, {:stream_error, 1, :enhance_your_calm, _reason}, _state} =
+             :cow_http2_machine.frame(
+               {:headers, 1, :fin, :head_fin, IO.iodata_to_binary(block)},
+               state
+             )
+  end
+
+  test "Phoenix HTML rejects attribute names that could inject another attribute" do
+    assert_raise ArgumentError, ~r/expected attribute name/, fn ->
+      Phoenix.HTML.attributes_escape([{"title=\"x\" onmouseover", "alert(1)"}])
+    end
+  end
+
   test "PromEx records and exports metrics through Peep 5" do
     name = __MODULE__.Metrics
     metric = Telemetry.Metrics.counter("hrafnsyn.dependency.compatibility.count")
