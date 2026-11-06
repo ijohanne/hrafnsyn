@@ -318,7 +318,7 @@ EOF
             pg-status
             pg-env
             app
-          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+          ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
             inotify-tools
           ];
 
