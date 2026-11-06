@@ -216,7 +216,8 @@ def sync_profile(api, devices, team, bundle, name, certificate_id, output):
     # Validate the selected account/certificate before registering any devices.
     certificate = certificate_for_team(api, certificate_id, team)
     bundles = api.list("bundleIds", **{"filter[identifier]": bundle})
-    bundles = [item for item in bundles if item["attributes"]["identifier"] == bundle and item["attributes"]["platform"] == "IOS"]
+    bundles = [item for item in bundles if item["attributes"]["identifier"] == bundle
+               and item["attributes"]["platform"] in ("IOS", "UNIVERSAL")]
     if len(bundles) != 1:
         raise SigningError("Create the exact iOS bundle identifier in this Apple developer account before syncing.")
     device_ids = []
@@ -227,6 +228,10 @@ def sync_profile(api, devices, team, bundle, name, certificate_id, output):
             device = existing[0]
         else:
             device = api.request("POST", "/v1/devices", {"data": {"type": "devices", "attributes": {"name": label, "platform": "IOS", "udid": udid}}})["data"]
+            # A successful registration may return PROCESSING even when the
+            # immediately following read already reports the device enabled.
+            if device["attributes"].get("status") == "PROCESSING":
+                device = api.request("GET", "/v1/devices/" + urllib.parse.quote(device["id"], safe=""))["data"]
         if device["attributes"].get("status") != "ENABLED":
             raise SigningError("A requested device is disabled or pending with Apple. Resolve its status before rebuilding.")
         device_ids.append(device["id"])

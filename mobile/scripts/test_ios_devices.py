@@ -31,15 +31,16 @@ def profile():
 
 
 class FakeAPI:
-    def __init__(self, existing=True, status="ENABLED", profiles=None):
+    def __init__(self, existing=True, status="ENABLED", profiles=None, platform="IOS"):
         self.existing = existing
         self.status = status
         self.profiles = profiles or []
         self.posts = []
+        self.platform = platform
 
     def list(self, resource, **filters):
         if resource == "bundleIds":
-            return [{"id": "bundle", "attributes": {"identifier": BUNDLE, "platform": "IOS"}}]
+            return [{"id": "bundle", "attributes": {"identifier": BUNDLE, "platform": self.platform}}]
         if resource == "devices":
             if self.existing:
                 return [{"id": "device", "attributes": {"udid": UDID, "status": self.status}}]
@@ -144,12 +145,44 @@ class SyncTests(unittest.TestCase):
         self.sync(api)
         self.assertEqual([post[1] for post in api.posts], ["/v1/profiles"])
 
+    def test_universal_bundle_can_create_an_ios_adhoc_profile(self):
+        api = FakeAPI(platform="UNIVERSAL")
+        self.sync(api)
+        self.assertEqual(api.posts[0][2]["data"]["attributes"]["profileType"], "IOS_APP_ADHOC")
+
+    def test_mac_only_bundle_cannot_register_devices_or_create_profile(self):
+        api = FakeAPI(existing=False, platform="MAC_OS")
+        with self.assertRaises(signing.SigningError):
+            self.sync(api)
+        self.assertEqual(api.posts, [])
+
     def test_disabled_or_pending_devices_never_get_a_profile(self):
         for status in ["DISABLED", "PROCESSING"]:
             api = FakeAPI(status=status)
             with self.assertRaises(signing.SigningError):
                 self.sync(api)
             self.assertEqual(api.posts, [])
+
+    def test_new_processing_device_is_read_back_before_provisioning(self):
+        for final_status in ("ENABLED", "PROCESSING", "DISABLED"):
+            with self.subTest(final_status=final_status):
+                api = FakeAPI(existing=False, status="PROCESSING")
+                original = api.request
+
+                def request(method, path, body=None):
+                    if method == "GET" and path == "/v1/devices/new-device":
+                        return {"data": {"id": "new-device", "attributes": {"status": final_status}}}
+                    return original(method, path, body)
+
+                with patch.object(api, "request", side_effect=request) as calls:
+                    if final_status == "ENABLED":
+                        self.sync(api)
+                        self.assertEqual(api.posts[-1][1], "/v1/profiles")
+                    else:
+                        with self.assertRaises(signing.SigningError):
+                            self.sync(api)
+                        self.assertEqual([post[1] for post in api.posts], ["/v1/devices"])
+                    calls.assert_any_call("GET", "/v1/devices/new-device")
 
     def test_matching_active_profile_reused_without_mutations(self):
         api = FakeAPI()
