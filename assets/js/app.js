@@ -21,6 +21,7 @@
 import "phoenix_html"
 import "./device_clipboard"
 import "./mobile_build_upload"
+import {selectionCamera} from "./selection_camera.mjs"
 // Establish Phoenix Socket and LiveView configuration.
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
@@ -636,17 +637,18 @@ const TrackingMap = {
 
     const restoredSharedView = this.restoreSharedView(payload.shared_view)
 
-    if (!restoredSharedView && payload.selected_track_id && payload.selected_track_id !== this.lastSelectedTrackId && routeFeatures.length > 0) {
-      const bounds = new maplibregl.LngLatBounds()
-      routeFeatures[0].geometry.coordinates.forEach(coord => bounds.extend(coord))
-      this.map.fitBounds(bounds, {padding: 80, duration: this.cameraDuration(), maxZoom: 12.5})
-    } else if (!restoredSharedView && payload.selected_track_id && payload.selected_track_id !== this.lastSelectedTrackId) {
+    if (!restoredSharedView && payload.selected_track_id && payload.selected_track_id !== this.lastSelectedTrackId) {
       const selectedTrack = payload.tracks.find(track => track.id === payload.selected_track_id)
+      const camera = selectionCamera(payload.route, selectedTrack, this.map.getZoom())
 
-      if (selectedTrack && typeof selectedTrack.latitude === "number" && typeof selectedTrack.longitude === "number") {
+      if (camera?.kind === "route") {
+        const bounds = new maplibregl.LngLatBounds()
+        camera.coordinates.forEach(coord => bounds.extend(coord))
+        this.map.fitBounds(bounds, {padding: 80, duration: this.cameraDuration(), maxZoom: camera.maxZoom})
+      } else if (camera?.kind === "point") {
         this.map.flyTo({
-          center: [selectedTrack.longitude, selectedTrack.latitude],
-          zoom: Math.max(this.map.getZoom(), 9.8),
+          center: camera.center,
+          zoom: camera.zoom,
           duration: this.cameraDuration(),
         })
       }

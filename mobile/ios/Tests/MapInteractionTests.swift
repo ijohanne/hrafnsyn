@@ -3,6 +3,64 @@ import MapKit
 @testable import Hrafnsyn
 
 final class MapInteractionTests: XCTestCase {
+    func testPanningAnAlreadyUserPositionedCameraCancelsDelayedRouteFit() {
+        let before = MKMapRect(x: 10_000, y: 20_000, width: 1_000, height: 2_000)
+        var pendingSelection: String? = "vessel"
+        // An annotation refresh after selection does not move the viewport.
+        if RouteCamera.shouldCancelPendingFit(previous: before, current: before, userPositioned: true) {
+            pendingSelection = nil
+        }
+        XCTAssertEqual(pendingSelection, "vessel")
+        // The flag was true before selection and stays true during this new pan.
+        let panned = MKMapRect(x: 10_100, y: 20_020, width: 1_000, height: 2_000)
+        if RouteCamera.shouldCancelPendingFit(previous: before, current: panned, userPositioned: true) {
+            pendingSelection = nil
+        }
+        XCTAssertNil(pendingSelection)
+        XCTAssertFalse(pendingSelection == "vessel", "The delayed route must not override the user's new viewport")
+        XCTAssertFalse(RouteCamera.shouldCancelPendingFit(previous: before, current: panned, userPositioned: false))
+        let zoomed = MKMapRect(x: 10_000, y: 20_000, width: 500, height: 1_000)
+        XCTAssertTrue(RouteCamera.shouldCancelPendingFit(previous: before, current: zoomed, userPositioned: true))
+    }
+
+    func testStationaryHistoryAndGPSJitterNeverFitCamera() {
+        let marina = CLLocationCoordinate2D(latitude: 36.1438, longitude: -5.3544)
+        let jitter = CLLocationCoordinate2D(latitude: 36.143945, longitude: -5.354251)
+        let histories = [[], [marina], Array(repeating: marina, count: 255),
+                         Array(repeating: [marina, jitter], count: 128).flatMap { $0 }]
+        for history in histories {
+            XCTAssertFalse(RouteCamera.hasMovement(history))
+            XCTAssertNil(RouteCamera.rect(coordinates: history, viewport: .init(width: 390, height: 740), coveredBottom: 180))
+        }
+    }
+
+    func testShortRealRouteFitsWithoutTwoKilometerMinimum() throws {
+        let route = [CLLocationCoordinate2D(latitude: 36.1438, longitude: -5.3544),
+                     CLLocationCoordinate2D(latitude: 36.1448, longitude: -5.3544)]
+        XCTAssertTrue(RouteCamera.hasMovement(route))
+        let rect = try XCTUnwrap(RouteCamera.rect(coordinates: route, viewport: .init(width: 390, height: 740), coveredBottom: 180))
+        XCTAssertLessThan(rect.width * MKMetersPerMapPointAtLatitude(36.1443), 500)
+        XCTAssertTrue(RouteCamera.hasMovement(route + [.init(latitude: .nan, longitude: 0)]))
+        XCTAssertFalse(RouteCamera.hasMovement([route[0], .init(latitude: 91, longitude: 0)]))
+    }
+
+    func testRevealingCoveredOrOffscreenPositionPreservesMarinaZoom() throws {
+        let viewport = CGSize(width: 390, height: 740)
+        let center = MKMapPoint(CLLocationCoordinate2D(latitude: 36.14, longitude: -5.35))
+        let current = MKMapRect(x: center.x - 500, y: center.y - 1_000, width: 1_000, height: 2_000)
+        let visible = MKMapPoint(x: current.midX, y: current.minY + current.height * 0.25)
+        XCTAssertNil(RouteCamera.recenterIfNeeded(coordinate: visible.coordinate, current: current, viewport: viewport, coveredBottom: 200))
+        for point in [MKMapPoint(x: current.midX, y: current.maxY - 10),
+                      MKMapPoint(x: current.maxX + 1_000, y: current.midY)] {
+            let moved = try XCTUnwrap(RouteCamera.recenterIfNeeded(coordinate: point.coordinate, current: current, viewport: viewport, coveredBottom: 200))
+            XCTAssertEqual(moved.width, current.width)
+            XCTAssertEqual(moved.height, current.height)
+            let y = (point.y - moved.minY) / moved.height * viewport.height
+            XCTAssertGreaterThan(y, 0)
+            XCTAssertLessThan(y, viewport.height - 200)
+        }
+    }
+
     func testSheetOverlapDoesNotCountMapFooterTwice() throws {
         // Observed accessibility landscape: Map excludes the 74.9pt status/home
         // footer, while the 220pt detent sits above the 21pt home safe area.
@@ -46,11 +104,12 @@ final class MapInteractionTests: XCTestCase {
     }
 
     func testIPadFitCentersRouteInUncoveredMap() throws {
-        let point = CLLocationCoordinate2D(latitude: 55, longitude: 12)
+        let route = [CLLocationCoordinate2D(latitude: 55, longitude: 12),
+                     CLLocationCoordinate2D(latitude: 55.01, longitude: 12.01)]
         let viewport = CGSize(width: 700, height: 900)
-        let rect = try XCTUnwrap(RouteCamera.rect(coordinates: [point], viewport: viewport, coveredBottom: 0))
-        XCTAssertEqual(rect.midX, MKMapPoint(point).x, accuracy: 0.001)
-        XCTAssertEqual(rect.midY, MKMapPoint(point).y, accuracy: 0.001)
+        let rect = try XCTUnwrap(RouteCamera.rect(coordinates: route, viewport: viewport, coveredBottom: 0))
+        XCTAssertEqual(rect.midX, (MKMapPoint(route[0]).x + MKMapPoint(route[1]).x) / 2, accuracy: 0.001)
+        XCTAssertEqual(rect.midY, (MKMapPoint(route[0]).y + MKMapPoint(route[1]).y) / 2, accuracy: 0.001)
         XCTAssertGreaterThan(rect.width, 0)
         XCTAssertEqual(rect.width / rect.height, viewport.width / viewport.height, accuracy: 0.001)
     }

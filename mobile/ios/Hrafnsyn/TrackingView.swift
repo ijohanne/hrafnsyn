@@ -12,6 +12,7 @@ struct TrackingView: View {
     @State private var panelDismissing = false
     @State private var detailDetent: PresentationDetent = .height(200)
     @State private var pendingRouteFitID: String?
+    @State private var selectionCameFromMap = false
     @State private var panelHeight: CGFloat = 0
     @State private var mapBottomInset: CGFloat = 0
     @State private var containerBottomInset: CGFloat = 0
@@ -82,9 +83,6 @@ struct TrackingView: View {
                 pendingRouteFitID = nil
                 fitSelectedRoute()
             }
-        }
-        .onChange(of: camera.positionedByUser) { _, movedByUser in
-            if movedByUser { pendingRouteFitID = nil }
         }
         .onChange(of: compactDetent) { oldValue, newValue in
             if detailDetent == oldValue { detailDetent = newValue }
@@ -159,7 +157,7 @@ struct TrackingView: View {
                             Label("Fit route", systemImage: "arrow.up.left.and.arrow.down.right")
                                 .frame(minHeight: 44)
                         }
-                        .disabled(model.details?.route.isEmpty != false)
+                        .disabled(model.details?.hasUsefulRoute != true)
                         Button {
                             detailDetent = verticalSizeClass == .compact ? .large : .medium
                         } label: {
@@ -169,8 +167,8 @@ struct TrackingView: View {
                     .buttonStyle(.bordered)
                     if model.loadingDetails {
                         ProgressView("Loading route…").font(.footnote)
-                    } else if let details = model.details, details.route.isEmpty {
-                        Text("No recent route").font(.footnote).foregroundStyle(.secondary)
+                    } else if let details = model.details, !details.hasUsefulRoute {
+                        Text("No route to fit").font(.footnote).foregroundStyle(.secondary)
                     } else if model.details == nil {
                         Button("Retry route") { Task { await model.select(track.id) } }.frame(minHeight: 44)
                     }
@@ -191,7 +189,8 @@ struct TrackingView: View {
         model.dismissSelection()
     }
 
-    private func selectTrack(_ id: String) {
+    private func selectTrack(_ id: String, fromMap: Bool = false) {
+        selectionCameFromMap = fromMap
         // Reopening the selected row must work too: selectedID need not change.
         if model.selectedID == id { selectionChanged(id) }
         Task { await model.select(id) }
@@ -207,25 +206,40 @@ struct TrackingView: View {
         }
         if model.details?.track?.id == id {
             pendingRouteFitID = nil
-            fitSelectedRoute(compact: true)
-        } else if let track = model.selectedTrack {
-            fitCoordinates([track.coordinate], compact: true)
+            if model.details?.hasUsefulRoute == true {
+                fitSelectedRoute(compact: true)
+            } else if !selectionCameFromMap, let track = model.selectedTrack {
+                revealPositionIfNeeded(track.coordinate)
+            }
+        } else if !selectionCameFromMap, let track = model.selectedTrack {
+            revealPositionIfNeeded(track.coordinate)
         }
     }
 
     private func fitSelectedRoute() { fitSelectedRoute(compact: false) }
 
     private func fitSelectedRoute(compact: Bool) {
-        guard let details = model.details, let track = details.track, track.id == model.selectedID, !details.route.isEmpty else { return }
+        guard let details = model.details, let track = details.track, track.id == model.selectedID,
+              details.hasUsefulRoute else { return }
         pendingRouteFitID = nil
-        fitCoordinates(details.route.map { .init(latitude: $0.latitude, longitude: $0.longitude) } + [track.coordinate], compact: compact)
+        fitCoordinates(details.routeCoordinates + [track.coordinate], compact: compact)
+    }
+
+    private func coveredMapHeight(compact: Bool) -> CGFloat {
+        let sheetHeight = compact || showingCompactDetails ? compactHeight : panelHeight
+        return sizeClass == .regular ? 0 : RouteCamera.coveredHeight(
+            sheetHeight: sheetHeight, containerBottomInset: containerBottomInset, mapBottomInset: mapBottomInset)
+    }
+
+    private func revealPositionIfNeeded(_ coordinate: CLLocationCoordinate2D) {
+        if let rect = RouteCamera.recenterIfNeeded(coordinate: coordinate, current: mapRect,
+                                                  viewport: mapSize, coveredBottom: coveredMapHeight(compact: true)) {
+            camera = .rect(rect)
+        }
     }
 
     private func fitCoordinates(_ coordinates: [CLLocationCoordinate2D], compact: Bool) {
-        let sheetHeight = compact || showingCompactDetails ? compactHeight : panelHeight
-        let coveredHeight: CGFloat = sizeClass == .regular ? 0 : RouteCamera.coveredHeight(
-            sheetHeight: sheetHeight, containerBottomInset: containerBottomInset, mapBottomInset: mapBottomInset)
-        if let rect = RouteCamera.rect(coordinates: coordinates, viewport: mapSize, coveredBottom: coveredHeight) {
+        if let rect = RouteCamera.rect(coordinates: coordinates, viewport: mapSize, coveredBottom: coveredMapHeight(compact: compact)) {
             camera = .rect(rect)
         }
     }
@@ -260,7 +274,7 @@ struct TrackingView: View {
                         .accessibilityLabel(group.selectedTrack.map { "Selected \($0.name). Zoom into \(group.tracks.count) tracks" } ?? "Zoom into \(group.tracks.count) tracks")
                     } else {
                     let track = group.tracks[0]
-                    Button { selectTrack(track.id) } label: {
+                    Button { selectTrack(track.id, fromMap: true) } label: {
                         Image(systemName: track.isAircraft ? "airplane" : "ferry.fill")
                             .font(.body.weight(.semibold))
                             .rotationEffect(.degrees(track.isAircraft ? track.headingDegrees - 90 : 0))
@@ -274,20 +288,20 @@ struct TrackingView: View {
                     }
                 }
             }
-            if let route = model.details?.route, route.count > 1 {
-                MapPolyline(coordinates: route.map { .init(latitude: $0.latitude, longitude: $0.longitude) })
+            if let details = model.details, details.routeCoordinates.count > 1 {
+                MapPolyline(coordinates: details.routeCoordinates)
                     .stroke(.teal, lineWidth: 3)
             }
         }
         .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll))
         .onGeometryChange(for: CGSize.self) { $0.size } action: { mapSize = $0 }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { mapBottomInset = $0 }
-        .onMapCameraChange(frequency: .onEnd) { context in
-            let rect = context.rect
-            if abs(rect.width - mapRect.width) > max(mapRect.width / 100, 1)
-                || abs(rect.height - mapRect.height) > max(mapRect.height / 100, 1) {
-                mapRect = rect
+        .onMapCameraChange(frequency: .continuous) { context in
+            if RouteCamera.shouldCancelPendingFit(previous: mapRect, current: context.rect,
+                                                   userPositioned: camera.positionedByUser) {
+                pendingRouteFitID = nil
             }
+            mapRect = context.rect
         }
         .onAppear { if let id = model.selectedID { selectionChanged(id) } else { fitAllTracks() } }
         .onChange(of: model.tracks.isEmpty) { _, empty in if !empty && model.selectedID == nil { fitAllTracks() } }
@@ -463,12 +477,13 @@ struct TrackDetailView: View {
                     Section("Recent route · 6 hours") {
                         if model.loadingDetails { ProgressView("Loading route…") }
                         else if let details = model.details {
-                            if !details.route.isEmpty {
+                            if details.hasUsefulRoute {
                                 Button("Fit route", systemImage: "arrow.up.left.and.arrow.down.right", action: fitRoute)
                             }
                             LabeledContent("Positions", value: details.route.count.formatted())
                             LabeledContent("Distance", value: "\((details.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1)))) km")
                             if details.route.isEmpty { Text("No recent positions are available.").foregroundStyle(.secondary) }
+                            else if !details.hasUsefulRoute { Text("Recent positions cover less than 50 m.").foregroundStyle(.secondary) }
                         } else {
                             Text("Route could not be loaded.").foregroundStyle(.secondary)
                             Button("Try again") { Task { await model.select(track.id) } }
@@ -487,9 +502,61 @@ extension Track {
     var vehicleColor: Color { isAircraft ? .accentColor : .indigo }
 }
 
+extension TrackDetails {
+    var routeCoordinates: [CLLocationCoordinate2D] {
+        route.map { .init(latitude: $0.latitude, longitude: $0.longitude) }
+            .filter { CLLocationCoordinate2DIsValid($0) }
+    }
+    var hasUsefulRoute: Bool { RouteCamera.hasMovement(routeCoordinates) }
+}
+
 /// Fits geometry into the exposed part of the map, not behind the phone sheet.
 /// An explicit rect also avoids MapKit's automatic-fitting/cluster feedback loop.
 enum RouteCamera {
+    static func shouldCancelPendingFit(previous: MKMapRect, current: MKMapRect,
+                                       userPositioned: Bool) -> Bool {
+        guard userPositioned else { return false }
+        // Map annotations can emit camera callbacks without geographic motion.
+        // Ignore floating-point noise, but catch pans even when the user flag
+        // was already true before this selection began loading its history.
+        let epsilon = max(previous.width, previous.height) * 0.0000001
+        return abs(current.minX - previous.minX) > epsilon
+            || abs(current.minY - previous.minY) > epsilon
+            || abs(current.width - previous.width) > epsilon
+            || abs(current.height - previous.height) > epsilon
+    }
+
+    static func hasMovement(_ coordinates: [CLLocationCoordinate2D]) -> Bool {
+        guard let bounds = bounds(coordinates) else { return false }
+        let latitude = MKMapPoint(x: bounds.midX, y: bounds.midY).coordinate.latitude
+        let extentMeters = hypot(bounds.width, bounds.height) * MKMetersPerMapPointAtLatitude(latitude)
+        return extentMeters.isFinite && extentMeters >= 50
+    }
+
+    /// Reveal a list selection without changing the user's zoom. Marker taps do
+    /// not call this: their existing geographic context stays exactly as-is.
+    static func recenterIfNeeded(coordinate: CLLocationCoordinate2D, current: MKMapRect,
+                                 viewport: CGSize, coveredBottom: CGFloat) -> MKMapRect? {
+        guard CLLocationCoordinate2DIsValid(coordinate), !current.isNull, !current.isEmpty,
+              viewport.width > 0, viewport.height > 0 else { return nil }
+        let visibleHeight = Double(viewport.height - max(coveredBottom, 0))
+        guard visibleHeight > 0 else { return nil }
+        var point = MKMapPoint(coordinate)
+        point.x += ((current.midX - point.x) / MKMapRect.world.width).rounded() * MKMapRect.world.width
+        guard point.x.isFinite, point.y.isFinite else { return nil }
+        let scaleX = current.width / Double(viewport.width)
+        let scaleY = current.height / Double(viewport.height)
+        let paddingX = min(36, Double(viewport.width) / 4) * scaleX
+        let paddingY = min(36, visibleHeight / 4) * scaleY
+        let visible = MKMapRect(x: current.minX + paddingX, y: current.minY + paddingY,
+                                width: current.width - 2 * paddingX,
+                                height: visibleHeight * scaleY - 2 * paddingY)
+        guard !visible.contains(point) else { return nil }
+        return MKMapRect(x: point.x - current.width / 2,
+                         y: point.y - visibleHeight * scaleY / 2,
+                         width: current.width, height: current.height)
+    }
+
     static func coveredHeight(sheetHeight: CGFloat, containerBottomInset: CGFloat,
                               mapBottomInset: CGFloat) -> CGFloat {
         // Map's measured viewport already excludes its status bar and bottom
@@ -499,8 +566,26 @@ enum RouteCamera {
 
     static func rect(coordinates: [CLLocationCoordinate2D], viewport: CGSize,
                      coveredBottom: CGFloat, padding: CGFloat = 36) -> MKMapRect? {
+        guard hasMovement(coordinates), let bounds = bounds(coordinates),
+              viewport.width > 2 * padding, viewport.height > 2 * padding else { return nil }
+        let width = Double(viewport.width), height = Double(viewport.height)
+        let visibleHeight = height - Double(max(coveredBottom, 0))
+        guard visibleHeight > 0 else { return nil }
+        let usableWidth = max(width - 2 * Double(padding), 1)
+        // Shrink the breathing room in short windows; never invent map space
+        // underneath a tall sheet, even at accessibility text sizes.
+        let verticalPadding = min(Double(padding), visibleHeight / 4)
+        let usableHeight = visibleHeight - 2 * verticalPadding
+        let scale = max(bounds.width / usableWidth, bounds.height / usableHeight)
+        return MKMapRect(x: bounds.midX - width * scale / 2,
+                         y: bounds.midY - visibleHeight * scale / 2,
+                         width: width * scale, height: height * scale)
+    }
+
+    private static func bounds(_ coordinates: [CLLocationCoordinate2D]) -> MKMapRect? {
         let points = coordinates.filter { CLLocationCoordinate2DIsValid($0) }.map(MKMapPoint.init)
-        guard !points.isEmpty, viewport.width > 2 * padding, viewport.height > 2 * padding else { return nil }
+            .filter { $0.x.isFinite && $0.y.isFinite }
+        guard !points.isEmpty else { return nil }
         let world = MKMapRect.world.width
         let xs = points.map(\.x).sorted()
         // Exclude the largest empty arc so a route crossing ±180° stays local.
@@ -513,19 +598,7 @@ enum RouteCamera {
         let wrappedX = xs.map { $0 < start ? $0 + world : $0 }
         let minX = wrappedX.min()!, maxX = wrappedX.max()!
         let minY = points.map(\.y).min()!, maxY = points.map(\.y).max()!
-        let width = Double(viewport.width), height = Double(viewport.height)
-        let visibleHeight = height - Double(max(coveredBottom, 0))
-        guard visibleHeight > 0 else { return nil }
-        let usableWidth = max(width - 2 * Double(padding), 1)
-        // Shrink the breathing room in short windows; never invent map space
-        // underneath a tall sheet, even at accessibility text sizes.
-        let verticalPadding = min(Double(padding), visibleHeight / 4)
-        let usableHeight = visibleHeight - 2 * verticalPadding
-        let minimumSpan = MKMapPointsPerMeterAtLatitude(coordinates.first(where: { CLLocationCoordinate2DIsValid($0) })!.latitude) * 2_000
-        let scale = max((maxX - minX) / usableWidth, (maxY - minY) / usableHeight, minimumSpan / usableWidth)
-        return MKMapRect(x: (minX + maxX) / 2 - width * scale / 2,
-                         y: (minY + maxY) / 2 - visibleHeight * scale / 2,
-                         width: width * scale, height: height * scale)
+        return MKMapRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 }
 
