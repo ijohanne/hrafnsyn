@@ -1,8 +1,61 @@
 # Dependency Security Review
 
 This note records the dependency reviews through November 2026. The latest
-update is `hrafnsyn-5ww`; older sections preserve the evidence from previous
+review is `hrafnsyn-6du`; older sections preserve the evidence from previous
 reviews. The narrow local gate classifications are described at the end.
+
+## November 6, 2026 gRPC follow-up
+
+`hrafnsyn-6du` updates `grpc`, `grpc_core`, and `grpc_server` together from
+1.0.5 to 1.0.6. The new
+[CVE-2026-71397 advisory](https://cna.erlef.org/cves/CVE-2026-71397.html)
+was published after the earlier security update. The
+[upstream fix](https://github.com/elixir-grpc/grpc/commit/0b663ca53dbf0f36f7f67ff1d0026f4482a18915)
+checks cumulative streaming request bytes before forwarding chunks to the
+decoder, returning `RESOURCE_EXHAUSTED` once `max_body_size` is exceeded.
+Both direct gRPC requirements now have a 1.0.6 minimum. Existing Google APIs,
+Gun, Cowboy and Cowlib overrides remain unchanged.
+
+This limit applies to the entire client-streaming request, not each message.
+Hrafnsyn retains the upstream 4 MiB default. A long-lived `StreamObservations`
+publisher must handle status 8 by opening a new RPC and reconciling observation
+acknowledgements; blindly replaying unacknowledged writes is not an exactly-once
+guarantee. No publisher/reconnect implementation exists in this repository's
+collectors or native clients. Native read calls and the server-streaming
+`StreamTrackUpdates` method send unary requests, so response-stream duration
+does not consume this request-body allowance. The security cap is not raised
+or disabled by this update.
+
+Mode B scanned old/new Hex tarballs with all eight native audit rules. Rules
+1–5, 7 and 8 found no issues. Rule 6 reports three publisher changes, one for
+each exact 1.0.6 package: `eigr` → `polvalente`. Both accounts are current
+owners in the [grpc](https://hex.pm/api/packages/grpc),
+[grpc_core](https://hex.pm/api/packages/grpc_core), and
+[grpc_server](https://hex.pm/api/packages/grpc_server) metadata. The
+[v1.0.6 release](https://github.com/elixir-grpc/grpc/releases/tag/v1.0.6)
+was published by `polvalente`; its tag points to
+`2301aa044cdb999254c7328151d1d723f65ece38`, also authored and committed by
+that account. GitHub reports that commit as unsigned, not signature-verified.
+This corroborates current ownership and release provenance, not historical
+ownership or absence of compromise. Ian explicitly accepted all three exact
+1.0.6 versions for production on November 6. Their `hex_vet.exs` entries retain
+this evidence and downgrade only those version-specific findings from BLOCK
+to INFO. The final audit has zero BLOCKs, zero WARNs and three INFOs.
+
+The actual Hex server diff contains the cumulative-byte guard; the core diff
+changes release metadata only. Client changes repair supervised transport
+recovery and return `UNAVAILABLE` for dead channels. No packaged changelogs
+exist; full package diffs and upstream comparison evidence are saved under
+ignored `tmp/grpc-security/`. The audit sidecar is
+`.claude/deps-audit/last-run.json`.
+
+`mix precommit` passed compilation with warnings as errors, formatting, strict
+Credo, security and all 239 tests. OSV comparison removes
+`EEF-CVE-2026-71397`, introduces no records and retains only the previously
+source-fixed Gun/Cowlib alias. No advisory ignore, gate classification or
+scanner rule was broadened. The dependency fixed-output hash was regenerated
+and both the dependency derivation and full release built on aarch64-darwin.
+Publication and production activation of this gRPC patch remain pending.
 
 ## November 6, 2026 security update
 

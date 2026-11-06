@@ -68,9 +68,10 @@ defmodule Hrafnsyn.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
-      {:grpc, "~> 1.0.2"},
-      {:grpc_server, "~> 1.0.2"},
-      # grpc_core 1.0.5 pins the previous generated Google API definitions.
+      {:grpc, "~> 1.0.6"},
+      # Bounds streaming request bodies (CVE-2026-71397).
+      {:grpc_server, "~> 1.0.6"},
+      # grpc_core 1.0.6 pins the previous generated Google API definitions.
       {:googleapis, "~> 0.2.0", override: true},
       # grpc 1.0.x still restricts its optional transport to Gun 2.4.x.
       {:gun, "~> 2.7", override: true},
